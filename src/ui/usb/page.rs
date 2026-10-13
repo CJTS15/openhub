@@ -1,9 +1,16 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 
+use super::device_dialog;
 use crate::model::UsbDevice;
 use crate::usb::UsbManager;
+
+/// How often the page rescans sysfs while it's on screen.
+const RESCAN_SECONDS: u32 = 2;
 
 mod imp {
     use super::*;
@@ -16,6 +23,7 @@ mod imp {
         #[template_child]
         pub device_list: TemplateChild<gtk::ListBox>,
         pub manager: UsbManager,
+        pub rescan: RefCell<Option<glib::SourceId>>,
     }
 
     #[glib::object_subclass]
@@ -45,7 +53,8 @@ mod imp {
                 true,
                 move |item| obj.shows(item.downcast_ref().unwrap())
             ));
-            let model = gtk::FilterListModel::new(Some(self.manager.devices()), Some(filter));
+            let model =
+                gtk::FilterListModel::new(Some(self.manager.devices()), Some(filter.clone()));
             self.device_list.bind_model(
                 Some(&model),
                 glib::clone!(
@@ -55,15 +64,32 @@ mod imp {
                     move |item| obj.row(item.downcast_ref().unwrap())
                 ),
             );
+            // Hub rows listen for this too and redo their own children.
+            self.show_internal
+                .connect_active_notify(move |_| filter.changed(gtk::FilterChange::Different));
 
-            // A rescan rebuilds every row, hub children included, with the new setting.
-            self.show_internal.connect_active_notify(glib::clone!(
-                #[weak]
-                obj,
-                move |_| obj.imp().manager.refresh()
-            ));
-            // ponytail: scans when shown; M6 adds the 2-second rescan while visible.
-            obj.connect_map(|page| page.imp().manager.refresh());
+            obj.connect_map(|page| {
+                page.imp().manager.refresh();
+                let rescan = glib::timeout_add_seconds_local(
+                    RESCAN_SECONDS,
+                    glib::clone!(
+                        #[weak]
+                        page,
+                        #[upgrade_or]
+                        glib::ControlFlow::Break,
+                        move || {
+                            page.imp().manager.refresh();
+                            glib::ControlFlow::Continue
+                        }
+                    ),
+                );
+                page.imp().rescan.replace(Some(rescan));
+            });
+            obj.connect_unmap(|page| {
+                if let Some(rescan) = page.imp().rescan.take() {
+                    rescan.remove();
+                }
+            });
         }
     }
 
@@ -82,33 +108,115 @@ impl UsbPage {
         self.imp().show_internal.is_active() || !device.internal()
     }
 
-    /// A plain row, or a collapsed expander for a hub with visible children.
+    fn show_details(&self, device: &UsbDevice) {
+        device_dialog::new(device).present(Some(self));
+    }
+
+    /// A row that follows `device`: a plain row, or an expander for a hub.
     fn row(&self, device: &UsbDevice) -> gtk::Widget {
-        let children: Vec<UsbDevice> = device
-            .children()
-            .iter::<UsbDevice>()
-            .flatten()
-            .filter(|child| self.shows(child))
-            .collect();
-        let icon = gtk::Image::from_icon_name(&device.icon_name());
-        if children.is_empty() {
+        let icon = gtk::Image::new();
+        device
+            .bind_property("icon-name", &icon, "icon-name")
+            .sync_create()
+            .build();
+        if !device.hub() {
             let row = adw::ActionRow::builder()
-                .title(device.title())
-                .subtitle(device.subtitle())
                 .use_markup(false)
+                .activatable(true)
                 .build();
+            bind_text(device, &row);
             row.add_prefix(&icon);
+            row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+            row.connect_activated(glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                #[weak]
+                device,
+                move |_| page.show_details(&device)
+            ));
             return row.upcast();
         }
-        let row = adw::ExpanderRow::builder()
-            .title(device.title())
-            .subtitle(device.subtitle())
-            .use_markup(false)
-            .build();
+
+        let row = adw::ExpanderRow::builder().use_markup(false).build();
+        bind_text(device, &row);
         row.add_prefix(&icon);
-        for child in &children {
-            row.add_row(&self.row(child));
-        }
+        let details = gtk::Button::builder()
+            .icon_name("go-next-symbolic")
+            .tooltip_text("Details")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        details.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move |_| page.show_details(&device)
+        ));
+        row.add_suffix(&details);
+
+        // Rows for what's plugged in, redone when that changes or the
+        // internal-devices switch flips. Rebuilding resets nested hubs'
+        // expansion, which only happens when something under this hub changes.
+        let shown: Rc<RefCell<Vec<gtk::Widget>>> = Rc::default();
+        let rebuild: Rc<dyn Fn()> = Rc::new(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            row,
+            #[weak]
+            device,
+            #[strong]
+            shown,
+            move || {
+                for child in shown.take() {
+                    row.remove(&child);
+                }
+                for child in device.children().iter::<UsbDevice>().flatten() {
+                    if page.shows(&child) {
+                        let child_row = page.row(&child);
+                        row.add_row(&child_row);
+                        shown.borrow_mut().push(child_row);
+                    }
+                }
+                row.set_enable_expansion(!shown.borrow().is_empty());
+            }
+        ));
+        rebuild();
+        let on_items = device.children().connect_items_changed(glib::clone!(
+            #[strong]
+            rebuild,
+            move |_, _, _, _| rebuild()
+        ));
+        let on_switch = self
+            .imp()
+            .show_internal
+            .connect_active_notify(move |_| rebuild());
+        // Disconnect both when the row goes away, or they'd outlive it.
+        let handlers = RefCell::new(Some((on_items, on_switch)));
+        row.connect_destroy(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move |_| {
+                if let Some((on_items, on_switch)) = handlers.take() {
+                    device.children().disconnect(on_items);
+                    page.imp().show_internal.disconnect(on_switch);
+                }
+            }
+        ));
         row.upcast()
     }
+}
+
+fn bind_text(device: &UsbDevice, row: &impl IsA<adw::PreferencesRow>) {
+    device
+        .bind_property("title", row.as_ref(), "title")
+        .sync_create()
+        .build();
+    device
+        .bind_property("subtitle", row.as_ref(), "subtitle")
+        .sync_create()
+        .build();
 }

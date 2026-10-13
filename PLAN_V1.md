@@ -77,12 +77,12 @@ After v0.1 the same pattern extends to the next device category (for example USB
 
 ## Open questions
 
-- [ ] App ID and name: is `io.github.<you>.Openhub` right, or do you own a domain to use?
-- [ ] Where should the code live: a new GitHub repo (which account and name), or local only for now?
-- [ ] Build system: plain Cargo (simpler) or Meson + Cargo (the GNOME convention, needed for translations and a polished Flatpak)? I lean to Cargo now, Meson at M4.
-- [ ] Distribution target: Flatpak first, distro packages, or just `cargo run` for now?
-- [ ] Is Ubuntu 24.04 (GTK 4.14, libadwaita 1.5) the oldest system you need to support?
-- [ ] Should Openhub run its own pairing agent, or defer to the desktop's (GNOME Settings already registers one)?
+- [x] App ID and name: is `io.github.<you>.Openhub` right, or do you own a domain to use?
+- [x] Where should the code live: a new GitHub repo (which account and name), or local only for now?
+- [x] Build system: plain Cargo (simpler) or Meson + Cargo (the GNOME convention, needed for translations and a polished Flatpak)? I lean to Cargo now, Meson at M4.
+- [x] Distribution target: Flatpak first, distro packages, or just `cargo run` for now?
+- [x] Is Ubuntu 24.04 (GTK 4.14, libadwaita 1.5) the oldest system you need to support?
+- [x] Should Openhub run its own pairing agent, or defer to the desktop's (GNOME Settings already registers one)?
 
 ## Decisions
 

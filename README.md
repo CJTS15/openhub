@@ -4,13 +4,32 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-M3: Bluetooth page with the adapter power switch, paired devices with Connect/Disconnect and a details dialog (battery, trust, block, Forget), and pairing with nearby devices through Openhub's own agent. Packaging for a v0.1 release is M4.
+[v0.1.0](https://github.com/CJTS15/openhub/releases/tag/v0.1.0) is out and covers Bluetooth: turn the adapter on and off, connect and disconnect devices, see their battery level, scan for and pair new devices through Openhub's own pairing agent, and trust, block or forget them.
+
+Next is v0.2, which adds a USB page: a live list of USB devices with details, and safe eject for drives.
+
+## Plans
+
+- [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
+- [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8)
+
+## Installing
+
+Download `openhub-0.1.0-x86_64.flatpak` from the [v0.1.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.1.0). It needs the GNOME 50 runtime from Flathub:
+
+```sh
+flatpak install --user flathub org.gnome.Platform//50
+flatpak install --user openhub-0.1.0-x86_64.flatpak
+flatpak run io.github.cjts15.Openhub
+```
+
+Known issue: with blueman-applet running, turning the adapter off and on can freeze GNOME Shell through a flood of connection notifications ([#4](https://github.com/CJTS15/openhub/issues/4)). Stopping or removing blueman avoids it.
 
 ## Building
 
 ### Flatpak (recommended)
 
-Requires `flatpak-builder` and the GNOME 50 SDK with the Rust extension:
+Requires `flatpak-builder` (from your distribution, or `flatpak install flathub org.flatpak.Builder` and run it as `flatpak run org.flatpak.Builder`) and the GNOME 50 SDK with the Rust extension:
 
 ```sh
 flatpak install flathub org.gnome.Sdk//50 org.gnome.Platform//50 org.freedesktop.Sdk.Extension.rust-stable//25.08

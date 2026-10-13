@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub const ROOT: &str = "/sys/bus/usb/devices";
 
@@ -26,6 +26,10 @@ pub struct UsbInfo {
     pub interfaces: Vec<Interface>,
     /// The firmware marks the port as built in (`removable` is `fixed`).
     pub internal: bool,
+    /// ALSA made a recording device from it: a microphone or line in.
+    pub capture: bool,
+    /// ALSA made a playback device from it: speakers or headphones.
+    pub playback: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,8 +109,29 @@ fn read_device(dir: &Path, name: String) -> Option<UsbInfo> {
         class: hex(dir, "bDeviceClass").unwrap_or_default(),
         interfaces,
         internal: attr(dir, "removable").as_deref() == Some("fixed"),
+        capture: has_pcm(&dirs, 'c'),
+        playback: has_pcm(&dirs, 'p'),
         name,
     })
+}
+
+/// Whether a sound card on these interfaces has a capture (`c`) or playback
+/// (`p`) device, such as `<interface>/sound/card0/pcmC0D0c`. Unlike the
+/// streaming endpoints, these exist while the device is idle.
+fn has_pcm(interfaces: &[PathBuf], direction: char) -> bool {
+    interfaces
+        .iter()
+        .filter_map(|interface| fs::read_dir(interface.join("sound")).ok())
+        .flatten()
+        .flatten()
+        .filter_map(|card| fs::read_dir(card.path()).ok())
+        .flatten()
+        .flatten()
+        .any(|pcm| {
+            let name = pcm.file_name();
+            let name = name.to_string_lossy();
+            name.starts_with("pcm") && name.ends_with(direction)
+        })
 }
 
 /// A sysfs attribute, trimmed; `None` when missing or empty.
@@ -132,7 +157,7 @@ mod tests {
     #[test]
     fn skips_root_hubs_and_interfaces_and_sorts_by_port() {
         let names: Vec<_> = fixture().into_iter().map(|d| d.name).collect();
-        assert_eq!(names, ["1-1", "1-1.1", "1-1.2", "1-2"]);
+        assert_eq!(names, ["1-1", "1-1.1", "1-1.2", "1-2", "1-3"]);
     }
 
     #[test]
@@ -160,6 +185,14 @@ mod tests {
             (0x08, 0x50)
         );
         assert_eq!(stick.interfaces[0].driver.as_deref(), Some("usb-storage"));
+    }
+
+    #[test]
+    fn reads_audio_direction_from_sound_cards() {
+        let devices = fixture();
+        let mic = &devices[4];
+        assert!(mic.capture && !mic.playback);
+        assert!(!devices[2].capture && !devices[2].playback);
     }
 
     #[test]

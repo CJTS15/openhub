@@ -160,14 +160,16 @@ fn version_label(version: &str) -> String {
 
 /// The device class, or its interfaces' classes when it defers to them.
 fn class_label(info: &UsbInfo) -> String {
+    let name = |class| match (class, info.capture, info.playback) {
+        (0x01, true, false) => "Audio (microphone)".to_owned(),
+        (0x01, false, true) => "Audio (speakers)".to_owned(),
+        (0x01, true, true) => "Audio (microphone and speakers)".to_owned(),
+        _ => class_name(class),
+    };
     if !matches!(info.class, 0x00 | 0xef) {
-        return class_name(info.class);
+        return name(info.class);
     }
-    let mut names: Vec<String> = info
-        .interfaces
-        .iter()
-        .map(|i| class_name(i.class))
-        .collect();
+    let mut names: Vec<String> = info.interfaces.iter().map(|i| name(i.class)).collect();
     names.dedup();
     names.join(", ")
 }
@@ -206,7 +208,11 @@ fn icon_name(info: &UsbInfo) -> &'static str {
         .chain(info.interfaces.iter().map(|i| (i.class, i.protocol)));
     for (class, protocol) in classes {
         return match (class, protocol) {
-            (0x01, _) => "audio-card-symbolic",
+            (0x01, _) => match (info.capture, info.playback) {
+                (true, false) => "audio-input-microphone-symbolic",
+                (false, true) => "audio-speakers-symbolic",
+                _ => "audio-card-symbolic",
+            },
             (0x02 | 0x0a, _) => "network-wired-symbolic",
             (0x03, 2) => "input-mouse-symbolic",
             (0x03, _) => "input-keyboard-symbolic",
@@ -269,6 +275,13 @@ mod tests {
     }
 
     #[test]
+    fn microphone_class_label() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sysfs-usb");
+        let mic = &sysfs::scan(&root).unwrap()[4];
+        assert_eq!(class_label(mic), "Audio (microphone)");
+    }
+
+    #[test]
     fn labels() {
         assert_eq!(speed_label("480"), "480 Mbit/s (High Speed)");
         assert_eq!(speed_label("2500"), "2500 Mbit/s");
@@ -285,10 +298,11 @@ mod tests {
         assert_eq!(
             icons,
             [
-                "media-removable-symbolic",       // hub
-                "phone-symbolic",                 // MTP
-                "drive-removable-media-symbolic", // mass storage
-                "input-mouse-symbolic",           // HID mouse
+                "media-removable-symbolic",        // hub
+                "phone-symbolic",                  // MTP
+                "drive-removable-media-symbolic",  // mass storage
+                "input-mouse-symbolic",            // HID mouse
+                "audio-input-microphone-symbolic", // capture only
             ]
         );
     }

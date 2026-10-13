@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Openhub
+Comment=Manage the devices connected to your computer
+Exec=openhub
+Icon=@APP_ID@
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Settings;HardwareSettings;
+Keywords=bluetooth;devices;hardware;pair;
+StartupNotify=true
+DBusActivatable=false

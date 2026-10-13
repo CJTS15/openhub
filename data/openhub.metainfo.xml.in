@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@APP_ID@</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Openhub</name>
+  <summary>Manage your connected devices</summary>
+  <description>
+    <p>Openhub lists and manages the devices connected to your computer, starting with Bluetooth: see your adapters, pair new devices, and connect or disconnect them.</p>
+  </description>
+  <developer id="io.github.cjts15">
+    <name>CJ</name>
+  </developer>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
+  <url type="homepage">https://github.com/CJTS15/openhub</url>
+  <url type="bugtracker">https://github.com/CJTS15/openhub/issues</url>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-13">
+      <description>
+        <p>Initial application skeleton.</p>
+      </description>
+    </release>
+  </releases>
+</component>

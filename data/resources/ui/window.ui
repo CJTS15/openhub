@@ -44,6 +44,7 @@
                         </style>
                         <child>
                           <object class="GtkListBoxRow">
+                            <property name="name">bluetooth</property>
                             <property name="child">
                               <object class="GtkBox">
                                 <property name="spacing">12</property>
@@ -62,6 +63,27 @@
                             </property>
                           </object>
                         </child>
+                        <child>
+                          <object class="GtkListBoxRow">
+                            <property name="name">usb</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon-name">media-removable-symbolic</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">USB</property>
+                                    <property name="xalign">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
                       </object>
                     </property>
                   </object>
@@ -71,16 +93,34 @@
           </object>
         </property>
         <property name="content">
-          <object class="AdwNavigationPage">
+          <object class="AdwNavigationPage" id="content_page">
             <property name="title" translatable="yes">Bluetooth</property>
-            <property name="tag">bluetooth</property>
             <property name="child">
               <object class="AdwToolbarView">
                 <child type="top">
                   <object class="AdwHeaderBar"/>
                 </child>
                 <property name="content">
-                  <object class="OpenhubBluetoothPage"/>
+                  <object class="GtkStack" id="category_stack">
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">bluetooth</property>
+                        <property name="title" translatable="yes">Bluetooth</property>
+                        <property name="child">
+                          <object class="OpenhubBluetoothPage"/>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">usb</property>
+                        <property name="title" translatable="yes">USB</property>
+                        <property name="child">
+                          <object class="OpenhubUsbPage"/>
+                        </property>
+                      </object>
+                    </child>
+                  </object>
                 </property>
               </object>
             </property>

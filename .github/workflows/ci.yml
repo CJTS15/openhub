@@ -47,6 +47,14 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
     steps:
+      # The GNOME image, SDK and Rust build fill the runner's disk; the host's
+      # preinstalled tool cache (mounted at /__t) is unused here.
+      - name: Free disk space
+        run: |
+          df -h /
+          rm -rf /__t/*
+          df -h /
+
       - uses: actions/checkout@v4
 
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6

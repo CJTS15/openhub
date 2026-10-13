@@ -4,7 +4,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-M0: application skeleton (window, sidebar, About dialog). The Bluetooth device list arrives in M1.
+M1: read-only Bluetooth page listing adapters and paired devices (connection state, battery), updated live from BlueZ. Controls arrive in M2.
 
 ## Building
 
@@ -38,7 +38,9 @@ For quick iteration, `cargo run` also works.
 - `src/application.rs`: `AdwApplication` subclass, app actions and shortcuts
 - `src/window.rs` + `data/resources/ui/window.ui`: main window with a category sidebar and content pane
 - `src/config.rs`: app ID and version, passed in by Meson
-- BlueZ access will live in `src/bluez/` (zbus), behind a GObject model in `src/model/`
+- `src/bluez/`: zbus proxies and `BluetoothManager`, the only code that talks to BlueZ over D-Bus
+- `src/model/`: `Adapter` and `Device` GObjects the UI binds to
+- `src/ui/bluetooth/` + `data/resources/ui/bluetooth_page.ui`: the Bluetooth page and device rows
 
 ## License
 

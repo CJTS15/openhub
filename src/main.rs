@@ -1,5 +1,8 @@
 mod application;
+mod bluez;
 mod config;
+mod model;
+mod ui;
 mod window;
 
 use gtk::prelude::*;

@@ -10,6 +10,9 @@ mod imp {
     #[derive(Debug, glib::Properties)]
     #[properties(wrapper_type = super::Device)]
     pub struct Device {
+        /// BlueZ object path, used by the service to send commands.
+        #[property(get, set)]
+        path: RefCell<String>,
         #[property(get, set)]
         name: RefCell<String>,
         /// BlueZ icon name such as `audio-headset`; empty when unknown.
@@ -27,6 +30,7 @@ mod imp {
     impl Default for Device {
         fn default() -> Self {
             Self {
+                path: RefCell::default(),
                 name: RefCell::default(),
                 icon: RefCell::default(),
                 paired: Cell::default(),

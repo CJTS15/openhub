@@ -1,5 +1,8 @@
+use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
+
+use crate::ui::bluetooth::BluetoothPage;
 
 mod imp {
     use super::*;
@@ -20,6 +23,7 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            BluetoothPage::ensure_type();
             klass.bind_template();
             klass.bind_template_callbacks();
         }

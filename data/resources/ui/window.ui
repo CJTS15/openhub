@@ -80,11 +80,7 @@
                   <object class="AdwHeaderBar"/>
                 </child>
                 <property name="content">
-                  <object class="AdwStatusPage">
-                    <property name="icon-name">bluetooth-symbolic</property>
-                    <property name="title" translatable="yes">Bluetooth</property>
-                    <property name="description" translatable="yes">Your Bluetooth adapters and devices will be listed here.</property>
-                  </object>
+                  <object class="OpenhubBluetoothPage"/>
                 </property>
               </object>
             </property>

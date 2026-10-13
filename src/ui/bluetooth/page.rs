@@ -80,6 +80,16 @@ mod imp {
                     move |item| {
                         let device: &Device = item.downcast_ref().unwrap();
                         let row = device_row::new(device);
+                        let spinner = gtk::Spinner::new();
+                        device
+                            .bind_property("busy", &spinner, "spinning")
+                            .sync_create()
+                            .build();
+                        device
+                            .bind_property("busy", &spinner, "visible")
+                            .sync_create()
+                            .build();
+                        row.add_suffix(&spinner);
                         row.add_suffix(&obj.connect_button(device));
                         row.upcast()
                     }
@@ -185,21 +195,26 @@ impl BluetoothPage {
             })
             .sync_create()
             .build();
+        // Busy lives on the device: a device that connects moves to the top,
+        // which replaces this row and button.
+        device
+            .bind_property("busy", &button, "sensitive")
+            .invert_boolean()
+            .sync_create()
+            .build();
         button.connect_clicked(glib::clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
             device,
-            move |button| {
-                button.set_sensitive(false);
+            move |_| {
+                device.set_busy(true);
                 let connected = device.connected();
                 glib::spawn_future_local(glib::clone!(
                     #[weak]
                     page,
                     #[weak]
                     device,
-                    #[weak]
-                    button,
                     async move {
                         let manager = &page.imp().manager;
                         let result = if connected {
@@ -219,7 +234,7 @@ impl BluetoothPage {
                                 format!("Couldn't connect to {}", device.name())
                             });
                         }
-                        button.set_sensitive(true);
+                        device.set_busy(false);
                     }
                 ));
             }

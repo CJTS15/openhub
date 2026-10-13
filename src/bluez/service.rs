@@ -4,6 +4,7 @@
 //! loop via `glib::spawn_future_local`.
 
 use std::cell::{Cell, OnceCell};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use futures_util::stream::{self, LocalBoxStream, Stream, StreamExt};
@@ -439,8 +440,8 @@ impl BluetoothManager {
             device.set_paired(paired);
             // Unnamed devices are mostly anonymous LE beacons; leave them out.
             let named = proxy.cached_name().ok().flatten().is_some();
-            set_member(&paired_devices, &device, paired);
-            set_member(&nearby_devices, &device, !paired && named);
+            place(&paired_devices, &device, paired);
+            place(&nearby_devices, &device, !paired && named);
         }))
     }
 }
@@ -481,16 +482,76 @@ fn watch(
     })
 }
 
-fn set_member(store: &gio::ListStore, item: &impl IsA<glib::Object>, member: bool) {
-    match (member, store.find(item)) {
-        (true, None) => store.append(item),
-        (false, Some(position)) => store.remove(position),
-        _ => {}
+/// Connected devices first, then by name.
+fn display_order(a: &glib::Object, b: &glib::Object) -> Ordering {
+    let a = a.downcast_ref::<Device>().expect("device store");
+    let b = b.downcast_ref::<Device>().expect("device store");
+    b.connected()
+        .cmp(&a.connected())
+        .then_with(|| a.name().to_lowercase().cmp(&b.name().to_lowercase()))
+}
+
+/// Adds or removes `device` keeping `store` in display order. A device that
+/// is out of order moves, which recreates its row.
+fn place(store: &gio::ListStore, device: &Device, member: bool) {
+    if let Some(position) = store.find(device) {
+        if member && in_order(store, position) {
+            return;
+        }
+        store.remove(position);
     }
+    if member {
+        store.insert_sorted(device, display_order);
+    }
+}
+
+fn in_order(store: &gio::ListStore, position: u32) -> bool {
+    let item = store.item(position).expect("position from find");
+    let before = position.checked_sub(1).and_then(|p| store.item(p));
+    let after = store.item(position + 1);
+    before.is_none_or(|before| display_order(&before, &item).is_le())
+        && after.is_none_or(|after| display_order(&item, &after).is_le())
 }
 
 fn remove_item(store: &gio::ListStore, item: &impl IsA<glib::Object>) {
     if let Some(position) = store.find(item) {
         store.remove(position);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device(name: &str, connected: bool) -> Device {
+        glib::Object::builder()
+            .property("name", name)
+            .property("connected", connected)
+            .build()
+    }
+
+    fn names(store: &gio::ListStore) -> Vec<String> {
+        store.iter::<Device>().map(|d| d.unwrap().name()).collect()
+    }
+
+    #[test]
+    fn devices_stay_in_display_order() {
+        let store = gio::ListStore::new::<Device>();
+        let (b, a, c) = (device("b", false), device("A", false), device("c", true));
+        for d in [&b, &a, &c] {
+            place(&store, d, true);
+        }
+        assert_eq!(names(&store), ["c", "A", "b"]);
+
+        c.set_connected(false);
+        place(&store, &c, true);
+        assert_eq!(names(&store), ["A", "b", "c"]);
+
+        b.set_connected(true);
+        place(&store, &b, true);
+        assert_eq!(names(&store), ["b", "A", "c"]);
+
+        place(&store, &a, false);
+        assert_eq!(names(&store), ["b", "c"]);
     }
 }

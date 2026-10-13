@@ -25,6 +25,9 @@ mod imp {
         /// Battery percentage, or -1 when the device doesn't report one.
         #[property(get, set, minimum = -1, maximum = 100, default = -1)]
         battery: Cell<i32>,
+        /// A connect or disconnect is in progress.
+        #[property(get, set)]
+        busy: Cell<bool>,
     }
 
     impl Default for Device {
@@ -36,6 +39,7 @@ mod imp {
                 paired: Cell::default(),
                 connected: Cell::default(),
                 battery: Cell::new(-1),
+                busy: Cell::default(),
             }
         }
     }

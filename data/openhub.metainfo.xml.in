@@ -6,7 +6,13 @@
   <name>Openhub</name>
   <summary>Manage your connected devices</summary>
   <description>
-    <p>Openhub lists and manages the devices connected to your computer, starting with Bluetooth: see your adapters, pair new devices, and connect or disconnect them.</p>
+    <p>Openhub lists and manages the devices connected to your computer, starting with Bluetooth.</p>
+    <ul>
+      <li>Turn Bluetooth on and off</li>
+      <li>See your devices, whether they're connected, and their battery level</li>
+      <li>Scan for nearby devices and pair them</li>
+      <li>Connect, disconnect, trust, block and forget devices</li>
+    </ul>
   </description>
   <developer id="io.github.cjts15">
     <name>CJ</name>
@@ -26,7 +32,7 @@
   <releases>
     <release version="0.1.0" date="2026-10-13">
       <description>
-        <p>Initial application skeleton.</p>
+        <p>The first release, for Bluetooth: power the adapter on and off, connect and disconnect paired devices, scan for and pair new ones, and trust, block or forget them.</p>
       </description>
     </release>
   </releases>

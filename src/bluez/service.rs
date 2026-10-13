@@ -6,6 +6,8 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::future::Future;
+use std::time::Instant;
 
 use futures_channel::mpsc;
 use futures_util::stream::{self, LocalBoxStream, Stream, StreamExt};
@@ -180,19 +182,21 @@ impl BluetoothManager {
     }
 
     pub async fn connect_device(&self, device: &Device) -> zbus::Result<()> {
-        self.device_proxy(device).await?.connect().await
+        let proxy = self.device_proxy(device).await?;
+        timed("Connect", device, proxy.connect()).await
     }
 
     pub async fn disconnect_device(&self, device: &Device) -> zbus::Result<()> {
-        self.device_proxy(device).await?.disconnect().await
+        let proxy = self.device_proxy(device).await?;
+        timed("Disconnect", device, proxy.disconnect()).await
     }
 
     /// Pairs with `device`, asking the handler from `connect_pairing_request`
     /// whatever BlueZ needs, then trusts it so it can reconnect on its own.
     pub async fn pair_device(&self, device: &Device) -> zbus::Result<()> {
         let proxy = self.device_proxy(device).await?;
-        proxy.pair().await?;
-        proxy.set_trusted(true).await
+        timed("Pair", device, proxy.pair()).await?;
+        timed("Trust", device, proxy.set_trusted(true)).await
     }
 
     pub async fn cancel_pairing(&self, device: &Device) -> zbus::Result<()> {
@@ -246,6 +250,8 @@ impl BluetoothManager {
                     return;
                 };
                 // A request for a device we don't list is dropped, which rejects it.
+                // Pair's time includes the user answering; this marks when they were asked.
+                glib::g_debug!("openhub", "Pairing agent request received");
                 let request = request.map_device(|path| manager.find_device(&path));
                 if let (Some(request), Some(handler)) =
                     (request, &*manager.imp().pairing_handler.borrow())
@@ -562,6 +568,28 @@ async fn watch_battery(
         let percentage = proxy.cached_percentage().ok().flatten();
         device.set_battery(percentage.map_or(-1, i32::from));
     }))
+}
+
+/// Awaits a BlueZ call and logs how long it took. Shown with
+/// `G_MESSAGES_DEBUG=openhub`.
+async fn timed<T>(
+    step: &str,
+    device: &Device,
+    call: impl Future<Output = zbus::Result<T>>,
+) -> zbus::Result<T> {
+    let start = Instant::now();
+    let result = call.await;
+    let outcome = match &result {
+        Ok(_) => "done".to_owned(),
+        Err(err) => format!("failed ({err})"),
+    };
+    glib::g_debug!(
+        "openhub",
+        "{step} {}: {outcome} after {:.1?}",
+        device.name(),
+        start.elapsed()
+    );
+    result
 }
 
 fn ticks(stream: impl Stream + 'static) -> LocalBoxStream<'static, ()> {

@@ -3,6 +3,7 @@ mod bluez;
 mod config;
 mod model;
 mod ui;
+mod usb;
 mod window;
 
 use gtk::prelude::*;

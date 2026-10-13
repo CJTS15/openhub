@@ -3,6 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
 use crate::ui::bluetooth::BluetoothPage;
+use crate::ui::usb::UsbPage;
 
 mod imp {
     use super::*;
@@ -14,6 +15,10 @@ mod imp {
         pub split_view: TemplateChild<adw::NavigationSplitView>,
         #[template_child]
         pub categories: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub content_page: TemplateChild<adw::NavigationPage>,
+        #[template_child]
+        pub category_stack: TemplateChild<gtk::Stack>,
     }
 
     #[glib::object_subclass]
@@ -24,6 +29,7 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             BluetoothPage::ensure_type();
+            UsbPage::ensure_type();
             klass.bind_template();
             klass.bind_template_callbacks();
         }
@@ -36,7 +42,14 @@ mod imp {
     #[gtk::template_callbacks]
     impl OpenhubWindow {
         #[template_callback]
-        fn on_category_activated(&self, _row: &gtk::ListBoxRow) {
+        fn on_category_activated(&self, row: &gtk::ListBoxRow) {
+            // Each sidebar row's widget name is its stack page's name.
+            let stack = &self.category_stack;
+            stack.set_visible_child_name(&row.widget_name());
+            if let Some(child) = stack.visible_child() {
+                let title = stack.page(&child).title().unwrap_or_default();
+                self.content_page.set_title(&title);
+            }
             // On narrow windows only one pane is visible; move to the content.
             self.split_view.set_show_content(true);
         }

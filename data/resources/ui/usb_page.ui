@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.14"/>
+  <requires lib="Adw" version="1.5"/>
+  <template class="OpenhubUsbPage" parent="AdwBin">
+    <property name="child">
+      <object class="AdwPreferencesPage">
+        <child>
+          <object class="AdwPreferencesGroup">
+            <child>
+              <object class="AdwSwitchRow" id="show_internal">
+                <property name="title" translatable="yes">Show Internal Devices</property>
+                <property name="subtitle" translatable="yes">Built-in cameras, fingerprint readers and Bluetooth radios</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="AdwPreferencesGroup">
+            <property name="title" translatable="yes">USB Devices</property>
+            <child>
+              <object class="GtkListBox" id="device_list">
+                <property name="selection-mode">none</property>
+                <style>
+                  <class name="boxed-list"/>
+                </style>
+                <child type="placeholder">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">No USB devices plugged in</property>
+                    <property name="margin-top">18</property>
+                    <property name="margin-bottom">18</property>
+                    <style>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

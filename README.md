@@ -1,2 +1,45 @@
-# openhub
-A lightweight GTK app that manages all connected devices.
+# Openhub
+
+A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It starts with Bluetooth.
+
+## Status
+
+M0: application skeleton (window, sidebar, About dialog). The Bluetooth device list arrives in M1.
+
+## Building
+
+### Flatpak (recommended)
+
+Requires `flatpak-builder` and the GNOME 50 SDK with the Rust extension:
+
+```sh
+flatpak install flathub org.gnome.Sdk//50 org.gnome.Platform//50 org.freedesktop.Sdk.Extension.rust-stable//25.08
+flatpak-builder --user --install --force-clean _flatpak build-aux/io.github.cjts15.Openhub.json
+flatpak run io.github.cjts15.Openhub
+```
+
+The manifest currently lets the build fetch crates over the network. Offline vendored sources are added before a Flathub submission.
+
+### Native (Meson)
+
+Needs GTK >= 4.14, libadwaita >= 1.5 (Ubuntu 24.04, Fedora 40, Debian 13 or newer), Meson, and a Rust toolchain:
+
+```sh
+meson setup _build
+meson compile -C _build
+meson test -C _build
+./_build/src/openhub
+```
+
+For quick iteration, `cargo run` also works.
+
+## Architecture
+
+- `src/application.rs`: `AdwApplication` subclass, app actions and shortcuts
+- `src/window.rs` + `data/resources/ui/window.ui`: main window with a category sidebar and content pane
+- `src/config.rs`: app ID and version, passed in by Meson
+- BlueZ access will live in `src/bluez/` (zbus), behind a GObject model in `src/model/`
+
+## License
+
+GPL-3.0-or-later

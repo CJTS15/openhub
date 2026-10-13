@@ -28,7 +28,8 @@
       "sources": [
         {
           "type": "dir",
-          "path": ".."
+          "path": "..",
+          "skip": ["target", "_build", "_flatpak", ".flatpak-builder", "repo"]
         }
       ]
     }

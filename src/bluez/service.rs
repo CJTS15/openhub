@@ -1,8 +1,10 @@
-//! Mirrors BlueZ's adapters and paired devices into GObjects the UI binds to.
+//! Mirrors BlueZ's adapters and devices into GObjects the UI binds to, and
+//! sends the UI's commands back.
 //! This is the only code that talks to D-Bus; everything runs on the GTK main
 //! loop via `glib::spawn_future_local`.
 
-use std::cell::Cell;
+use std::cell::{Cell, OnceCell};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use futures_util::stream::{self, LocalBoxStream, Stream, StreamExt};
@@ -39,16 +41,24 @@ mod imp {
     pub struct BluetoothManager {
         #[property(get, builder(State::default()))]
         pub(super) state: Cell<State>,
+        /// Whether any adapter is scanning for devices.
+        #[property(get)]
+        pub(super) discovering: Cell<bool>,
         pub(super) adapters: gio::ListStore,
-        pub(super) devices: gio::ListStore,
+        pub(super) paired_devices: gio::ListStore,
+        pub(super) nearby_devices: gio::ListStore,
+        pub(super) conn: OnceCell<zbus::Connection>,
     }
 
     impl Default for BluetoothManager {
         fn default() -> Self {
             Self {
                 state: Cell::default(),
+                discovering: Cell::default(),
                 adapters: gio::ListStore::new::<Adapter>(),
-                devices: gio::ListStore::new::<Device>(),
+                paired_devices: gio::ListStore::new::<Device>(),
+                nearby_devices: gio::ListStore::new::<Device>(),
+                conn: OnceCell::new(),
             }
         }
     }
@@ -91,7 +101,14 @@ struct Objects {
 impl Objects {
     /// Battery1 can arrive before Device1 on the same path, so either one creates the device.
     fn device(&mut self, path: &OwnedObjectPath) -> Device {
-        self.devices.entry(path.clone()).or_default().clone()
+        self.devices
+            .entry(path.clone())
+            .or_insert_with(|| {
+                glib::Object::builder()
+                    .property("path", path.as_str())
+                    .build()
+            })
+            .clone()
     }
 }
 
@@ -115,8 +132,88 @@ impl BluetoothManager {
     }
 
     /// `Device` items for paired devices.
-    pub fn devices(&self) -> gio::ListStore {
-        self.imp().devices.clone()
+    pub fn paired_devices(&self) -> gio::ListStore {
+        self.imp().paired_devices.clone()
+    }
+
+    /// `Device` items for unpaired devices that advertise a name.
+    pub fn nearby_devices(&self) -> gio::ListStore {
+        self.imp().nearby_devices.clone()
+    }
+
+    pub async fn set_powered(&self, adapter: &Adapter, powered: bool) -> zbus::Result<()> {
+        self.adapter_proxy(adapter)
+            .await?
+            .set_powered(powered)
+            .await
+    }
+
+    /// Starts or stops scanning on every powered adapter.
+    pub async fn set_discovering(&self, discovering: bool) -> zbus::Result<()> {
+        let any_powered = self
+            .imp()
+            .adapters
+            .iter::<Adapter>()
+            .any(|adapter| adapter.is_ok_and(|adapter| adapter.powered()));
+        if discovering && !any_powered {
+            return Err(zbus::Error::Failure("No adapter is powered".into()));
+        }
+        for adapter in self.imp().adapters.iter::<Adapter>() {
+            let adapter = adapter.expect("adapters changed while iterating");
+            if adapter.discovering() == discovering || (discovering && !adapter.powered()) {
+                continue;
+            }
+            let proxy = self.adapter_proxy(&adapter).await?;
+            if discovering {
+                proxy.start_discovery().await?;
+            } else {
+                proxy.stop_discovery().await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn connect_device(&self, device: &Device) -> zbus::Result<()> {
+        self.device_proxy(device).await?.connect().await
+    }
+
+    pub async fn disconnect_device(&self, device: &Device) -> zbus::Result<()> {
+        self.device_proxy(device).await?.disconnect().await
+    }
+
+    fn connection(&self) -> zbus::Result<&zbus::Connection> {
+        self.imp()
+            .conn
+            .get()
+            .ok_or_else(|| zbus::Error::Failure("Not connected to the system bus".into()))
+    }
+
+    async fn adapter_proxy(&self, adapter: &Adapter) -> zbus::Result<Adapter1Proxy<'static>> {
+        Adapter1Proxy::builder(self.connection()?)
+            .path(adapter.path())?
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await
+    }
+
+    async fn device_proxy(&self, device: &Device) -> zbus::Result<Device1Proxy<'static>> {
+        Device1Proxy::builder(self.connection()?)
+            .path(device.path())?
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await
+    }
+
+    fn update_discovering(&self) {
+        let discovering = self
+            .imp()
+            .adapters
+            .iter::<Adapter>()
+            .any(|adapter| adapter.is_ok_and(|adapter| adapter.discovering()));
+        if self.discovering() != discovering {
+            self.imp().discovering.set(discovering);
+            self.notify_discovering();
+        }
     }
 
     fn set_state(&self, state: State) {
@@ -137,6 +234,8 @@ impl BluetoothManager {
     /// (the service started, stopped or restarted).
     async fn watch_bluez(&self) -> zbus::Result<()> {
         let conn = zbus::Connection::system().await?;
+        // `run` is called once per manager, so the cell is always empty here.
+        let _ = self.imp().conn.set(conn.clone());
         let object_manager = ObjectManagerProxy::builder(&conn)
             .destination("org.bluez")?
             .path("/")?
@@ -162,7 +261,9 @@ impl BluetoothManager {
             let changed = owner_changes.next().await;
             session.abort();
             self.imp().adapters.remove_all();
-            self.imp().devices.remove_all();
+            self.imp().paired_devices.remove_all();
+            self.imp().nearby_devices.remove_all();
+            self.update_discovering();
             self.set_state(State::Loading);
             if changed.is_none() {
                 return Ok(());
@@ -254,11 +355,13 @@ impl BluetoothManager {
             ADAPTER => {
                 if let Some(adapter) = objects.adapters.remove(path) {
                     remove_item(&self.imp().adapters, &adapter);
+                    self.update_discovering();
                 }
             }
             DEVICE => {
                 if let Some(device) = objects.devices.remove(path) {
-                    remove_item(&self.imp().devices, &device);
+                    remove_item(&self.imp().paired_devices, &device);
+                    remove_item(&self.imp().nearby_devices, &device);
                 }
             }
             BATTERY => {
@@ -284,13 +387,27 @@ impl BluetoothManager {
         let changes = vec![
             ticks(proxy.receive_alias_changed().await),
             ticks(proxy.receive_powered_changed().await),
+            ticks(proxy.receive_discovering_changed().await),
         ];
-        let adapter = Adapter::default();
+        let adapter: Adapter = glib::Object::builder()
+            .property("path", path.as_str())
+            .build();
         objects.adapters.insert(path.clone(), adapter.clone());
         self.imp().adapters.append(&adapter);
+        let manager = self.downgrade();
         Ok(watch(changes, move || {
             adapter.set_name(proxy.cached_alias().ok().flatten().unwrap_or_default());
             adapter.set_powered(proxy.cached_powered().ok().flatten().unwrap_or_default());
+            adapter.set_discovering(
+                proxy
+                    .cached_discovering()
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default(),
+            );
+            if let Some(manager) = manager.upgrade() {
+                manager.update_discovering();
+            }
         }))
     }
 
@@ -306,24 +423,25 @@ impl BluetoothManager {
             .build()
             .await?;
         let changes = vec![
+            ticks(proxy.receive_name_changed().await),
             ticks(proxy.receive_alias_changed().await),
             ticks(proxy.receive_icon_changed().await),
             ticks(proxy.receive_paired_changed().await),
             ticks(proxy.receive_connected_changed().await),
         ];
         let device = objects.device(path);
-        let paired_devices = self.devices();
+        let paired_devices = self.paired_devices();
+        let nearby_devices = self.nearby_devices();
         Ok(watch(changes, move || {
             device.set_name(proxy.cached_alias().ok().flatten().unwrap_or_default());
             device.set_icon(proxy.cached_icon().ok().flatten().unwrap_or_default());
             device.set_connected(proxy.cached_connected().ok().flatten().unwrap_or_default());
             let paired = proxy.cached_paired().ok().flatten().unwrap_or_default();
             device.set_paired(paired);
-            match (paired, paired_devices.find(&device)) {
-                (true, None) => paired_devices.append(&device),
-                (false, Some(position)) => paired_devices.remove(position),
-                _ => {}
-            }
+            // Unnamed devices are mostly anonymous LE beacons; leave them out.
+            let named = proxy.cached_name().ok().flatten().is_some();
+            place(&paired_devices, &device, paired);
+            place(&nearby_devices, &device, !paired && named);
         }))
     }
 }
@@ -364,8 +482,76 @@ fn watch(
     })
 }
 
+/// Connected devices first, then by name.
+fn display_order(a: &glib::Object, b: &glib::Object) -> Ordering {
+    let a = a.downcast_ref::<Device>().expect("device store");
+    let b = b.downcast_ref::<Device>().expect("device store");
+    b.connected()
+        .cmp(&a.connected())
+        .then_with(|| a.name().to_lowercase().cmp(&b.name().to_lowercase()))
+}
+
+/// Adds or removes `device` keeping `store` in display order. A device that
+/// is out of order moves, which recreates its row.
+fn place(store: &gio::ListStore, device: &Device, member: bool) {
+    if let Some(position) = store.find(device) {
+        if member && in_order(store, position) {
+            return;
+        }
+        store.remove(position);
+    }
+    if member {
+        store.insert_sorted(device, display_order);
+    }
+}
+
+fn in_order(store: &gio::ListStore, position: u32) -> bool {
+    let item = store.item(position).expect("position from find");
+    let before = position.checked_sub(1).and_then(|p| store.item(p));
+    let after = store.item(position + 1);
+    before.is_none_or(|before| display_order(&before, &item).is_le())
+        && after.is_none_or(|after| display_order(&item, &after).is_le())
+}
+
 fn remove_item(store: &gio::ListStore, item: &impl IsA<glib::Object>) {
     if let Some(position) = store.find(item) {
         store.remove(position);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device(name: &str, connected: bool) -> Device {
+        glib::Object::builder()
+            .property("name", name)
+            .property("connected", connected)
+            .build()
+    }
+
+    fn names(store: &gio::ListStore) -> Vec<String> {
+        store.iter::<Device>().map(|d| d.unwrap().name()).collect()
+    }
+
+    #[test]
+    fn devices_stay_in_display_order() {
+        let store = gio::ListStore::new::<Device>();
+        let (b, a, c) = (device("b", false), device("A", false), device("c", true));
+        for d in [&b, &a, &c] {
+            place(&store, d, true);
+        }
+        assert_eq!(names(&store), ["c", "A", "b"]);
+
+        c.set_connected(false);
+        place(&store, &c, true);
+        assert_eq!(names(&store), ["A", "b", "c"]);
+
+        b.set_connected(true);
+        place(&store, &b, true);
+        assert_eq!(names(&store), ["b", "A", "c"]);
+
+        place(&store, &a, false);
+        assert_eq!(names(&store), ["b", "c"]);
     }
 }

@@ -4,7 +4,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-M1: read-only Bluetooth page listing adapters and paired devices (connection state, battery), updated live from BlueZ. Controls arrive in M2.
+M2: Bluetooth page with the adapter power switch, paired devices with Connect/Disconnect, and a Nearby Devices list filled by scanning, all updated live from BlueZ. Pairing arrives in M3.
 
 ## Building
 

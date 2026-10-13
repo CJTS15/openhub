@@ -10,6 +10,9 @@ mod imp {
     #[derive(Debug, glib::Properties)]
     #[properties(wrapper_type = super::Device)]
     pub struct Device {
+        /// BlueZ object path, used by the service to send commands.
+        #[property(get, set)]
+        path: RefCell<String>,
         #[property(get, set)]
         name: RefCell<String>,
         /// BlueZ icon name such as `audio-headset`; empty when unknown.
@@ -22,16 +25,21 @@ mod imp {
         /// Battery percentage, or -1 when the device doesn't report one.
         #[property(get, set, minimum = -1, maximum = 100, default = -1)]
         battery: Cell<i32>,
+        /// A connect or disconnect is in progress.
+        #[property(get, set)]
+        busy: Cell<bool>,
     }
 
     impl Default for Device {
         fn default() -> Self {
             Self {
+                path: RefCell::default(),
                 name: RefCell::default(),
                 icon: RefCell::default(),
                 paired: Cell::default(),
                 connected: Cell::default(),
                 battery: Cell::new(-1),
+                busy: Cell::default(),
             }
         }
     }

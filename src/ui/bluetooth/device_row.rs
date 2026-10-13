@@ -25,6 +25,9 @@ pub fn new(device: &Device) -> adw::ActionRow {
 }
 
 fn status(device: &Device) -> String {
+    if !device.paired() {
+        return "Not set up".into();
+    }
     match (device.connected(), device.battery()) {
         (false, _) => "Not connected".into(),
         (true, -1) => "Connected".into(),

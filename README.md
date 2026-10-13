@@ -4,7 +4,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-M2: Bluetooth page with the adapter power switch, paired devices with Connect/Disconnect, and a Nearby Devices list filled by scanning, all updated live from BlueZ. Pairing arrives in M3.
+M3: Bluetooth page with the adapter power switch, paired devices with Connect/Disconnect and a details dialog (battery, trust, block, Forget), and pairing with nearby devices through Openhub's own agent. Packaging for a v0.1 release is M4.
 
 ## Building
 
@@ -38,9 +38,9 @@ For quick iteration, `cargo run` also works.
 - `src/application.rs`: `AdwApplication` subclass, app actions and shortcuts
 - `src/window.rs` + `data/resources/ui/window.ui`: main window with a category sidebar and content pane
 - `src/config.rs`: app ID and version, passed in by Meson
-- `src/bluez/`: zbus proxies and `BluetoothManager`, the only code that talks to BlueZ over D-Bus
+- `src/bluez/`: zbus proxies, the pairing agent and `BluetoothManager`, the only code that talks to BlueZ over D-Bus
 - `src/model/`: `Adapter` and `Device` GObjects the UI binds to
-- `src/ui/bluetooth/` + `data/resources/ui/bluetooth_page.ui`: the Bluetooth page and device rows
+- `src/ui/bluetooth/` + `data/resources/ui/bluetooth_page.ui`: the Bluetooth page, device rows, and the pairing and device details dialogs
 
 ## License
 

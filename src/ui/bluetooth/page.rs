@@ -2,8 +2,10 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 
-use super::device_row;
-use crate::bluez::{BluetoothManager, State};
+use std::cell::RefCell;
+
+use super::{device_dialog, device_row, pairing_dialog};
+use crate::bluez::{BluetoothManager, PairingRequest, State};
 use crate::model::{Adapter, Device};
 
 mod imp {
@@ -27,6 +29,8 @@ mod imp {
         #[template_child]
         pub nearby_list: TemplateChild<gtk::ListBox>,
         pub manager: BluetoothManager,
+        /// The open pairing dialog, closed when pairing ends or BlueZ cancels.
+        pub pairing_dialog: RefCell<Option<adw::AlertDialog>>,
     }
 
     #[glib::object_subclass]
@@ -80,25 +84,50 @@ mod imp {
                     move |item| {
                         let device: &Device = item.downcast_ref().unwrap();
                         let row = device_row::new(device);
-                        let spinner = gtk::Spinner::new();
-                        device
-                            .bind_property("busy", &spinner, "spinning")
-                            .sync_create()
-                            .build();
-                        device
-                            .bind_property("busy", &spinner, "visible")
-                            .sync_create()
-                            .build();
-                        row.add_suffix(&spinner);
+                        row.add_suffix(&busy_spinner(device));
                         row.add_suffix(&obj.connect_button(device));
+                        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+                        row.set_activatable(true);
+                        row.connect_activated(glib::clone!(
+                            #[weak]
+                            obj,
+                            #[weak]
+                            device,
+                            move |_| {
+                                device_dialog::new(&obj.imp().manager, &device).present(Some(&obj));
+                            }
+                        ));
                         row.upcast()
                     }
                 ),
             );
-            self.nearby_list
-                .bind_model(Some(&self.manager.nearby_devices()), |item| {
-                    device_row::new(item.downcast_ref().unwrap()).upcast()
-                });
+            self.nearby_list.bind_model(
+                Some(&self.manager.nearby_devices()),
+                glib::clone!(
+                    #[weak]
+                    obj,
+                    #[upgrade_or_panic]
+                    move |item| {
+                        let device: &Device = item.downcast_ref().unwrap();
+                        let row = device_row::new(device);
+                        row.add_suffix(&busy_spinner(device));
+                        row.set_activatable(true);
+                        row.connect_activated(glib::clone!(
+                            #[weak]
+                            obj,
+                            #[weak]
+                            device,
+                            move |_| obj.pair(&device)
+                        ));
+                        row.upcast()
+                    }
+                ),
+            );
+            self.manager.connect_pairing_request(glib::clone!(
+                #[weak]
+                obj,
+                move |request| obj.on_pairing_request(request)
+            ));
 
             self.manager
                 .bind_property("discovering", &*self.scan_button, "label")
@@ -133,7 +162,110 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+fn busy_spinner(device: &Device) -> gtk::Spinner {
+    let spinner = gtk::Spinner::new();
+    device
+        .bind_property("busy", &spinner, "spinning")
+        .sync_create()
+        .build();
+    device
+        .bind_property("busy", &spinner, "visible")
+        .sync_create()
+        .build();
+    spinner
+}
+
+/// The user (or the device) said no; they already know, so no toast.
+fn declined(err: &zbus::Error) -> bool {
+    matches!(err, zbus::Error::MethodError(name, _, _)
+        if name.ends_with(".AuthenticationCanceled") || name.ends_with(".AuthenticationRejected"))
+}
+
 impl BluetoothPage {
+    fn pair(&self, device: &Device) {
+        if device.busy() {
+            return;
+        }
+        device.set_busy(true);
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            async move {
+                let manager = &page.imp().manager;
+                let result = manager.pair_device(&device).await;
+                if let Some(dialog) = page.imp().pairing_dialog.take() {
+                    dialog.force_close();
+                }
+                match result {
+                    Ok(()) => {
+                        if let Err(err) = manager.connect_device(&device).await {
+                            glib::g_warning!("openhub", "Can't connect {}: {err}", device.path());
+                            page.toast(&format!(
+                                "Paired with {}, but couldn't connect",
+                                device.name()
+                            ));
+                        }
+                    }
+                    Err(err) if declined(&err) => {}
+                    Err(err) => {
+                        glib::g_warning!("openhub", "Can't pair {}: {err}", device.path());
+                        page.toast(&format!("Couldn't pair with {}", device.name()));
+                    }
+                }
+                device.set_busy(false);
+            }
+        ));
+    }
+
+    fn on_pairing_request(&self, request: PairingRequest<Device>) {
+        let current = self.imp().pairing_dialog.take();
+        // DisplayPasskey repeats as the user types; update the open dialog.
+        if let (PairingRequest::Display { device, code }, Some(dialog)) = (&request, &current) {
+            dialog.set_body(&pairing_dialog::display_body(device, code));
+            self.imp().pairing_dialog.replace(current);
+            return;
+        }
+        if let Some(dialog) = current {
+            dialog.force_close();
+        }
+        let display_device = match &request {
+            PairingRequest::Display { device, .. } => Some(device.clone()),
+            _ => None,
+        };
+        let Some(dialog) = pairing_dialog::new(request) else {
+            return;
+        };
+        if let Some(device) = display_device {
+            dialog.connect_response(
+                Some("cancel"),
+                glib::clone!(
+                    #[weak(rename_to = page)]
+                    self,
+                    move |_, _| {
+                        let device = device.clone();
+                        glib::spawn_future_local(async move {
+                            let _ = page.imp().manager.cancel_pairing(&device).await;
+                        });
+                    }
+                ),
+            );
+        }
+        dialog.connect_closed(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |dialog| {
+                let mut current = page.imp().pairing_dialog.borrow_mut();
+                if current.as_ref() == Some(dialog) {
+                    current.take();
+                }
+            }
+        ));
+        dialog.present(Some(self));
+        self.imp().pairing_dialog.replace(Some(dialog));
+    }
+
     fn toast(&self, title: &str) {
         let toast = adw::Toast::builder().title(title).use_markup(false).build();
         self.imp().toast_overlay.add_toast(toast);

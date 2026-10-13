@@ -14,6 +14,11 @@ mod imp {
         #[property(get, set)]
         path: RefCell<String>,
         #[property(get, set)]
+        address: RefCell<String>,
+        /// Object path of the adapter the device belongs to.
+        #[property(get, set)]
+        adapter: RefCell<String>,
+        #[property(get, set)]
         name: RefCell<String>,
         /// BlueZ icon name such as `audio-headset`; empty when unknown.
         #[property(get, set)]
@@ -22,6 +27,10 @@ mod imp {
         paired: Cell<bool>,
         #[property(get, set)]
         connected: Cell<bool>,
+        #[property(get, set)]
+        trusted: Cell<bool>,
+        #[property(get, set)]
+        blocked: Cell<bool>,
         /// Battery percentage, or -1 when the device doesn't report one.
         #[property(get, set, minimum = -1, maximum = 100, default = -1)]
         battery: Cell<i32>,
@@ -34,10 +43,14 @@ mod imp {
         fn default() -> Self {
             Self {
                 path: RefCell::default(),
+                address: RefCell::default(),
+                adapter: RefCell::default(),
                 name: RefCell::default(),
                 icon: RefCell::default(),
                 paired: Cell::default(),
                 connected: Cell::default(),
+                trusted: Cell::default(),
+                blocked: Cell::default(),
                 battery: Cell::new(-1),
                 busy: Cell::default(),
             }

@@ -194,6 +194,14 @@ impl BluetoothPage {
             device,
             async move {
                 let manager = &page.imp().manager;
+                // Scanning shares the radio with pairing and connecting, slowing
+                // both; pause it and resume afterwards for the next device.
+                let was_scanning = manager.discovering();
+                if was_scanning {
+                    if let Err(err) = manager.set_discovering(false).await {
+                        glib::g_warning!("openhub", "Can't stop scanning to pair: {err}");
+                    }
+                }
                 let result = manager.pair_device(&device).await;
                 if let Some(dialog) = page.imp().pairing_dialog.take() {
                     dialog.force_close();
@@ -212,6 +220,11 @@ impl BluetoothPage {
                     Err(err) => {
                         glib::g_warning!("openhub", "Can't pair {}: {err}", device.path());
                         page.toast(&format!("Couldn't pair with {}", device.name()));
+                    }
+                }
+                if was_scanning {
+                    if let Err(err) = manager.set_discovering(true).await {
+                        glib::g_warning!("openhub", "Can't resume scanning: {err}");
                     }
                 }
                 device.set_busy(false);

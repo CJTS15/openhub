@@ -1,29 +1,30 @@
 # Openhub
 
-A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It starts with Bluetooth.
+A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth and USB.
 
 ## Status
 
-[v0.1.0](https://github.com/CJTS15/openhub/releases/tag/v0.1.0) is out and covers Bluetooth: turn the adapter on and off, connect and disconnect devices, see their battery level, scan for and pair new devices through Openhub's own pairing agent, and trust, block or forget them.
+[v0.2.0](https://github.com/CJTS15/openhub/releases/tag/v0.2.0) is the latest release.
 
-Next is v0.2, which adds a USB page: a live list of USB devices with details, and safe eject for drives. So far (M5 to M7) the USB page lists devices as a hub tree that updates every 2 seconds while it is open, with built-in devices hidden behind a toggle, a details dialog for each device, and safe eject for USB drives.
+- **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
+- **USB** (new in v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 
 ## Plans
 
 - [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
-- [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8)
+- [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8, released)
 
 ## Installing
 
-Download `openhub-0.1.0-x86_64.flatpak` from the [v0.1.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.1.0). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-0.2.0-x86_64.flatpak` from the [v0.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.2.0). It needs the GNOME 50 runtime from Flathub:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-0.1.0-x86_64.flatpak
+flatpak install --user openhub-0.2.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 
-Known issue: with blueman-applet running, turning the adapter off and on can freeze GNOME Shell through a flood of connection notifications ([#4](https://github.com/CJTS15/openhub/issues/4)). Stopping or removing blueman avoids it.
+If blueman-applet is running, Openhub turns off its connection notifications, which can freeze GNOME Shell when many devices reconnect at once ([#4](https://github.com/CJTS15/openhub/issues/4)).
 
 ## Building
 

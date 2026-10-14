@@ -6,12 +6,15 @@
   <name>Openhub</name>
   <summary>Manage your connected devices</summary>
   <description>
-    <p>Openhub lists and manages the devices connected to your computer, starting with Bluetooth.</p>
+    <p>Openhub lists and manages the devices connected to your computer: Bluetooth and USB.</p>
     <ul>
       <li>Turn Bluetooth on and off</li>
-      <li>See your devices, whether they're connected, and their battery level</li>
+      <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
       <li>Scan for nearby devices and pair them</li>
-      <li>Connect, disconnect, trust, block and forget devices</li>
+      <li>Connect, disconnect, trust, block and forget Bluetooth devices</li>
+      <li>See your USB devices as they're plugged in, grouped under the hubs they're connected through</li>
+      <li>Check a USB device's speed, version, power draw and driver</li>
+      <li>Safely eject USB drives</li>
     </ul>
   </description>
   <developer id="io.github.cjts15">
@@ -30,6 +33,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.2.0" date="2026-10-14">
+      <description>
+        <p>Adds a USB page:</p>
+        <ul>
+          <li>A live list of USB devices, grouped under the hubs they're connected through, with microphones and speakers recognized</li>
+          <li>Details for each device: IDs and serial number (with copy buttons), speed, USB version, power draw, class and driver</li>
+          <li>Safe eject for USB drives, including encrypted ones</li>
+          <li>Built-in devices such as cameras and fingerprint readers hidden unless you ask for them</li>
+        </ul>
+        <p>Bluetooth: connected devices are listed first, connecting shows progress, pairing pauses scanning, and blueman's connection notifications, which can freeze GNOME Shell, are turned off when blueman is running.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-13">
       <description>
         <p>The first release, for Bluetooth: power the adapter on and off, connect and disconnect paired devices, scan for and pair new ones, and trust, block or forget them.</p>

@@ -30,6 +30,8 @@ pub struct UsbInfo {
     pub capture: bool,
     /// ALSA made a playback device from it: speakers or headphones.
     pub playback: bool,
+    /// Disks the kernel made from its storage interfaces, such as `sdb`.
+    pub disks: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +113,7 @@ fn read_device(dir: &Path, name: String) -> Option<UsbInfo> {
         internal: attr(dir, "removable").as_deref() == Some("fixed"),
         capture: has_pcm(&dirs, 'c'),
         playback: has_pcm(&dirs, 'p'),
+        disks: disks(&dirs),
         name,
     })
 }
@@ -118,6 +121,31 @@ fn read_device(dir: &Path, name: String) -> Option<UsbInfo> {
 /// Whether a sound card on these interfaces has a capture (`c`) or playback
 /// (`p`) device, such as `<interface>/sound/card0/pcmC0D0c`. Unlike the
 /// streaming endpoints, these exist while the device is idle.
+/// Disk names under these interfaces, from the SCSI tree the USB storage
+/// drivers create: `<interface>/host6/target6:0:0/6:0:0:0/block/sdb`.
+fn disks(interfaces: &[PathBuf]) -> Vec<String> {
+    fn children(dir: &Path, prefix: &str) -> Vec<PathBuf> {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return Vec::new();
+        };
+        entries
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with(prefix))
+            .map(|entry| entry.path())
+            .collect()
+    }
+    let mut disks: Vec<String> = interfaces
+        .iter()
+        .flat_map(|interface| children(interface, "host"))
+        .flat_map(|host| children(&host, "target"))
+        .flat_map(|target| children(&target, ""))
+        .flat_map(|lun| children(&lun.join("block"), ""))
+        .filter_map(|disk| Some(disk.file_name()?.to_string_lossy().into_owned()))
+        .collect();
+    disks.sort();
+    disks
+}
+
 fn has_pcm(interfaces: &[PathBuf], direction: char) -> bool {
     interfaces
         .iter()
@@ -185,6 +213,13 @@ mod tests {
             (0x08, 0x50)
         );
         assert_eq!(stick.interfaces[0].driver.as_deref(), Some("usb-storage"));
+    }
+
+    #[test]
+    fn finds_disks_under_storage_interfaces() {
+        let devices = fixture();
+        assert_eq!(devices[2].disks, ["sdb"]);
+        assert!(devices[1].disks.is_empty());
     }
 
     #[test]

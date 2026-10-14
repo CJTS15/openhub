@@ -10,6 +10,7 @@ use gtk::{gio, glib};
 
 use super::ids::UsbIds;
 use super::sysfs::{self, UsbInfo};
+use super::udisks;
 use crate::model::UsbDevice;
 
 #[derive(Debug)]
@@ -32,6 +33,11 @@ impl UsbManager {
     /// `UsbDevice` items on root ports; hubs hold the rest as children.
     pub fn devices(&self) -> gio::ListStore {
         self.devices.clone()
+    }
+
+    /// Unmounts and powers off a storage device so it's safe to unplug.
+    pub async fn eject(&self, device: &UsbDevice) -> zbus::Result<()> {
+        udisks::eject(&device.disks()).await
     }
 
     /// Rescans sysfs. A device on the same port with the same ID keeps its
@@ -132,6 +138,9 @@ fn update(device: &UsbDevice, info: &UsbInfo, id: &str, ids: &UsbIds) {
     set("class-name", class_label(info));
     set("driver", drivers.join(", "));
     set("max-power", info.max_power.clone().unwrap_or_default());
+    if device.disks() != info.disks {
+        device.set_disks(info.disks.clone());
+    }
     device.set_internal(info.internal);
     device.set_hub(info.class == 0x09);
 }

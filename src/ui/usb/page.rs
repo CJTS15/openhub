@@ -7,7 +7,7 @@ use gtk::glib;
 
 use super::device_dialog;
 use crate::model::UsbDevice;
-use crate::usb::UsbManager;
+use crate::usb::{self, UsbManager};
 
 /// How often the page rescans sysfs while it's on screen.
 const RESCAN_SECONDS: u32 = 2;
@@ -18,6 +18,8 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(resource = "/io/github/cjts15/Openhub/ui/usb_page.ui")]
     pub struct UsbPage {
+        #[template_child]
+        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
         pub show_internal: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -112,6 +114,49 @@ impl UsbPage {
         device_dialog::new(device).present(Some(self));
     }
 
+    fn toast(&self, title: &str) {
+        let toast = adw::Toast::builder().title(title).use_markup(false).build();
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
+    /// Unmounts and powers off a storage device, then says whether it's safe
+    /// to unplug. The row goes away on the next rescan once it powers off.
+    fn eject_button(&self, device: &UsbDevice) -> gtk::Button {
+        let button = icon_button("media-eject-symbolic", "Eject");
+        button.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move |button| {
+                button.set_sensitive(false);
+                glib::spawn_future_local(glib::clone!(
+                    #[weak]
+                    page,
+                    #[weak]
+                    device,
+                    #[weak]
+                    button,
+                    async move {
+                        let name = device.title();
+                        match page.imp().manager.eject(&device).await {
+                            Ok(()) => page.toast(&format!("{name} can be removed")),
+                            Err(err) if usb::is_busy(&err) => page.toast(&format!(
+                                "{name} is in use. Close any open files on it and try again."
+                            )),
+                            Err(err) => {
+                                glib::g_warning!("openhub", "Can't eject {}: {err}", device.name());
+                                page.toast(&format!("Couldn't eject {name}"));
+                            }
+                        }
+                        button.set_sensitive(true);
+                    }
+                ));
+            }
+        ));
+        button
+    }
+
     /// A row that follows `device`: a plain row, or an expander for a hub.
     fn row(&self, device: &UsbDevice) -> gtk::Widget {
         let icon = gtk::Image::new();
@@ -126,6 +171,9 @@ impl UsbPage {
                 .build();
             bind_text(device, &row);
             row.add_prefix(&icon);
+            if !device.disks().is_empty() {
+                row.add_suffix(&self.eject_button(device));
+            }
             row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
             row.connect_activated(glib::clone!(
                 #[weak(rename_to = page)]
@@ -140,12 +188,7 @@ impl UsbPage {
         let row = adw::ExpanderRow::builder().use_markup(false).build();
         bind_text(device, &row);
         row.add_prefix(&icon);
-        let details = gtk::Button::builder()
-            .icon_name("go-next-symbolic")
-            .tooltip_text("Details")
-            .valign(gtk::Align::Center)
-            .css_classes(["flat"])
-            .build();
+        let details = icon_button("go-next-symbolic", "Details");
         details.connect_clicked(glib::clone!(
             #[weak(rename_to = page)]
             self,
@@ -208,6 +251,18 @@ impl UsbPage {
         ));
         row.upcast()
     }
+}
+
+/// A flat icon button; `label` is its tooltip and screen-reader name.
+fn icon_button(icon: &str, label: &str) -> gtk::Button {
+    let button = gtk::Button::builder()
+        .icon_name(icon)
+        .tooltip_text(label)
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    button.update_property(&[gtk::accessible::Property::Label(label)]);
+    button
 }
 
 fn bind_text(device: &UsbDevice, row: &impl IsA<adw::PreferencesRow>) {

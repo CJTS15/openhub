@@ -63,7 +63,7 @@ mod imp {
                     #[weak]
                     obj,
                     #[upgrade_or_panic]
-                    move |item| obj.row(item.downcast_ref().unwrap())
+                    move |item| obj.top_level_row(item.downcast_ref().unwrap())
                 ),
             );
             // Hub rows listen for this too and redo their own children.
@@ -165,90 +165,78 @@ impl UsbPage {
         button
     }
 
-    /// A row that follows `device`: a plain row, or an expander for a hub.
-    fn row(&self, device: &UsbDevice) -> gtk::Widget {
-        let icon = gtk::Image::new();
+    fn visible_children(&self, device: &UsbDevice) -> Vec<UsbDevice> {
         device
-            .bind_property("icon-name", &icon, "icon-name")
-            .sync_create()
-            .build();
-        if !device.hub() {
-            let row = adw::ActionRow::builder()
-                .use_markup(false)
-                .activatable(true)
-                .build();
-            bind_text(device, &row);
-            row.add_prefix(&icon);
-            // The disk shows up a second or two after the USB device, so a
-            // row can exist before it does; follow the property, not its first value.
-            let eject = self.eject_button(device);
-            device
-                .bind_property("disks", &eject, "visible")
-                .transform_to(|_, disks: Vec<String>| Some(!disks.is_empty()))
-                .sync_create()
-                .build();
-            row.add_suffix(&eject);
-            row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-            row.connect_activated(glib::clone!(
-                #[weak(rename_to = page)]
-                self,
-                #[weak]
-                device,
-                move |_| page.show_details(&device)
-            ));
-            return row.upcast();
-        }
+            .children()
+            .iter::<UsbDevice>()
+            .flatten()
+            .filter(|child| self.shows(child))
+            .collect()
+    }
 
-        let row = adw::ExpanderRow::builder().use_markup(false).build();
-        bind_text(device, &row);
-        row.add_prefix(&icon);
-        let details = icon_button("go-next-symbolic", "Details");
-        details.connect_clicked(glib::clone!(
+    /// A row for a device on a root port; replacing its store item rebuilds it.
+    fn top_level_row(&self, device: &UsbDevice) -> gtk::Widget {
+        let reshape: Rc<dyn Fn()> = Rc::new(glib::clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
             device,
-            move |_| page.show_details(&device)
-        ));
-        row.add_suffix(&details);
-
-        // Rows for what's plugged in, redone when that changes or the
-        // internal-devices switch flips. Rebuilding resets nested hubs'
-        // expansion, which only happens when something under this hub changes.
-        let shown: Rc<RefCell<Vec<gtk::Widget>>> = Rc::default();
-        let rebuild: Rc<dyn Fn()> = Rc::new(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            #[weak]
-            row,
-            #[weak]
-            device,
-            #[strong]
-            shown,
             move || {
-                for child in shown.take() {
-                    row.remove(&child);
+                let devices = page.imp().manager.devices();
+                if let Some(position) = devices.find(&device) {
+                    devices.splice(position, 1, std::slice::from_ref(&device));
                 }
-                for child in device.children().iter::<UsbDevice>().flatten() {
-                    if page.shows(&child) {
-                        let child_row = page.row(&child);
-                        row.add_row(&child_row);
-                        shown.borrow_mut().push(child_row);
-                    }
-                }
-                row.set_enable_expansion(!shown.borrow().is_empty());
             }
         ));
-        rebuild();
+        self.row(device, None, reshape)
+    }
+
+    /// A row that follows `device`. A hub with something visible plugged in
+    /// is an expander; anything else, an empty hub included, is a plain row.
+    /// `through` is the hub it's plugged into, shown in the subtitle.
+    /// `reshape` rebuilds this row in its list, for when a hub gains its
+    /// first visible device or loses its last.
+    fn row(
+        &self,
+        device: &UsbDevice,
+        through: Option<&UsbDevice>,
+        reshape: Rc<dyn Fn()>,
+    ) -> gtk::Widget {
+        let expanded_shape = !self.visible_children(device).is_empty();
+        let (row, rebuild_children): (gtk::Widget, Option<Rc<dyn Fn()>>) = if expanded_shape {
+            let (row, rebuild) = self.hub_row(device);
+            (row.upcast(), Some(rebuild))
+        } else {
+            (self.device_row(device).upcast(), None)
+        };
+        bind_text(device, row.downcast_ref().unwrap(), through);
+        if !device.hub() {
+            return row;
+        }
+
+        // Follow what's plugged in and the internal-devices switch.
+        let update: Rc<dyn Fn()> = Rc::new(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move || {
+                if page.visible_children(&device).is_empty() == expanded_shape {
+                    reshape();
+                } else if let Some(rebuild) = &rebuild_children {
+                    rebuild();
+                }
+            }
+        ));
         let on_items = device.children().connect_items_changed(glib::clone!(
             #[strong]
-            rebuild,
-            move |_, _, _, _| rebuild()
+            update,
+            move |_, _, _, _| update()
         ));
         let on_switch = self
             .imp()
             .show_internal
-            .connect_active_notify(move |_| rebuild());
+            .connect_active_notify(move |_| update());
         // Disconnect both when the row goes away, or they'd outlive it.
         let handlers = RefCell::new(Some((on_items, on_switch)));
         row.connect_destroy(glib::clone!(
@@ -263,8 +251,105 @@ impl UsbPage {
                 }
             }
         ));
-        row.upcast()
+        row
     }
+
+    /// A plain row: opens details, with Eject while the device has disks.
+    fn device_row(&self, device: &UsbDevice) -> adw::ActionRow {
+        let row = adw::ActionRow::builder()
+            .use_markup(false)
+            .activatable(true)
+            .build();
+        row.add_prefix(&device_icon(device));
+        // The disk shows up a second or two after the USB device, so a
+        // row can exist before it does; follow the property, not its first value.
+        let eject = self.eject_button(device);
+        device
+            .bind_property("disks", &eject, "visible")
+            .transform_to(|_, disks: Vec<String>| Some(!disks.is_empty()))
+            .sync_create()
+            .build();
+        row.add_suffix(&eject);
+        row.connect_activated(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move |_| page.show_details(&device)
+        ));
+        row
+    }
+
+    /// An expander listing what's plugged into the hub, and the function that
+    /// redoes that list. Redoing it resets nested hubs' expansion, which only
+    /// happens when something under this hub changes.
+    fn hub_row(&self, device: &UsbDevice) -> (adw::ExpanderRow, Rc<dyn Fn()>) {
+        let row = adw::ExpanderRow::builder().use_markup(false).build();
+        row.add_prefix(&device_icon(device));
+        let details = icon_button("help-about-symbolic", "Details");
+        details.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            device,
+            move |_| page.show_details(&device)
+        ));
+        row.add_suffix(&details);
+
+        let shown: Rc<RefCell<Vec<gtk::Widget>>> = Rc::default();
+        self.fill_hub(&row, device, &shown);
+        let rebuild: Rc<dyn Fn()> = Rc::new(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            row,
+            #[weak]
+            device,
+            #[strong]
+            shown,
+            move || page.fill_hub(&row, &device, &shown)
+        ));
+        (row, rebuild)
+    }
+
+    /// Redoes the rows for what's plugged into the hub. Their `reshape`
+    /// redoes this list again; it holds only weak references, so a child
+    /// can't keep a removed hub row alive.
+    fn fill_hub(
+        &self,
+        row: &adw::ExpanderRow,
+        device: &UsbDevice,
+        shown: &Rc<RefCell<Vec<gtk::Widget>>>,
+    ) {
+        for child in shown.take() {
+            row.remove(&child);
+        }
+        let reshape: Rc<dyn Fn()> = Rc::new(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            row,
+            #[weak]
+            device,
+            #[weak]
+            shown,
+            move || page.fill_hub(&row, &device, &shown)
+        ));
+        for child in self.visible_children(device) {
+            let child_row = self.row(&child, Some(device), reshape.clone());
+            row.add_row(&child_row);
+            shown.borrow_mut().push(child_row);
+        }
+    }
+}
+
+fn device_icon(device: &UsbDevice) -> gtk::Image {
+    let icon = gtk::Image::new();
+    device
+        .bind_property("icon-name", &icon, "icon-name")
+        .sync_create()
+        .build();
+    icon
 }
 
 /// A flat icon button; `label` is its tooltip and screen-reader name.
@@ -279,13 +364,23 @@ fn icon_button(icon: &str, label: &str) -> gtk::Button {
     button
 }
 
-fn bind_text(device: &UsbDevice, row: &impl IsA<adw::PreferencesRow>) {
+/// Title, and the vendor as subtitle; a device behind a hub also says
+/// which hub, so it doesn't read as if it were on its own port.
+fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&UsbDevice>) {
     device
-        .bind_property("title", row.as_ref(), "title")
+        .bind_property("title", row, "title")
         .sync_create()
         .build();
+    let hub = through.map(UsbDevice::title);
     device
-        .bind_property("subtitle", row.as_ref(), "subtitle")
+        .bind_property("subtitle", row, "subtitle")
+        .transform_to(move |_, vendor: String| {
+            Some(match &hub {
+                Some(hub) if vendor.is_empty() => format!("Connected through {hub}"),
+                Some(hub) => format!("{vendor} · Connected through {hub}"),
+                None => vendor,
+            })
+        })
         .sync_create()
         .build();
 }

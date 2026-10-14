@@ -5,7 +5,7 @@ use gtk::glib;
 use std::cell::RefCell;
 
 use super::{device_dialog, device_row, pairing_dialog};
-use crate::bluez::{BluetoothManager, PairingRequest, State};
+use crate::bluez::{BluetoothManager, PairingRequest, State, blueman};
 use crate::model::{Adapter, Device};
 
 mod imp {
@@ -86,7 +86,6 @@ mod imp {
                         let row = device_row::new(device);
                         row.add_suffix(&busy_spinner(device));
                         row.add_suffix(&obj.connect_button(device));
-                        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
                         row.set_activatable(true);
                         row.connect_activated(glib::clone!(
                             #[weak]
@@ -127,6 +126,22 @@ mod imp {
                 #[weak]
                 obj,
                 move |request| obj.on_pairing_request(request)
+            ));
+            glib::spawn_future_local(glib::clone!(
+                #[weak]
+                obj,
+                async move {
+                    match blueman::disable_connection_notifier().await {
+                        Ok(true) => obj.toast(
+                            "Turned off blueman's connection notifications, which can freeze GNOME Shell",
+                        ),
+                        Ok(false) => {}
+                        Err(err) => glib::g_warning!(
+                            "openhub",
+                            "Can't turn off blueman's connection notifications: {err}"
+                        ),
+                    }
+                }
             ));
 
             self.manager

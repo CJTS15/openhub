@@ -10,6 +10,7 @@
     "--socket=fallback-x11",
     "--socket=wayland",
     "--device=dri",
+    "--talk-name=org.blueman.Applet",
     "--system-talk-name=org.bluez",
     "--system-talk-name=org.freedesktop.UDisks2"
   ],

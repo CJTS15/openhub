@@ -51,45 +51,42 @@
               <object class="AdwPreferencesPage">
                 <child>
                   <object class="AdwPreferencesGroup" id="status_group">
+                    <property name="title" translatable="yes">Battery Level</property>
                     <child>
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <property name="spacing">12</property>
-                        <child>
-                          <object class="GtkLabel" id="status_label">
-                            <property name="xalign">0</property>
-                            <property name="wrap">True</property>
-                            <style>
-                              <class name="title-4"/>
-                            </style>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkLevelBar" id="level_bar">
-                            <property name="max-value">100</property>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="AdwPreferencesGroup">
-                    <property name="title" translatable="yes">This Computer</property>
-                    <child>
-                      <object class="GtkListBox" id="computer_list">
+                      <object class="GtkListBox">
                         <property name="selection-mode">none</property>
                         <style>
                           <class name="boxed-list"/>
                         </style>
-                        <child type="placeholder">
-                          <object class="GtkLabel">
-                            <property name="label" translatable="yes">No battery or charger</property>
-                            <property name="margin-top">18</property>
-                            <property name="margin-bottom">18</property>
-                            <style>
-                              <class name="dim-label"/>
-                            </style>
+                        <child>
+                          <object class="GtkListBoxRow">
+                            <property name="activatable">False</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">6</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="margin-top">12</property>
+                                <property name="margin-bottom">12</property>
+                                <child>
+                                  <object class="GtkLevelBar" id="level_bar"/>
+                                </child>
+                                <child>
+                                  <object class="GtkBox">
+                                    <child>
+                                      <object class="GtkLabel" id="status_label">
+                                        <property name="hexpand">True</property>
+                                        <property name="xalign">0</property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkLabel" id="level_label"/>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
                           </object>
                         </child>
                       </object>
@@ -98,7 +95,7 @@
                 </child>
                 <child>
                   <object class="AdwPreferencesGroup">
-                    <property name="title" translatable="yes">Devices</property>
+                    <property name="title" translatable="yes">Connected Devices</property>
                     <child>
                       <object class="GtkListBox" id="device_list">
                         <property name="selection-mode">none</property>

@@ -1,1 +1,12 @@
 /* Application-wide styles. Prefer libadwaita style classes over custom CSS. */
+
+/* Battery bars are green like GNOME Settings', and turn to the warning
+   colour at 10% or less (the "low" offset). @success_color rather than
+   var(--success-color), which needs libadwaita 1.6. */
+levelbar.battery block.high {
+  background-color: @success_color;
+}
+
+levelbar.battery block.low {
+  background-color: @warning_color;
+}

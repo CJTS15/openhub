@@ -35,7 +35,7 @@ mod imp {
     pub struct PowerManager {
         #[property(get, builder(State::default()))]
         pub(super) state: Cell<State>,
-        /// "On battery · 64% · 3 h 10 min left" and the like.
+        /// "Not charging", "3 h 10 min left" and the like.
         #[property(get)]
         pub(super) status: RefCell<String>,
         /// The computer's overall battery percentage.
@@ -244,13 +244,12 @@ impl PowerManager {
                 .flatten()
                 .unwrap_or_default()
                 && display.cached_kind().ok().flatten() == Some(kind::BATTERY);
-            let status = convert::status_line(
+            let status = convert::status_text(
                 upower
                     .cached_on_battery()
                     .ok()
                     .flatten()
                     .unwrap_or_default(),
-                percentage,
                 display.cached_state().ok().flatten().unwrap_or_default(),
                 display
                     .cached_time_to_empty()

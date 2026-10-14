@@ -96,30 +96,29 @@ pub fn format_duration(seconds: i64) -> String {
     }
 }
 
-/// The page's top line, from UPower's display device and `OnBattery`.
-pub fn status_line(
-    on_battery: bool,
-    percentage: f64,
-    state: u32,
-    time_to_empty: i64,
-    time_to_full: i64,
-) -> String {
-    let level = format!("{percentage:.0}%");
+/// The state under the battery bar ("Not charging", "3 h 10 min left"),
+/// from UPower's display device and `OnBattery`. The percentage sits beside
+/// it on its own.
+pub fn status_text(on_battery: bool, state: u32, time_to_empty: i64, time_to_full: i64) -> String {
     if on_battery {
         return match time_to_empty {
-            0 => format!("On battery · {level}"),
-            t => format!("On battery · {level} · {} left", format_duration(t)),
+            0 => "On battery".into(),
+            t => format!("{} left", format_duration(t)),
         };
     }
     match state {
-        state::FULLY_CHARGED => "Plugged in · Fully charged".into(),
-        state::CHARGING if time_to_full > 0 => format!(
-            "Plugged in · Charging · {level} · full in {}",
-            format_duration(time_to_full)
-        ),
-        state::CHARGING => format!("Plugged in · Charging · {level}"),
-        _ => format!("Plugged in · {level} · Not charging"),
+        state::FULLY_CHARGED => "Fully charged".into(),
+        state::CHARGING if time_to_full > 0 => {
+            format!("Charging · full in {}", format_duration(time_to_full))
+        }
+        state::CHARGING => "Charging".into(),
+        _ => "Not charging".into(),
     }
+}
+
+/// `78.4` gives `78 %`, spaced as GNOME Settings shows it.
+pub fn percent(percentage: f64) -> String {
+    format!("{percentage:.0} %")
 }
 
 /// How a peripheral is connected. UPower reports Bluetooth batteries
@@ -181,27 +180,26 @@ mod tests {
     }
 
     #[test]
-    fn status_lines() {
+    fn status_texts() {
         assert_eq!(
-            status_line(true, 64.4, state::DISCHARGING, 11_400, 0),
-            "On battery · 64% · 3 h 10 min left"
+            status_text(true, state::DISCHARGING, 11_400, 0),
+            "3 h 10 min left"
+        );
+        assert_eq!(status_text(true, state::DISCHARGING, 0, 0), "On battery");
+        assert_eq!(
+            status_text(false, state::CHARGING, 0, 2_700),
+            "Charging · full in 45 min"
+        );
+        assert_eq!(status_text(false, state::CHARGING, 0, 0), "Charging");
+        assert_eq!(
+            status_text(false, state::PENDING_CHARGE, 0, 0),
+            "Not charging"
         );
         assert_eq!(
-            status_line(true, 64.0, state::DISCHARGING, 0, 0),
-            "On battery · 64%"
+            status_text(false, state::FULLY_CHARGED, 0, 0),
+            "Fully charged"
         );
-        assert_eq!(
-            status_line(false, 50.0, state::CHARGING, 0, 2_700),
-            "Plugged in · Charging · 50% · full in 45 min"
-        );
-        assert_eq!(
-            status_line(false, 78.0, state::PENDING_CHARGE, 0, 0),
-            "Plugged in · 78% · Not charging"
-        );
-        assert_eq!(
-            status_line(false, 100.0, state::FULLY_CHARGED, 0, 0),
-            "Plugged in · Fully charged"
-        );
+        assert_eq!(percent(78.4), "78 %");
     }
 
     #[test]

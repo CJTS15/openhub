@@ -129,7 +129,9 @@ impl UsbPage {
             #[weak]
             device,
             move |button| {
+                // Flushing and spinning down a hard drive takes seconds; show it's working.
                 button.set_sensitive(false);
+                button.set_child(Some(&gtk::Spinner::builder().spinning(true).build()));
                 glib::spawn_future_local(glib::clone!(
                     #[weak]
                     page,
@@ -139,8 +141,13 @@ impl UsbPage {
                     button,
                     async move {
                         let name = device.title();
-                        match page.imp().manager.eject(&device).await {
-                            Ok(()) => page.toast(&format!("{name} can be removed")),
+                        let manager = &page.imp().manager;
+                        match manager.eject(&device).await {
+                            Ok(()) => {
+                                // Powering off removes it from sysfs; drop the row now.
+                                manager.refresh();
+                                page.toast(&format!("{name} can be removed"));
+                            }
                             Err(err) if usb::is_busy(&err) => page.toast(&format!(
                                 "{name} is in use. Close any open files on it and try again."
                             )),
@@ -149,6 +156,7 @@ impl UsbPage {
                                 page.toast(&format!("Couldn't eject {name}"));
                             }
                         }
+                        button.set_icon_name("media-eject-symbolic");
                         button.set_sensitive(true);
                     }
                 ));

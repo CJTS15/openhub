@@ -6,7 +6,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 [v0.1.0](https://github.com/CJTS15/openhub/releases/tag/v0.1.0) is out and covers Bluetooth: turn the adapter on and off, connect and disconnect devices, see their battery level, scan for and pair new devices through Openhub's own pairing agent, and trust, block or forget them.
 
-Next is v0.2, which adds a USB page: a live list of USB devices with details, and safe eject for drives. So far (M5, M6) the USB page lists devices as a hub tree that updates every 2 seconds while it is open, with built-in devices hidden behind a toggle and a details dialog for each device.
+Next is v0.2, which adds a USB page: a live list of USB devices with details, and safe eject for drives. So far (M5 to M7) the USB page lists devices as a hub tree that updates every 2 seconds while it is open, with built-in devices hidden behind a toggle, a details dialog for each device, and safe eject for USB drives.
 
 ## Plans
 
@@ -60,7 +60,7 @@ For quick iteration, `cargo run` also works.
 - `src/bluez/`: zbus proxies, the pairing agent and `BluetoothManager`, the only code that talks to BlueZ over D-Bus
 - `src/model/`: `Adapter` and `Device` GObjects the UI binds to
 - `src/ui/bluetooth/` + `data/resources/ui/bluetooth_page.ui`: the Bluetooth page, device rows, and the pairing and device details dialogs
-- `src/usb/`: the sysfs scan, `usb.ids` names and `UsbManager`, the only code that reads USB devices
+- `src/usb/`: the sysfs scan, `usb.ids` names, `UsbManager`, and safe eject through UDisks2; the only code that reads or controls USB devices
 - `src/model/usb_device.rs`: the `UsbDevice` GObject; a hub holds its children
 - `src/ui/usb/` + `data/resources/ui/usb_page.ui`: the USB page
 - `tests/fixtures/sysfs-usb/`: a fake sysfs tree the USB parser tests run against

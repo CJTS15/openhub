@@ -40,6 +40,9 @@ mod imp {
         driver: RefCell<String>,
         #[property(get, set)]
         max_power: RefCell<String>,
+        /// Disks (`sdb`…) when it's a storage device; empty otherwise.
+        #[property(get, set)]
+        disks: RefCell<Vec<String>>,
         /// `UsbDevice` items plugged into this one, when it's a hub.
         pub(super) children: gio::ListStore,
     }
@@ -60,6 +63,7 @@ mod imp {
                 class_name: RefCell::default(),
                 driver: RefCell::default(),
                 max_power: RefCell::default(),
+                disks: RefCell::default(),
                 children: gio::ListStore::new::<super::UsbDevice>(),
             }
         }

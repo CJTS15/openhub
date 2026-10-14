@@ -179,9 +179,15 @@ impl UsbPage {
                 .build();
             bind_text(device, &row);
             row.add_prefix(&icon);
-            if !device.disks().is_empty() {
-                row.add_suffix(&self.eject_button(device));
-            }
+            // The disk shows up a second or two after the USB device, so a
+            // row can exist before it does; follow the property, not its first value.
+            let eject = self.eject_button(device);
+            device
+                .bind_property("disks", &eject, "visible")
+                .transform_to(|_, disks: Vec<String>| Some(!disks.is_empty()))
+                .sync_create()
+                .build();
+            row.add_suffix(&eject);
             row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
             row.connect_activated(glib::clone!(
                 #[weak(rename_to = page)]

@@ -10,7 +10,7 @@ use std::future::Future;
 use std::time::Instant;
 
 use futures_channel::mpsc;
-use futures_util::stream::{self, LocalBoxStream, Stream, StreamExt};
+use futures_util::stream::{self, StreamExt};
 use gtk::glib::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{gio, glib};
@@ -21,6 +21,7 @@ use zbus::zvariant::{ObjectPath, OwnedObjectPath};
 use super::agent::{self, Agent, PairingRequest};
 use super::proxies::{Adapter1Proxy, AgentManager1Proxy, Battery1Proxy, Device1Proxy};
 use crate::model::{Adapter, Device};
+use crate::watch::{ticks, watch};
 
 const ADAPTER: &str = "org.bluez.Adapter1";
 const DEVICE: &str = "org.bluez.Device1";
@@ -590,24 +591,6 @@ async fn timed<T>(
         start.elapsed()
     );
     result
-}
-
-fn ticks(stream: impl Stream + 'static) -> LocalBoxStream<'static, ()> {
-    stream.map(|_| ()).boxed_local()
-}
-
-/// Runs `update` now and again whenever any of `changes` fires.
-fn watch(
-    changes: Vec<LocalBoxStream<'static, ()>>,
-    update: impl Fn() + 'static,
-) -> glib::JoinHandle<()> {
-    update();
-    glib::spawn_future_local(async move {
-        let mut changes = stream::select_all(changes);
-        while changes.next().await.is_some() {
-            update();
-        }
-    })
 }
 
 /// Connected devices first, then by name.

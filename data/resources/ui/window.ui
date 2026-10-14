@@ -84,6 +84,27 @@
                             </property>
                           </object>
                         </child>
+                        <child>
+                          <object class="GtkListBoxRow">
+                            <property name="name">power</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon-name">battery-full-symbolic</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">Power</property>
+                                    <property name="xalign">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
                       </object>
                     </property>
                   </object>
@@ -117,6 +138,15 @@
                         <property name="title" translatable="yes">USB</property>
                         <property name="child">
                           <object class="OpenhubUsbPage"/>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">power</property>
+                        <property name="title" translatable="yes">Power</property>
+                        <property name="child">
+                          <object class="OpenhubPowerPage"/>
                         </property>
                       </object>
                     </child>

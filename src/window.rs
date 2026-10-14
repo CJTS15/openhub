@@ -3,6 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
 use crate::ui::bluetooth::BluetoothPage;
+use crate::ui::power::PowerPage;
 use crate::ui::usb::UsbPage;
 
 mod imp {
@@ -30,6 +31,7 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             BluetoothPage::ensure_type();
             UsbPage::ensure_type();
+            PowerPage::ensure_type();
             klass.bind_template();
             klass.bind_template_callbacks();
         }

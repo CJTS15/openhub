@@ -9,10 +9,13 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
 - **USB** (new in v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 
+Next is v0.3, which adds a Power page ([PLAN_V3.md](PLAN_V3.md)). So far (M9) it shows the computer's battery status and every battery-powered device UPower knows about, updated live.
+
 ## Plans
 
 - [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
 - [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8, released)
+- [PLAN_V3.md](PLAN_V3.md): v0.3, Power (milestones M9 to M12)
 
 ## Installing
 
@@ -64,7 +67,12 @@ For quick iteration, `cargo run` also works.
 - `src/usb/`: the sysfs scan, `usb.ids` names, `UsbManager`, and safe eject through UDisks2; the only code that reads or controls USB devices
 - `src/model/usb_device.rs`: the `UsbDevice` GObject; a hub holds its children
 - `src/ui/usb/` + `data/resources/ui/usb_page.ui`: the USB page
+- `src/upower/`: UPower proxies, plain conversion rules, and `PowerManager`, the only code that talks to UPower
+- `src/model/power_device.rs`: the `PowerDevice` GObject
+- `src/ui/power/` + `data/resources/ui/power_page.ui`: the Power page
+- `src/watch.rs`: keeps a GObject in step with a cached D-Bus proxy's properties (shared by the BlueZ and UPower services)
 - `tests/fixtures/sysfs-usb/`: a fake sysfs tree the USB parser tests run against
+- `build-aux/test-upower.sh`: runs the UPower test against python-dbusmock (CI runs it too)
 
 ## License
 

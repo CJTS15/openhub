@@ -1,4 +1,5 @@
 mod agent;
+pub mod blueman;
 mod proxies;
 mod service;
 

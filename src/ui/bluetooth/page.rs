@@ -86,7 +86,6 @@ mod imp {
                         let row = device_row::new(device);
                         row.add_suffix(&busy_spinner(device));
                         row.add_suffix(&obj.connect_button(device));
-                        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
                         row.set_activatable(true);
                         row.connect_activated(glib::clone!(
                             #[weak]

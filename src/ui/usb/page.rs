@@ -270,7 +270,6 @@ impl UsbPage {
             .sync_create()
             .build();
         row.add_suffix(&eject);
-        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
         row.connect_activated(glib::clone!(
             #[weak(rename_to = page)]
             self,
@@ -287,7 +286,7 @@ impl UsbPage {
     fn hub_row(&self, device: &UsbDevice) -> (adw::ExpanderRow, Rc<dyn Fn()>) {
         let row = adw::ExpanderRow::builder().use_markup(false).build();
         row.add_prefix(&device_icon(device));
-        let details = icon_button("go-next-symbolic", "Details");
+        let details = icon_button("help-about-symbolic", "Details");
         details.connect_clicked(glib::clone!(
             #[weak(rename_to = page)]
             self,

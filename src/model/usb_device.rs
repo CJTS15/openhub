@@ -22,6 +22,24 @@ mod imp {
         /// Built into the computer, such as a webcam or fingerprint reader.
         #[property(get, set)]
         internal: Cell<bool>,
+        #[property(get, set)]
+        hub: Cell<bool>,
+        /// `vendor:product` in hex, such as `05e3:0610`.
+        #[property(get, set)]
+        id: RefCell<String>,
+        /// The rest are for the details dialog, ready to show; empty when unknown.
+        #[property(get, set)]
+        serial: RefCell<String>,
+        #[property(get, set)]
+        speed: RefCell<String>,
+        #[property(get, set)]
+        version: RefCell<String>,
+        #[property(get, set)]
+        class_name: RefCell<String>,
+        #[property(get, set)]
+        driver: RefCell<String>,
+        #[property(get, set)]
+        max_power: RefCell<String>,
         /// `UsbDevice` items plugged into this one, when it's a hub.
         pub(super) children: gio::ListStore,
     }
@@ -34,6 +52,14 @@ mod imp {
                 subtitle: RefCell::default(),
                 icon_name: RefCell::default(),
                 internal: Cell::default(),
+                hub: Cell::default(),
+                id: RefCell::default(),
+                serial: RefCell::default(),
+                speed: RefCell::default(),
+                version: RefCell::default(),
+                class_name: RefCell::default(),
+                driver: RefCell::default(),
+                max_power: RefCell::default(),
                 children: gio::ListStore::new::<super::UsbDevice>(),
             }
         }

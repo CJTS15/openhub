@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub const ROOT: &str = "/sys/bus/usb/devices";
 
@@ -15,10 +15,21 @@ pub struct UsbInfo {
     pub product_id: u16,
     pub manufacturer: Option<String>,
     pub product: Option<String>,
+    pub serial: Option<String>,
+    /// Link speed in Mbit/s as sysfs writes it: `1.5`, `12`, `480`, `5000`…
+    pub speed: Option<String>,
+    /// USB version the device declares, such as `2.00`.
+    pub version: Option<String>,
+    /// Most current the device may draw, such as `98mA`.
+    pub max_power: Option<String>,
     pub class: u8,
     pub interfaces: Vec<Interface>,
     /// The firmware marks the port as built in (`removable` is `fixed`).
     pub internal: bool,
+    /// ALSA made a recording device from it: a microphone or line in.
+    pub capture: bool,
+    /// ALSA made a playback device from it: speakers or headphones.
+    pub playback: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +38,8 @@ pub struct Interface {
     pub protocol: u8,
     /// Interface string, such as `MTP` on phones.
     pub name: Option<String>,
+    /// Kernel driver bound to the interface, such as `usb-storage`.
+    pub driver: Option<String>,
 }
 
 impl UsbInfo {
@@ -64,16 +77,23 @@ pub fn scan(root: &Path) -> io::Result<Vec<UsbInfo>> {
 
 fn read_device(dir: &Path, name: String) -> Option<UsbInfo> {
     let prefix = format!("{name}:");
-    let interfaces = fs::read_dir(dir)
+    let mut dirs: Vec<_> = fs::read_dir(dir)
         .ok()?
         .flatten()
         .filter(|entry| entry.file_name().to_string_lossy().starts_with(&prefix))
-        .filter_map(|entry| {
-            let dir = entry.path();
+        .map(|entry| entry.path())
+        .collect();
+    dirs.sort();
+    let interfaces = dirs
+        .iter()
+        .filter_map(|dir| {
             Some(Interface {
-                class: hex(&dir, "bInterfaceClass")?,
-                protocol: hex(&dir, "bInterfaceProtocol").unwrap_or_default(),
-                name: attr(&dir, "interface"),
+                class: hex(dir, "bInterfaceClass")?,
+                protocol: hex(dir, "bInterfaceProtocol").unwrap_or_default(),
+                name: attr(dir, "interface"),
+                driver: fs::read_link(dir.join("driver"))
+                    .ok()
+                    .and_then(|link| Some(link.file_name()?.to_string_lossy().into_owned())),
             })
         })
         .collect();
@@ -82,11 +102,36 @@ fn read_device(dir: &Path, name: String) -> Option<UsbInfo> {
         product_id: hex(dir, "idProduct")?,
         manufacturer: attr(dir, "manufacturer"),
         product: attr(dir, "product"),
+        serial: attr(dir, "serial"),
+        speed: attr(dir, "speed"),
+        version: attr(dir, "version"),
+        max_power: attr(dir, "bMaxPower"),
         class: hex(dir, "bDeviceClass").unwrap_or_default(),
         interfaces,
         internal: attr(dir, "removable").as_deref() == Some("fixed"),
+        capture: has_pcm(&dirs, 'c'),
+        playback: has_pcm(&dirs, 'p'),
         name,
     })
+}
+
+/// Whether a sound card on these interfaces has a capture (`c`) or playback
+/// (`p`) device, such as `<interface>/sound/card0/pcmC0D0c`. Unlike the
+/// streaming endpoints, these exist while the device is idle.
+fn has_pcm(interfaces: &[PathBuf], direction: char) -> bool {
+    interfaces
+        .iter()
+        .filter_map(|interface| fs::read_dir(interface.join("sound")).ok())
+        .flatten()
+        .flatten()
+        .filter_map(|card| fs::read_dir(card.path()).ok())
+        .flatten()
+        .flatten()
+        .any(|pcm| {
+            let name = pcm.file_name();
+            let name = name.to_string_lossy();
+            name.starts_with("pcm") && name.ends_with(direction)
+        })
 }
 
 /// A sysfs attribute, trimmed; `None` when missing or empty.
@@ -112,7 +157,7 @@ mod tests {
     #[test]
     fn skips_root_hubs_and_interfaces_and_sorts_by_port() {
         let names: Vec<_> = fixture().into_iter().map(|d| d.name).collect();
-        assert_eq!(names, ["1-1", "1-1.1", "1-1.2", "1-2"]);
+        assert_eq!(names, ["1-1", "1-1.1", "1-1.2", "1-2", "1-3"]);
     }
 
     #[test]
@@ -139,6 +184,27 @@ mod tests {
             (stick.interfaces[0].class, stick.interfaces[0].protocol),
             (0x08, 0x50)
         );
+        assert_eq!(stick.interfaces[0].driver.as_deref(), Some("usb-storage"));
+    }
+
+    #[test]
+    fn reads_audio_direction_from_sound_cards() {
+        let devices = fixture();
+        let mic = &devices[4];
+        assert!(mic.capture && !mic.playback);
+        assert!(!devices[2].capture && !devices[2].playback);
+    }
+
+    #[test]
+    fn reads_details() {
+        let stick = &fixture()[2];
+        assert_eq!(stick.serial.as_deref(), Some("4C530001230315118384"));
+        assert_eq!(stick.speed.as_deref(), Some("480"));
+        assert_eq!(stick.version.as_deref(), Some("2.10"));
+        assert_eq!(stick.max_power.as_deref(), Some("224mA"));
+        let mouse = &fixture()[3];
+        assert_eq!(mouse.serial, None);
+        assert_eq!(mouse.interfaces[0].driver, None);
     }
 
     #[test]

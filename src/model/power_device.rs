@@ -23,6 +23,15 @@ mod imp {
         /// Percentage, or -1 when there's none to show (a charger).
         #[property(get, set, minimum = -1.0, maximum = 100.0, default = -1.0)]
         level: Cell<f64>,
+        /// "85 %", or a coarse word such as "High" for devices that only report that.
+        #[property(get, set)]
+        level_text: RefCell<String>,
+        /// Where its bar sits, 0 to 1.
+        #[property(get, set)]
+        fraction: Cell<f64>,
+        /// UPower `WarningLevel`; see `convert::warning`.
+        #[property(get, set)]
+        warning_level: Cell<u32>,
         /// Powers this computer (battery, charger, UPS) rather than a peripheral.
         #[property(get, set)]
         power_supply: Cell<bool>,
@@ -37,6 +46,45 @@ mod imp {
         /// A laptop battery slot can be empty.
         #[property(get, set)]
         present: Cell<bool>,
+        /// "Bluetooth", "USB" or "Other", for peripherals.
+        #[property(get, set)]
+        connection: RefCell<String>,
+
+        // Details, as UPower reports them; 0 or empty when unknown.
+        #[property(get, set)]
+        vendor: RefCell<String>,
+        #[property(get, set)]
+        model: RefCell<String>,
+        #[property(get, set)]
+        technology: RefCell<String>,
+        /// Full charge capacity against design capacity, in percent.
+        #[property(get, set)]
+        capacity: Cell<f64>,
+        /// Watt-hours.
+        #[property(get, set)]
+        energy: Cell<f64>,
+        #[property(get, set)]
+        energy_full: Cell<f64>,
+        #[property(get, set)]
+        energy_full_design: Cell<f64>,
+        /// Watts.
+        #[property(get, set)]
+        energy_rate: Cell<f64>,
+        /// Volts.
+        #[property(get, set)]
+        voltage: Cell<f64>,
+        /// -1 when unknown.
+        #[property(get, set, default = -1)]
+        charge_cycles: Cell<i32>,
+
+        // Charge limit ("Preserve battery health").
+        #[property(get, set)]
+        charge_limit_supported: Cell<bool>,
+        #[property(get, set)]
+        charge_limit_enabled: Cell<bool>,
+        /// Percent where charging stops while the limit is on.
+        #[property(get, set)]
+        charge_end_threshold: Cell<u32>,
     }
 
     impl Default for PowerDevice {
@@ -47,11 +95,28 @@ mod imp {
                 subtitle: RefCell::default(),
                 icon_name: RefCell::default(),
                 level: Cell::new(-1.0),
+                level_text: RefCell::default(),
+                fraction: Cell::default(),
+                warning_level: Cell::default(),
                 power_supply: Cell::default(),
                 kind: Cell::default(),
                 serial: RefCell::default(),
                 bluez: Cell::default(),
                 present: Cell::new(true),
+                connection: RefCell::default(),
+                vendor: RefCell::default(),
+                model: RefCell::default(),
+                technology: RefCell::default(),
+                capacity: Cell::default(),
+                energy: Cell::default(),
+                energy_full: Cell::default(),
+                energy_full_design: Cell::default(),
+                energy_rate: Cell::default(),
+                voltage: Cell::default(),
+                charge_cycles: Cell::new(-1),
+                charge_limit_supported: Cell::default(),
+                charge_limit_enabled: Cell::default(),
+                charge_end_threshold: Cell::default(),
             }
         }
     }

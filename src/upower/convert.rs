@@ -32,6 +32,13 @@ pub mod state {
     pub const PENDING_DISCHARGE: u32 = 6;
 }
 
+/// UPower warning levels (`org.freedesktop.UPower.Device.WarningLevel`).
+pub mod warning {
+    pub const LOW: u32 = 3;
+    pub const CRITICAL: u32 = 4;
+    pub const ACTION: u32 = 5;
+}
+
 /// A name for devices that don't report a model.
 pub fn kind_name(kind: u32) -> &'static str {
     match kind {
@@ -113,6 +120,49 @@ pub fn status_text(on_battery: bool, state: u32, time_to_empty: i64, time_to_ful
         }
         state::CHARGING => "Charging".into(),
         _ => "Not charging".into(),
+    }
+}
+
+/// Some devices report only a coarse level (UPower `BatteryLevel`); give it
+/// a word, or `None` when the device reports a percentage instead.
+pub fn coarse_level(battery_level: u32) -> Option<&'static str> {
+    match battery_level {
+        3 => Some("Low"),
+        4 => Some("Critical"),
+        6 => Some("Normal"),
+        7 => Some("High"),
+        8 => Some("Full"),
+        _ => None,
+    }
+}
+
+/// The level as shown beside a bar: a percentage, or the coarse word.
+pub fn level_text(percentage: f64, battery_level: u32) -> String {
+    coarse_level(battery_level).map_or_else(|| percent(percentage), str::to_owned)
+}
+
+/// Where the bar sits, 0 to 1. Coarse levels get a stand-in position so
+/// the bar still reads right and turns the warning colour when low.
+pub fn level_fraction(percentage: f64, battery_level: u32) -> f64 {
+    match battery_level {
+        3 => 0.1,
+        4 => 0.05,
+        6 => 0.5,
+        7 => 0.75,
+        8 => 1.0,
+        _ => percentage.clamp(0.0, 100.0) / 100.0,
+    }
+}
+
+pub fn technology_name(technology: u32) -> &'static str {
+    match technology {
+        1 => "Lithium-ion",
+        2 => "Lithium polymer",
+        3 => "Lithium iron phosphate",
+        4 => "Lead acid",
+        5 => "Nickel cadmium",
+        6 => "Nickel metal hydride",
+        _ => "",
     }
 }
 
@@ -200,6 +250,17 @@ mod tests {
             "Fully charged"
         );
         assert_eq!(percent(78.4), "78 %");
+    }
+
+    #[test]
+    fn coarse_levels() {
+        assert_eq!(level_text(85.2, 1), "85 %");
+        assert_eq!(level_text(0.0, 7), "High");
+        assert_eq!(level_text(0.0, 4), "Critical");
+        assert_eq!(level_fraction(85.0, 1), 0.85);
+        assert_eq!(level_fraction(0.0, 3), 0.1);
+        assert_eq!(technology_name(2), "Lithium polymer");
+        assert_eq!(technology_name(0), "");
     }
 
     #[test]

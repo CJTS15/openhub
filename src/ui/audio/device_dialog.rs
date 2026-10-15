@@ -8,12 +8,93 @@ use crate::audio::AudioManager;
 use crate::eq::{self, Settings};
 use crate::model::AudioDevice;
 
-/// The output's equalizer. Every change applies at once and is saved.
+/// An output's or input's details, with the equalizer below for outputs.
+/// Details show the values at the time it opens; EQ changes apply at once
+/// and are saved.
 pub fn new(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder()
-        .title(format!("{} Equalizer", device.title()))
+        .title(device.title())
         .content_width(560)
         .build();
+    let page = adw::PreferencesPage::new();
+    page.add(&details(manager, device));
+    dialog.add(&page);
+    if device.output() && manager.equalizer() {
+        equalizer(&dialog, &page, manager, device);
+    }
+    dialog
+}
+
+fn details(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::new();
+    let default = adw::ActionRow::builder()
+        .title(if device.output() {
+            "Default Output"
+        } else {
+            "Default Input"
+        })
+        .build();
+    let check = gtk::Image::from_icon_name("object-select-symbolic");
+    check.update_property(&[gtk::accessible::Property::Label("Default")]);
+    let set = gtk::Button::builder()
+        .label("Set as Default")
+        .valign(gtk::Align::Center)
+        .build();
+    set.connect_clicked(glib::clone!(
+        #[strong]
+        manager,
+        #[weak]
+        device,
+        move |_| manager.set_default(&device)
+    ));
+    device
+        .bind_property("is-default", &check, "visible")
+        .sync_create()
+        .build();
+    device
+        .bind_property("is-default", &set, "visible")
+        .invert_boolean()
+        .sync_create()
+        .build();
+    default.add_suffix(&check);
+    default.add_suffix(&set);
+    group.add(&default);
+
+    let channels = match device.channels() {
+        0 => String::new(),
+        1 => "Mono".to_owned(),
+        2 => "Stereo".to_owned(),
+        n => format!("{n} channels"),
+    };
+    for (label, value) in [
+        ("Connection", device.connection()),
+        ("Codec", device.codec()),
+        ("Battery", device.battery()),
+        ("Channels", channels),
+        ("Device Name", device.name()),
+    ] {
+        if !value.is_empty() {
+            group.add(
+                &adw::ActionRow::builder()
+                    .title(label)
+                    .subtitle(&value)
+                    .subtitle_selectable(true)
+                    .use_markup(false)
+                    .css_classes(["property"])
+                    .build(),
+            );
+        }
+    }
+    group
+}
+
+/// The output's equalizer groups, added to `page`.
+fn equalizer(
+    dialog: &adw::PreferencesDialog,
+    page: &adw::PreferencesPage,
+    manager: &AudioManager,
+    device: &AudioDevice,
+) {
     let editor = Rc::new(Editor {
         manager: manager.clone(),
         device: device.clone(),
@@ -28,7 +109,6 @@ pub fn new(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesDial
         imported: adw::ActionRow::builder().use_markup(false).build(),
     });
 
-    let page = adw::PreferencesPage::new();
     let switch = adw::SwitchRow::builder()
         .title("Equalizer")
         .subtitle("Shapes the sound of this output, even when Openhub is closed")
@@ -120,12 +200,10 @@ pub fn new(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesDial
             .build();
     }
     editor.sync();
-    dialog.add(&page);
     // The dialog owns the editor; its widgets only point back weakly.
     dialog.connect_closed(move |_| {
         let _ = &editor;
     });
-    dialog
 }
 
 struct Editor {
@@ -206,14 +284,20 @@ impl Editor {
         self.syncing.set(true);
         let settings = self.settings.borrow();
         let gains = settings.graphic_gains();
-        self.graphic.set_visible(gains.is_some());
-        self.imported.set_visible(gains.is_none());
-        if let Some(gains) = gains {
-            self.preamp.set_value(settings.preamp);
-            for (scale, gain) in self.bands.iter().zip(gains) {
-                scale.set_value(gain);
-            }
-        } else {
+        // After an import the bars show its curve at their frequencies,
+        // read-only; Remove goes back to the editable graphic EQ.
+        let editable = gains.is_some();
+        self.preset.set_visible(editable);
+        self.imported.set_visible(!editable);
+        self.preamp.set_value(settings.preamp);
+        self.preamp.set_sensitive(editable);
+        let gains = gains
+            .unwrap_or_else(|| eq::GRAPHIC_FREQS.map(|freq| eq::response(&settings.filters, freq)));
+        for (scale, gain) in self.bands.iter().zip(gains) {
+            scale.set_value(gain);
+            scale.set_sensitive(editable);
+        }
+        if !editable {
             self.imported.set_title(&settings.imported);
             self.imported.set_subtitle(&format!(
                 "{} filters, preamp {:.1} dB",

@@ -113,6 +113,62 @@ pub fn graphic(gains: &[f64; 10]) -> Vec<Filter> {
         .collect()
 }
 
+/// The filters' combined gain at `freq`, in dB, without the preamp. It's
+/// what the bars show for an imported EQ.
+// ponytail: RBJ cookbook biquads at 48 kHz, the same family PipeWire uses;
+// the shelves' Q may differ slightly from PipeWire's, which only moves the bars.
+pub fn response(filters: &[Filter], freq: f64) -> f64 {
+    const RATE: f64 = 48000.0;
+    let w = std::f64::consts::TAU * freq / RATE;
+    filters
+        .iter()
+        .map(|filter| {
+            let a = 10f64.powf(filter.gain / 40.0);
+            let w0 = std::f64::consts::TAU * filter.freq / RATE;
+            let (sin, cos) = w0.sin_cos();
+            let alpha = sin / (2.0 * filter.q);
+            let root = 2.0 * a.sqrt() * alpha;
+            let ([b0, b1, b2], [a0, a1, a2]) = match filter.kind {
+                Kind::Peak => (
+                    [1.0 + alpha * a, -2.0 * cos, 1.0 - alpha * a],
+                    [1.0 + alpha / a, -2.0 * cos, 1.0 - alpha / a],
+                ),
+                Kind::LowShelf => (
+                    [
+                        a * ((a + 1.0) - (a - 1.0) * cos + root),
+                        2.0 * a * ((a - 1.0) - (a + 1.0) * cos),
+                        a * ((a + 1.0) - (a - 1.0) * cos - root),
+                    ],
+                    [
+                        (a + 1.0) + (a - 1.0) * cos + root,
+                        -2.0 * ((a - 1.0) + (a + 1.0) * cos),
+                        (a + 1.0) + (a - 1.0) * cos - root,
+                    ],
+                ),
+                Kind::HighShelf => (
+                    [
+                        a * ((a + 1.0) + (a - 1.0) * cos + root),
+                        -2.0 * a * ((a - 1.0) + (a + 1.0) * cos),
+                        a * ((a + 1.0) + (a - 1.0) * cos - root),
+                    ],
+                    [
+                        (a + 1.0) - (a - 1.0) * cos + root,
+                        2.0 * ((a - 1.0) - (a + 1.0) * cos),
+                        (a + 1.0) - (a - 1.0) * cos - root,
+                    ],
+                ),
+            };
+            // |b0 + b1 e^-jw + b2 e^-2jw|² over the same for a.
+            let power = |c0: f64, c1: f64, c2: f64| {
+                let re = c0 + c1 * w.cos() + c2 * (2.0 * w).cos();
+                let im = c1 * w.sin() + c2 * (2.0 * w).sin();
+                re * re + im * im
+            };
+            10.0 * (power(b0, b1, b2) / power(a0, a1, a2)).log10()
+        })
+        .sum()
+}
+
 pub const PRESETS: [(&str, [f64; 10]); 3] = [
     ("Flat", [0.0; 10]),
     (
@@ -373,6 +429,30 @@ mod tests {
             ..settings
         };
         assert_eq!(imported.graphic_gains(), None);
+    }
+
+    #[test]
+    fn response_matches_filter_gains() {
+        let peak = |freq, gain| Filter {
+            kind: Kind::Peak,
+            freq,
+            gain,
+            q: 1.41,
+        };
+        assert!((response(&[peak(1000.0, 12.0)], 1000.0) - 12.0).abs() < 0.01);
+        assert!(response(&[peak(1000.0, 12.0)], 16000.0).abs() < 0.5);
+        // Two filters add up.
+        let both = [peak(1000.0, 6.0), peak(1000.0, -2.0)];
+        assert!((response(&both, 1000.0) - 4.0).abs() < 0.01);
+        let shelf = |kind| Filter {
+            kind,
+            freq: 1000.0,
+            gain: 6.0,
+            q: 0.7,
+        };
+        assert!((response(&[shelf(Kind::LowShelf)], 20.0) - 6.0).abs() < 0.1);
+        assert!((response(&[shelf(Kind::HighShelf)], 20000.0) - 6.0).abs() < 0.3);
+        assert!(response(&[shelf(Kind::HighShelf)], 20.0).abs() < 0.1);
     }
 
     #[test]

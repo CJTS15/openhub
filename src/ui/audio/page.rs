@@ -2,7 +2,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
-use super::eq_dialog;
+use super::device_dialog;
 use crate::audio::{AudioManager, State};
 use crate::model::{AudioDevice, PowerDevice};
 use crate::upower::{PowerManager, convert};
@@ -201,45 +201,21 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    // Clicking a row makes it the default; the default carries a check mark.
+    // Clicking a row opens its details and equalizer; the default carries
+    // a check mark and is set from there.
     row.set_activatable(true);
     row.connect_activated(glib::clone!(
         #[strong]
         manager,
         #[weak]
         device,
-        move |_| {
-            if !device.is_default() {
-                manager.set_default(&device);
-            }
-        }
+        move |row| device_dialog::new(&manager, &device).present(Some(row))
     ));
 
-    // Inputs show their live level here and outputs their Equalizer button,
-    // in the same width, so every row's mute button and slider line up.
+    // Inputs show their live level here; outputs keep the same width
+    // empty, so every row's mute button and slider line up.
     if device.output() {
-        let slot = gtk::Box::builder().width_request(METER_WIDTH).build();
-        let equalizer = gtk::Button::builder()
-            .icon_name("openhub-equalizer-symbolic")
-            .tooltip_text("Equalizer")
-            .valign(gtk::Align::Center)
-            .hexpand(true)
-            .halign(gtk::Align::Center)
-            .css_classes(["flat"])
-            .build();
-        manager
-            .bind_property("equalizer", &equalizer, "visible")
-            .sync_create()
-            .build();
-        equalizer.connect_clicked(glib::clone!(
-            #[strong]
-            manager,
-            #[weak]
-            device,
-            move |button| eq_dialog::new(&manager, &device).present(Some(button))
-        ));
-        slot.append(&equalizer);
-        row.add_suffix(&slot);
+        row.add_suffix(&gtk::Box::builder().width_request(METER_WIDTH).build());
     } else {
         let meter = gtk::LevelBar::builder()
             .width_request(METER_WIDTH)

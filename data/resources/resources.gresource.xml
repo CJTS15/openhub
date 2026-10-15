@@ -6,6 +6,5 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/usb_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/power_page.ui</file>
     <file compressed="true">style.css</file>
-    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/openhub-equalizer-symbolic.svg</file>
   </gresource>
 </gresources>

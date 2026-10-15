@@ -29,8 +29,18 @@ mod imp {
             let manager = &self.manager;
 
             let page = adw::PreferencesPage::new();
-            page.add(&group("Output", "No output devices", &manager.outputs()));
-            page.add(&group("Input", "No input devices", &manager.inputs()));
+            page.add(&group(
+                manager,
+                "Output",
+                "No output devices",
+                &manager.outputs(),
+            ));
+            page.add(&group(
+                manager,
+                "Input",
+                "No input devices",
+                &manager.inputs(),
+            ));
             self.stack.add_named(
                 &gtk::Spinner::builder()
                     .spinning(true)
@@ -53,6 +63,9 @@ mod imp {
             self.stack
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
             obj.set_child(Some(&self.stack));
+            // Level meters run only while the page is on screen.
+            obj.connect_map(|page| page.imp().manager.set_metering(true));
+            obj.connect_unmap(|page| page.imp().manager.set_metering(false));
 
             manager
                 .bind_property("state", &self.stack, "visible-child-name")
@@ -124,7 +137,12 @@ impl AudioPage {
     }
 }
 
-fn group(title: &str, empty: &str, devices: &gio::ListStore) -> adw::PreferencesGroup {
+fn group(
+    manager: &AudioManager,
+    title: &str,
+    empty: &str,
+    devices: &gio::ListStore,
+) -> adw::PreferencesGroup {
     let list = gtk::ListBox::builder()
         .selection_mode(gtk::SelectionMode::None)
         .css_classes(["boxed-list"])
@@ -137,15 +155,20 @@ fn group(title: &str, empty: &str, devices: &gio::ListStore) -> adw::Preferences
             .css_classes(["dim-label"])
             .build(),
     ));
-    list.bind_model(Some(devices), |item| {
-        row(item.downcast_ref().unwrap()).upcast()
-    });
+    list.bind_model(
+        Some(devices),
+        glib::clone!(
+            #[strong]
+            manager,
+            move |item| row(&manager, item.downcast_ref().unwrap()).upcast()
+        ),
+    );
     let group = adw::PreferencesGroup::builder().title(title).build();
     group.add(&list);
     group
 }
 
-fn row(device: &AudioDevice) -> adw::ActionRow {
+fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
     let row = adw::ActionRow::builder().use_markup(false).build();
     device
         .bind_property("title", &row, "title")
@@ -155,25 +178,118 @@ fn row(device: &AudioDevice) -> adw::ActionRow {
         gtk::PropertyExpression::new(AudioDevice::static_type(), gtk::Expression::NONE, name)
     };
     gtk::ClosureExpression::with_callback(
-        [property("connection"), property("battery")],
+        [
+            property("connection"),
+            property("codec"),
+            property("battery"),
+        ],
         |values| {
-            let connection: String = values[1].get().unwrap_or_default();
-            let battery: String = values[2].get().unwrap_or_default();
-            [connection, battery]
-                .into_iter()
+            let parts: Vec<String> = values[1..]
+                .iter()
+                .map(|value| value.get::<String>().unwrap_or_default())
                 .filter(|part| !part.is_empty())
-                .collect::<Vec<_>>()
-                .join(" · ")
+                .collect();
+            parts.join(" · ")
         },
     )
     .bind(&row, "subtitle", Some(device));
+
     let icon = gtk::Image::new();
     device
         .bind_property("icon-name", &icon, "icon-name")
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    // The default device carries a check mark, named for screen readers.
+    // Clicking a row makes it the default; the default carries a check mark.
+    row.set_activatable(true);
+    row.connect_activated(glib::clone!(
+        #[strong]
+        manager,
+        #[weak]
+        device,
+        move |_| {
+            if !device.is_default() {
+                manager.set_default(&device);
+            }
+        }
+    ));
+
+    // Inputs show their live level here; outputs keep the same width
+    // empty, so every row's mute button and slider line up.
+    if device.output() {
+        row.add_suffix(&gtk::Box::builder().width_request(METER_WIDTH).build());
+    } else {
+        let meter = gtk::LevelBar::builder()
+            .width_request(METER_WIDTH)
+            .valign(gtk::Align::Center)
+            .build();
+        for name in ["low", "high", "full"] {
+            meter.remove_offset_value(Some(name));
+        }
+        meter.update_property(&[gtk::accessible::Property::Label("Input level")]);
+        device
+            .bind_property("peak", &meter, "value")
+            .sync_create()
+            .build();
+        row.add_suffix(&meter);
+    }
+
+    let mute = gtk::Button::builder()
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    let output = device.output();
+    device
+        .bind_property("muted", &mute, "icon-name")
+        .transform_to(move |_, muted: bool| {
+            Some(match (output, muted) {
+                (true, true) => "audio-volume-muted-symbolic",
+                (true, false) => "audio-volume-high-symbolic",
+                (false, true) => "microphone-sensitivity-muted-symbolic",
+                (false, false) => "microphone-sensitivity-high-symbolic",
+            })
+        })
+        .sync_create()
+        .build();
+    device
+        .bind_property("muted", &mute, "tooltip-text")
+        .transform_to(|_, muted: bool| Some(if muted { "Unmute" } else { "Mute" }))
+        .sync_create()
+        .build();
+    mute.connect_clicked(glib::clone!(
+        #[strong]
+        manager,
+        #[weak]
+        device,
+        move |_| manager.set_muted(&device, !device.muted())
+    ));
+    row.add_suffix(&mute);
+
+    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.01);
+    volume.set_width_request(160);
+    volume.set_valign(gtk::Align::Center);
+    volume.update_property(&[gtk::accessible::Property::Label("Volume")]);
+    device
+        .bind_property("volume", &volume.adjustment(), "value")
+        .sync_create()
+        .build();
+    // Only the user's moves reach the server; updates from it come back
+    // through the binding without echoing.
+    volume.connect_change_value(glib::clone!(
+        #[strong]
+        manager,
+        #[weak]
+        device,
+        #[upgrade_or]
+        glib::Propagation::Proceed,
+        move |_, _, value| {
+            manager.set_volume(&device, value);
+            glib::Propagation::Proceed
+        }
+    ));
+    row.add_suffix(&volume);
+    // A fixed slot keeps its space when the check mark is hidden, so rows
+    // don't shift as the default changes.
     let check = gtk::Image::from_icon_name("object-select-symbolic");
     check.set_tooltip_text(Some("Default"));
     check.update_property(&[gtk::accessible::Property::Label("Default")]);
@@ -181,6 +297,14 @@ fn row(device: &AudioDevice) -> adw::ActionRow {
         .bind_property("is-default", &check, "visible")
         .sync_create()
         .build();
-    row.add_suffix(&check);
+    let slot = gtk::Box::builder()
+        .width_request(24)
+        .halign(gtk::Align::End)
+        .build();
+    slot.append(&check);
+    row.add_suffix(&slot);
     row
 }
+
+/// The input level meter is short, as in GNOME Settings.
+const METER_WIDTH: i32 = 40;

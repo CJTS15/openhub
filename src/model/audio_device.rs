@@ -28,6 +28,23 @@ mod imp {
         /// "85 % battery" when UPower reports one; set by the page.
         #[property(get, set)]
         battery: RefCell<String>,
+        /// Output (sink) rather than input (source).
+        #[property(get, set)]
+        output: Cell<bool>,
+        /// Volume as a fraction of 100 %.
+        #[property(get, set)]
+        volume: Cell<f64>,
+        #[property(get, set)]
+        muted: Cell<bool>,
+        /// Channel count, needed to set the volume back.
+        #[property(get, set)]
+        channels: Cell<u32>,
+        /// Bluetooth codec such as "LDAC"; empty for other devices.
+        #[property(get, set)]
+        codec: RefCell<String>,
+        /// Input level, 0 to 1, while the Audio page is showing.
+        #[property(get, set)]
+        peak: Cell<f64>,
     }
 
     #[glib::object_subclass]

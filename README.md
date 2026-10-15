@@ -10,7 +10,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 - **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 - **Power** (new in v0.3.0): the laptop's battery and charging state, and every wireless device's battery UPower knows about, updated live; battery details with health and charge cycles; the "Preserve Battery Health" charge limit where supported; receiver batteries on the USB page.
 
-Next is v0.4, which adds Mouse, Keyboard and Audio pages ([PLAN_V4.md](PLAN_V4.md)). So far (M13) they list every mouse, touchpad and keyboard, and every audio output and input, with connection, battery and the default audio devices; settings come in later milestones.
+Next is v0.4, which adds Mouse, Keyboard and Audio pages ([PLAN_V4.md](PLAN_V4.md)). So far (M13, M14) they list every mouse, touchpad and keyboard, and every audio output and input with connection and battery; on the Audio page you can choose the default output and input, set volume, mute, see a Bluetooth output's codec, and watch each microphone's level.
 
 ## Plans
 

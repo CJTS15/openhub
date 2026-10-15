@@ -273,7 +273,11 @@ impl Editor {
             ));
             row.append(&column);
         }
-        let card = gtk::Box::builder().css_classes(["card"]).build();
+        // Spaced from the Preset row above, like separate groups.
+        let card = gtk::Box::builder()
+            .css_classes(["card"])
+            .margin_top(12)
+            .build();
         card.append(&row);
         row.set_hexpand(true);
         card.upcast()

@@ -6,7 +6,7 @@
   <name>Openhub</name>
   <summary>Manage your connected devices</summary>
   <description>
-    <p>Openhub lists and manages the devices connected to your computer: Bluetooth and USB.</p>
+    <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB and power.</p>
     <ul>
       <li>Turn Bluetooth on and off</li>
       <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
@@ -15,6 +15,9 @@
       <li>See your USB devices as they're plugged in, grouped under the hubs they're connected through</li>
       <li>Check a USB device's speed, version, power draw and driver</li>
       <li>Safely eject USB drives</li>
+      <li>See your laptop's battery and the battery of every wireless device in one place</li>
+      <li>Check battery health, charge cycles and energy</li>
+      <li>Preserve battery health by stopping charging at 80 %, on laptops that support it</li>
     </ul>
   </description>
   <developer id="io.github.cjts15">
@@ -33,6 +36,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.3.0" date="2026-10-15">
+      <description>
+        <p>Adds a Power page:</p>
+        <ul>
+          <li>The laptop's battery level and charging state, and the battery of every wireless mouse, keyboard or headset UPower knows about, updated live</li>
+          <li>Battery details: health, charge cycles, energy, charge rate, voltage and technology</li>
+          <li>A "Preserve Battery Health" setting that stops charging at the laptop's limit, shown only where it's supported</li>
+          <li>Low batteries shown in the warning colour</li>
+        </ul>
+        <p>On the USB page, a wireless receiver now shows the battery of the devices it serves.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-10-14">
       <description>
         <p>Adds a USB page:</p>

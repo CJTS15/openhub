@@ -1,29 +1,28 @@
 # Openhub
 
-A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth and USB.
+A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth, USB and power.
 
 ## Status
 
-[v0.2.0](https://github.com/CJTS15/openhub/releases/tag/v0.2.0) is the latest release.
+[v0.3.0](https://github.com/CJTS15/openhub/releases/tag/v0.3.0) is the latest release.
 
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
-- **USB** (new in v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
-
-Next is v0.3, which adds a Power page ([PLAN_V3.md](PLAN_V3.md)). So far (M9, M10) it shows the computer's battery status and every battery-powered device UPower knows about, updated live, with a details dialog for each battery and the "Preserve Battery Health" charge limit where the laptop supports it. A USB receiver whose devices report a battery shows the level on the USB page too (M11).
+- **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
+- **Power** (new in v0.3.0): the laptop's battery and charging state, and every wireless device's battery UPower knows about, updated live; battery details with health and charge cycles; the "Preserve Battery Health" charge limit where supported; receiver batteries on the USB page.
 
 ## Plans
 
 - [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
 - [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8, released)
-- [PLAN_V3.md](PLAN_V3.md): v0.3, Power (milestones M9 to M12)
+- [PLAN_V3.md](PLAN_V3.md): v0.3, Power (milestones M9 to M12, released)
 
 ## Installing
 
-Download `openhub-0.2.0-x86_64.flatpak` from the [v0.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.2.0). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-0.3.0-x86_64.flatpak` from the [v0.3.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.3.0). It needs the GNOME 50 runtime from Flathub:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-0.2.0-x86_64.flatpak
+flatpak install --user openhub-0.3.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 

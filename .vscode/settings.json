@@ -1,0 +1,23 @@
+{
+  "files.exclude": {
+    "**/_flatpak": true,
+    "**/.flatpak-builder": true,
+    "**/_build": true,
+    "**/target": true
+  },
+  "files.watcherExclude": {
+    "**/_flatpak/**": true,
+    "**/.flatpak-builder/**": true,
+    "**/_build/**": true,
+    "**/target/**": true
+  },
+  "search.followSymlinks": false,
+  "tailwindCSS.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/_flatpak/**",
+    "**/.flatpak-builder/**",
+    "**/_build/**",
+    "**/target/**"
+  ]
+}

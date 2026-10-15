@@ -2,7 +2,9 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
+use crate::ui::audio::AudioPage;
 use crate::ui::bluetooth::BluetoothPage;
+use crate::ui::input::InputPage;
 use crate::ui::power::PowerPage;
 use crate::ui::usb::UsbPage;
 
@@ -32,6 +34,8 @@ mod imp {
             BluetoothPage::ensure_type();
             UsbPage::ensure_type();
             PowerPage::ensure_type();
+            InputPage::ensure_type();
+            AudioPage::ensure_type();
             klass.bind_template();
             klass.bind_template_callbacks();
         }

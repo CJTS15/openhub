@@ -9,6 +9,7 @@
     "--share=ipc",
     "--socket=fallback-x11",
     "--socket=wayland",
+    "--socket=pulseaudio",
     "--device=dri",
     "--talk-name=org.blueman.Applet",
     "--system-talk-name=org.bluez",

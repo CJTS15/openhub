@@ -10,11 +10,14 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 - **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 - **Power** (new in v0.3.0): the laptop's battery and charging state, and every wireless device's battery UPower knows about, updated live; battery details with health and charge cycles; the "Preserve Battery Health" charge limit where supported; receiver batteries on the USB page.
 
+Next is v0.4, which adds Mouse, Keyboard and Audio pages ([PLAN_V4.md](PLAN_V4.md)). So far (M13) they list every mouse, touchpad and keyboard, and every audio output and input, with connection, battery and the default audio devices; settings come in later milestones.
+
 ## Plans
 
 - [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
 - [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8, released)
 - [PLAN_V3.md](PLAN_V3.md): v0.3, Power (milestones M9 to M12, released)
+- [PLAN_V4.md](PLAN_V4.md): v0.4, Mouse, Keyboard and Audio (milestones M13 to M18)
 
 ## Installing
 
@@ -69,6 +72,10 @@ For quick iteration, `cargo run` also works.
 - `src/upower/`: UPower proxies, plain conversion rules, and `PowerManager`, the only code that talks to UPower
 - `src/model/power_device.rs`: the `PowerDevice` GObject
 - `src/ui/power/` + `data/resources/ui/power_page.ui`: the Power page
+- `src/input/`: finds mice, touchpads and keyboards in `/sys/class/input`, one entry per physical device
+- `src/audio/`: `AudioManager`, which lists audio outputs and inputs through libpulse (PipeWire serves it as `pipewire-pulse`)
+- `src/ui/input/`, `src/ui/audio/`: the Mouse and Keyboard pages (one `InputPage` class) and the Audio page
+- `src/ui/mod.rs`: `rescan_while_mapped`, the 2-second rescan the USB, Mouse and Keyboard pages share
 - `src/watch.rs`: keeps a GObject in step with a cached D-Bus proxy's properties (shared by the BlueZ and UPower services)
 - `tests/fixtures/sysfs-usb/`: a fake sysfs tree the USB parser tests run against
 - `build-aux/test-upower.sh`: runs the UPower test against python-dbusmock (CI runs it too)

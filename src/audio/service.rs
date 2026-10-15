@@ -80,6 +80,15 @@ mod imp {
             self.parent_constructed();
             self.obj().connect();
         }
+
+        fn dispose(&self) {
+            // libpulse must free the context before the main loop it runs on;
+            // the other order aborts in glib_defer_free when the window closes.
+            if let Some(mut context) = self.context.borrow_mut().take() {
+                context.disconnect();
+            }
+            self.mainloop.take();
+        }
     }
 }
 

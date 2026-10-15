@@ -9,7 +9,10 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct OpenhubApplication;
+    pub struct OpenhubApplication {
+        /// Started at login with --background: no window until asked.
+        pub(super) background: std::cell::Cell<bool>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for OpenhubApplication {
@@ -18,11 +21,34 @@ mod imp {
         type ParentType = adw::Application;
     }
 
-    impl ObjectImpl for OpenhubApplication {}
+    impl ObjectImpl for OpenhubApplication {
+        fn constructed(&self) {
+            self.parent_constructed();
+            self.obj().add_main_option(
+                "background",
+                glib::Char::from(0),
+                glib::OptionFlags::NONE,
+                glib::OptionArg::None,
+                "Start without a window, to keep mouse settings",
+                None,
+            );
+        }
+    }
 
     impl ApplicationImpl for OpenhubApplication {
+        fn handle_local_options(
+            &self,
+            options: &glib::VariantDict,
+        ) -> std::ops::ControlFlow<glib::ExitCode> {
+            self.background.set(options.contains("background"));
+            self.parent_handle_local_options(options)
+        }
+
         fn activate(&self) {
             let app = self.obj();
+            if self.background.take() {
+                return;
+            }
             // Single-instance: reuse the existing window if there is one.
             let window = app
                 .active_window()
@@ -35,6 +61,9 @@ mod imp {
             let app = self.obj();
             app.setup_actions();
             app.setup_accels();
+            // Logitech mice forget their settings when switched off; this
+            // sends them again, and keeps Openhub running for it if needed.
+            crate::hidpp::Keeper::shared().start(&*app);
         }
     }
 

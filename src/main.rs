@@ -3,6 +3,7 @@ mod audio;
 mod bluez;
 mod config;
 mod eq;
+mod hidpp;
 mod input;
 mod model;
 mod ui;

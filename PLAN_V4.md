@@ -72,7 +72,7 @@ Decision (CJ, 2026-10-15): Openhub borrows OpenLogi's device side and speaks HID
 - **Logitech (HID++):** DPI with presets (feature 0x2201), SmartShift mode and sensitivity (0x2111), scroll direction (0x2121), battery. Openhub keeps its own HID++ code in `src/hidpp/`, using the 0BSD `hidpp` crate as reference or dependency, and Solaar's protocol notes.
 - **Other brands (ratbagd):** DPI steps and range, report rate (125 to 1000 Hz), button shortcuts (another button, a key combination, or a special action such as DPI cycle), onboard profiles. If ratbagd refuses a button write, buttons go read-only with a note.
 - **Apply:** changes are held until Apply, then sent in one write.
-- **Re-apply:** HID++ settings may reset when a Logitech mouse sleeps or reconnects (untested). If they do, Openhub re-applies saved settings when it sees the mouse return, but only while Openhub is running. M16 tests this on your 3S first.
+- **Re-apply:** tested on the MX Master 3S over Bluetooth (2026-10-15): DPI set to 2000 survived 5 minutes of sleep, but turning the mouse off and on reset it to the default 1000. So Openhub saves each mouse's settings and sends them again whenever the mouse reconnects. To do that with the window closed, Openhub keeps running in the background and can start at login through the Background portal (CJ's decision). It waits on the Bluetooth and USB events it already watches; nothing polls.
 - **One owner at a time:** only one app can talk HID++ to a receiver. When Options+, Solaar or OpenLogi is running, the dialog says so and stays read-only.
 - **Unsupported mice:** a plain row with "This mouse has no settings Openhub can change". When ratbagd is missing, non-Logitech mice get one banner saying to install `ratbagd`.
 
@@ -177,4 +177,5 @@ CJ answered the first round on 2026-10-15.
 | VIA over the dongle | No, cable only |
 | Logitech mice (after checking OpenLogi) | HID++ directly for Logitech (DPI, SmartShift, battery); ratbagd for other brands; Logitech button remap later |
 | EQ on first use | Yes: the EQ works at once, hosted by Openhub until the next login, then by PipeWire. Native builds restart PipeWire instead, so it is permanent at once. |
+| Logitech settings reset on power off (M16 test) | Openhub runs in the background and re-applies them on reconnect, starting at login through the Background portal (CJ, 2026-10-15) |
 | EQ design after the M15 test | A filter graph inside the output plus a WirePlumber rule: works at once, survives closing Openhub, no restart (CJ, 2026-10-15) |

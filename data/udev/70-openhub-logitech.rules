@@ -1,0 +1,15 @@
+# Lets the logged-in user talk HID++ to Logitech mice and receivers, so
+# Openhub can change DPI, SmartShift and scrolling. Same devices as Solaar's rule.
+ACTION!="add", GOTO="openhub_logitech_end"
+SUBSYSTEM!="hidraw", GOTO="openhub_logitech_end"
+
+# Receivers (Bolt, Unifying) and mice on a USB cable
+ATTRS{idVendor}=="046d", GOTO="openhub_logitech_apply"
+# Mice paired directly over Bluetooth
+KERNELS=="0005:046D:*", GOTO="openhub_logitech_apply"
+GOTO="openhub_logitech_end"
+
+LABEL="openhub_logitech_apply"
+TAG+="uaccess"
+
+LABEL="openhub_logitech_end"

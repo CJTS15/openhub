@@ -12,7 +12,8 @@
     "--device=dri",
     "--talk-name=org.blueman.Applet",
     "--system-talk-name=org.bluez",
-    "--system-talk-name=org.freedesktop.UDisks2"
+    "--system-talk-name=org.freedesktop.UDisks2",
+    "--system-talk-name=org.freedesktop.UPower"
   ],
   "build-options": {
     "append-path": "/usr/lib/sdk/rust-stable/bin",

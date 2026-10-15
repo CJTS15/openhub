@@ -4,6 +4,7 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/bluetooth_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/usb_page.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/power_page.ui</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>

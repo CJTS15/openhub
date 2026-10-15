@@ -3,7 +3,9 @@ mod bluez;
 mod config;
 mod model;
 mod ui;
+mod upower;
 mod usb;
+mod watch;
 mod window;
 
 use gtk::prelude::*;

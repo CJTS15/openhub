@@ -363,7 +363,7 @@ impl AudioManager {
     }
 
     /// One small peak-detect stream per input while metering, as pavucontrol
-    /// does: 25 single-float readings a second, without keeping the device awake.
+    /// does: 25 single-float readings a second.
     fn sync_meters(&self) {
         let imp = self.imp();
         let wanted: Vec<AudioDevice> = if imp.metering.get() {
@@ -436,10 +436,9 @@ fn peak_stream(context: &mut Context, device: &AudioDevice) -> Option<Rc<RefCell
         minreq: u32::MAX,
         fragsize: 4,
     };
-    let flags = StreamFlags::PEAK_DETECT
-        | StreamFlags::ADJUST_LATENCY
-        | StreamFlags::DONT_MOVE
-        | StreamFlags::DONT_INHIBIT_AUTO_SUSPEND;
+    // No DONT_INHIBIT_AUTO_SUSPEND: an idle microphone is suspended and
+    // would send nothing, so the meter keeps it awake while the page shows.
+    let flags = StreamFlags::PEAK_DETECT | StreamFlags::ADJUST_LATENCY | StreamFlags::DONT_MOVE;
     if let Err(err) = stream
         .borrow_mut()
         .connect_record(Some(&device.name()), Some(&attr), flags)

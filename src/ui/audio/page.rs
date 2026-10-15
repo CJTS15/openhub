@@ -155,14 +155,12 @@ fn group(
             .css_classes(["dim-label"])
             .build(),
     ));
-    // The rows' "default" radio buttons form one group per section.
-    let radios = gtk::CheckButton::new();
     list.bind_model(
         Some(devices),
         glib::clone!(
             #[strong]
             manager,
-            move |item| row(&manager, item.downcast_ref().unwrap(), &radios).upcast()
+            move |item| row(&manager, item.downcast_ref().unwrap()).upcast()
         ),
     );
     let group = adw::PreferencesGroup::builder().title(title).build();
@@ -170,7 +168,7 @@ fn group(
     group
 }
 
-fn row(manager: &AudioManager, device: &AudioDevice, radios: &gtk::CheckButton) -> adw::ActionRow {
+fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
     let row = adw::ActionRow::builder().use_markup(false).build();
     device
         .bind_property("title", &row, "title")
@@ -196,38 +194,25 @@ fn row(manager: &AudioManager, device: &AudioDevice, radios: &gtk::CheckButton) 
     )
     .bind(&row, "subtitle", Some(device));
 
-    // Default device: a radio per row; picking one makes it the default.
-    let radio = gtk::CheckButton::builder()
-        .group(radios)
-        .valign(gtk::Align::Center)
-        .tooltip_text("Set as default")
-        .build();
-    device
-        .bind_property("is-default", &radio, "active")
-        .sync_create()
-        .build();
-    radio.connect_toggled(glib::clone!(
-        #[strong]
-        manager,
-        #[weak]
-        device,
-        move |radio| {
-            // The binding above also toggles it; act only on a new choice.
-            if radio.is_active() && !device.is_default() {
-                manager.set_default(&device);
-            }
-        }
-    ));
-    // add_prefix puts each prefix before the last, so the radio, added
-    // second, comes first.
     let icon = gtk::Image::new();
     device
         .bind_property("icon-name", &icon, "icon-name")
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    row.add_prefix(&radio);
-    row.set_activatable_widget(Some(&radio));
+    // Clicking a row makes it the default; the default carries a check mark.
+    row.set_activatable(true);
+    row.connect_activated(glib::clone!(
+        #[strong]
+        manager,
+        #[weak]
+        device,
+        move |_| {
+            if !device.is_default() {
+                manager.set_default(&device);
+            }
+        }
+    ));
 
     if !device.output() {
         // The input's live level, from the page's peak meter.
@@ -300,5 +285,13 @@ fn row(manager: &AudioManager, device: &AudioDevice, radios: &gtk::CheckButton) 
         }
     ));
     row.add_suffix(&volume);
+    let check = gtk::Image::from_icon_name("object-select-symbolic");
+    check.set_tooltip_text(Some("Default"));
+    check.update_property(&[gtk::accessible::Property::Label("Default")]);
+    device
+        .bind_property("is-default", &check, "visible")
+        .sync_create()
+        .build();
+    row.add_suffix(&check);
     row
 }

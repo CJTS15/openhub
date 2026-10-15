@@ -11,9 +11,6 @@ use crate::model::{PowerDevice, UsbDevice};
 use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
 
-/// How often the page rescans sysfs while it's on screen.
-const RESCAN_SECONDS: u32 = 2;
-
 mod imp {
     use super::*;
 
@@ -27,7 +24,6 @@ mod imp {
         #[template_child]
         pub device_list: TemplateChild<gtk::ListBox>,
         pub manager: UsbManager,
-        pub rescan: RefCell<Option<glib::SourceId>>,
     }
 
     #[glib::object_subclass]
@@ -82,28 +78,14 @@ mod imp {
                     move |_, _, _, _| obj.update_batteries()
                 ));
 
-            obj.connect_map(|page| {
-                page.rescan();
-                let rescan = glib::timeout_add_seconds_local(
-                    RESCAN_SECONDS,
-                    glib::clone!(
-                        #[weak]
-                        page,
-                        #[upgrade_or]
-                        glib::ControlFlow::Break,
-                        move || {
-                            page.rescan();
-                            glib::ControlFlow::Continue
-                        }
-                    ),
-                );
-                page.imp().rescan.replace(Some(rescan));
-            });
-            obj.connect_unmap(|page| {
-                if let Some(rescan) = page.imp().rescan.take() {
-                    rescan.remove();
-                }
-            });
+            crate::ui::rescan_while_mapped(
+                &*obj,
+                glib::clone!(
+                    #[weak]
+                    obj,
+                    move || obj.rescan()
+                ),
+            );
         }
     }
 

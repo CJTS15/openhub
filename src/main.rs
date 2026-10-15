@@ -1,6 +1,8 @@
 mod application;
+mod audio;
 mod bluez;
 mod config;
+mod input;
 mod model;
 mod ui;
 mod upower;

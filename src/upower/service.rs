@@ -1,7 +1,7 @@
 //! Mirrors UPower's batteries into GObjects the UI binds to. This is the only
 //! code that talks to UPower; everything runs on the GTK main loop.
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -16,6 +16,14 @@ use super::convert::{self, kind};
 use super::proxies::{DeviceProxy, UPowerProxy};
 use crate::model::PowerDevice;
 use crate::watch::{ticks, watch};
+
+/// A cached property, or its default when UPower doesn't report it (as
+/// python-dbusmock and older UPower versions don't for many).
+macro_rules! cached {
+    ($proxy:ident . $method:ident) => {
+        $proxy.$method().ok().flatten().unwrap_or_default()
+    };
+}
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
 #[enum_type(name = "OpenhubPowerState")]
@@ -44,6 +52,9 @@ mod imp {
         /// False on a desktop with no battery; the status line is hidden then.
         #[property(get)]
         pub(super) has_battery: Cell<bool>,
+        /// The laptop's main battery: its details and charge limit.
+        #[property(get, nullable)]
+        pub(super) battery: RefCell<Option<PowerDevice>>,
         /// Batteries, chargers and UPS units powering this computer.
         pub(super) computer: gio::ListStore,
         /// Battery-powered peripherals, duplicates merged.
@@ -52,6 +63,7 @@ mod imp {
         pub(super) devices: RefCell<HashMap<String, (PowerDevice, glib::JoinHandle<()>)>>,
         /// The task keeping the status line current.
         pub(super) status_watcher: RefCell<Option<glib::JoinHandle<()>>>,
+        pub(super) conn: OnceCell<zbus::Connection>,
     }
 
     impl Default for PowerManager {
@@ -65,6 +77,8 @@ mod imp {
                 peripherals: gio::ListStore::new::<PowerDevice>(),
                 devices: RefCell::default(),
                 status_watcher: RefCell::default(),
+                battery: RefCell::default(),
+                conn: OnceCell::new(),
             }
         }
     }
@@ -103,6 +117,22 @@ impl PowerManager {
         self.imp().computer.clone()
     }
 
+    /// Turns the charge limit ("Preserve battery health") on or off. UPower's
+    /// polkit policy lets the active local user do this without a password.
+    pub async fn set_charge_limit(&self, device: &PowerDevice, enabled: bool) -> zbus::Result<()> {
+        let conn = self
+            .imp()
+            .conn
+            .get()
+            .ok_or_else(|| zbus::Error::Failure("Not connected to the system bus".into()))?;
+        let proxy = DeviceProxy::builder(conn)
+            .path(device.path())?
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await?;
+        proxy.enable_charge_threshold(enabled).await
+    }
+
     pub fn peripherals(&self) -> gio::ListStore {
         self.imp().peripherals.clone()
     }
@@ -124,6 +154,8 @@ impl PowerManager {
     /// Tracks UPower, starting over each time its name changes owner.
     async fn watch_upower(&self) -> zbus::Result<()> {
         let conn = zbus::Connection::system().await?;
+        // `run` is called once per manager, so the cell is always empty here.
+        let _ = self.imp().conn.set(conn.clone());
         let upower = UPowerProxy::builder(&conn)
             .cache_properties(CacheProperties::No)
             .build()
@@ -161,8 +193,8 @@ impl PowerManager {
         if let Some(watcher) = self.imp().status_watcher.take() {
             watcher.abort();
         }
-        self.imp().computer.remove_all();
-        self.imp().peripherals.remove_all();
+        // With nothing tracked, this empties both lists and clears `battery`.
+        self.relist();
     }
 
     async fn session(&self, conn: &zbus::Connection) -> zbus::Result<()> {
@@ -307,6 +339,17 @@ impl PowerManager {
             ticks(proxy.receive_is_present_changed().await),
             ticks(proxy.receive_state_changed().await),
             ticks(proxy.receive_percentage_changed().await),
+            ticks(proxy.receive_battery_level_changed().await),
+            ticks(proxy.receive_warning_level_changed().await),
+            ticks(proxy.receive_capacity_changed().await),
+            ticks(proxy.receive_energy_changed().await),
+            ticks(proxy.receive_energy_full_changed().await),
+            ticks(proxy.receive_energy_rate_changed().await),
+            ticks(proxy.receive_voltage_changed().await),
+            ticks(proxy.receive_charge_cycles_changed().await),
+            ticks(proxy.receive_charge_threshold_supported_changed().await),
+            ticks(proxy.receive_charge_threshold_enabled_changed().await),
+            ticks(proxy.receive_charge_end_threshold_changed().await),
         ];
         let native_path = proxy
             .cached_native_path()
@@ -336,6 +379,7 @@ impl PowerManager {
             )
             .property("bluez", native_path.starts_with("/org/bluez/"))
             .property("icon-name", convert::kind_icon(kind))
+            .property("connection", connection)
             .build();
         let manager = self.downgrade();
         let watcher = watch(
@@ -352,7 +396,29 @@ impl PowerManager {
                     } else {
                         model
                     };
-                    let percentage = proxy.cached_percentage().ok().flatten().unwrap_or_default();
+                    let percentage = cached!(proxy.cached_percentage);
+                    let battery_level = cached!(proxy.cached_battery_level);
+                    device.set_level_text(convert::level_text(percentage, battery_level));
+                    device.set_fraction(convert::level_fraction(percentage, battery_level));
+                    device.set_warning_level(cached!(proxy.cached_warning_level));
+                    device.set_model(cached!(proxy.cached_model));
+                    device.set_vendor(cached!(proxy.cached_vendor));
+                    device
+                        .set_technology(convert::technology_name(cached!(proxy.cached_technology)));
+                    device.set_capacity(cached!(proxy.cached_capacity));
+                    device.set_energy(cached!(proxy.cached_energy));
+                    device.set_energy_full(cached!(proxy.cached_energy_full));
+                    device.set_energy_full_design(cached!(proxy.cached_energy_full_design));
+                    device.set_energy_rate(cached!(proxy.cached_energy_rate));
+                    device.set_voltage(cached!(proxy.cached_voltage));
+                    device.set_charge_cycles(
+                        proxy.cached_charge_cycles().ok().flatten().unwrap_or(-1),
+                    );
+                    device.set_charge_limit_supported(cached!(
+                        proxy.cached_charge_threshold_supported
+                    ));
+                    device.set_charge_limit_enabled(cached!(proxy.cached_charge_threshold_enabled));
+                    device.set_charge_end_threshold(cached!(proxy.cached_charge_end_threshold));
                     let level = format!("{percentage:.0}%");
                     let state = convert::state_label(
                         proxy.cached_state().ok().flatten().unwrap_or_default(),
@@ -425,6 +491,11 @@ impl PowerManager {
         peripherals.sort_by_key(|d| (d.title().to_lowercase(), d.path()));
         replace_if_changed(&self.imp().computer, &computer);
         replace_if_changed(&self.imp().peripherals, &peripherals);
+        let battery = computer.iter().find(|d| d.kind() == kind::BATTERY).cloned();
+        if *self.imp().battery.borrow() != battery {
+            self.imp().battery.replace(battery);
+            self.notify_battery();
+        }
     }
 }
 
@@ -454,6 +525,15 @@ mod tests {
 
     const MOCK: &str = "org.freedesktop.DBus.Mock";
     const MAIN: &str = "/org/freedesktop/UPower";
+
+    /// Runs a test on its own main context. Tests run on separate threads,
+    /// and tasks left on a shared context would run on the wrong one.
+    fn run_isolated(test: impl std::future::Future<Output = ()>) {
+        let context = glib::MainContext::new();
+        context
+            .with_thread_default(|| context.block_on(test))
+            .expect("no other context owns this thread");
+    }
 
     async fn wait_until(what: &str, check: impl Fn() -> bool) {
         for _ in 0..100 {
@@ -528,7 +608,7 @@ mod tests {
     #[test]
     #[ignore = "needs python-dbusmock; run build-aux/test-upower.sh"]
     fn upower_mock() {
-        glib::MainContext::default().block_on(async {
+        run_isolated(async {
             let conn = zbus::Connection::system().await.unwrap();
             let manager: PowerManager = glib::Object::new();
             wait_until("ready", || manager.state() == State::Ready).await;
@@ -577,6 +657,75 @@ mod tests {
 
             mock_call(&conn, MAIN, "RemoveDevice", &(battery.as_str(),)).await;
             wait_until("battery gone", || manager.computer().n_items() == 0).await;
+        });
+    }
+
+    /// The charge limit: hidden when unsupported, and set through
+    /// `EnableChargeThreshold` when supported.
+    #[test]
+    #[ignore = "needs python-dbusmock; run build-aux/test-upower.sh"]
+    fn upower_mock_charge_limit() {
+        run_isolated(async {
+            let conn = zbus::Connection::system().await.unwrap();
+            let manager: PowerManager = glib::Object::new();
+            wait_until("ready", || manager.state() == State::Ready).await;
+            let path: String = mock_call(
+                &conn,
+                MAIN,
+                "AddDischargingBattery",
+                &("mock_LIMIT", "Mock Battery", 70.0f64, 0i64),
+            )
+            .await
+            .body()
+            .deserialize()
+            .unwrap();
+            wait_until("battery", || manager.battery().is_some()).await;
+            let battery = manager.battery().unwrap();
+            assert!(
+                !battery.charge_limit_supported(),
+                "no limit unless UPower says so"
+            );
+
+            // The mock battery has no charge-limit properties: add them as an
+            // unsupported laptop would report them, then turn support on.
+            const DEVICE: &str = "org.freedesktop.UPower.Device";
+            let props = HashMap::from([
+                ("ChargeThresholdSupported", Value::from(false)),
+                ("ChargeThresholdEnabled", Value::from(false)),
+                ("ChargeEndThreshold", Value::from(80u32)),
+            ]);
+            mock_call(&conn, &path, "AddProperties", &(DEVICE, props)).await;
+            // Only UpdateProperties emits PropertiesChanged, which the cache needs.
+            let supported = HashMap::from([
+                ("ChargeThresholdSupported", Value::from(true)),
+                ("ChargeEndThreshold", Value::from(80u32)),
+            ]);
+            mock_call(&conn, &path, "UpdateProperties", &(DEVICE, supported)).await;
+            wait_until("supported", || battery.charge_limit_supported()).await;
+            assert_eq!(battery.charge_end_threshold(), 80);
+
+            // UPower's method flips ChargeThresholdEnabled; the mock does the same.
+            let code = "self.UpdateProperties('org.freedesktop.UPower.Device', {'ChargeThresholdEnabled': args[0]})";
+            mock_call(
+                &conn,
+                &path,
+                "AddMethod",
+                &(
+                    "org.freedesktop.UPower.Device",
+                    "EnableChargeThreshold",
+                    "b",
+                    "",
+                    code,
+                ),
+            )
+            .await;
+            manager.set_charge_limit(&battery, true).await.unwrap();
+            wait_until("limit on", || battery.charge_limit_enabled()).await;
+            manager.set_charge_limit(&battery, false).await.unwrap();
+            wait_until("limit off", || !battery.charge_limit_enabled()).await;
+
+            mock_call(&conn, MAIN, "RemoveDevice", &(path.as_str(),)).await;
+            wait_until("battery gone", || manager.battery().is_none()).await;
         });
     }
 }

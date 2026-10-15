@@ -67,4 +67,51 @@ pub trait Device {
 
     #[zbus(property)]
     fn time_to_full(&self) -> zbus::Result<i64>;
+
+    /// A coarse level (`convert::coarse_level`) for devices without a percentage.
+    #[zbus(property)]
+    fn battery_level(&self) -> zbus::Result<u32>;
+
+    #[zbus(property)]
+    fn warning_level(&self) -> zbus::Result<u32>;
+
+    #[zbus(property)]
+    fn vendor(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn technology(&self) -> zbus::Result<u32>;
+
+    #[zbus(property)]
+    fn capacity(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn energy(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn energy_full(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn energy_full_design(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn energy_rate(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn voltage(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn charge_cycles(&self) -> zbus::Result<i32>;
+
+    /// The laptop exposes a charge limit (UPower 1.90 or newer).
+    #[zbus(property)]
+    fn charge_threshold_supported(&self) -> zbus::Result<bool>;
+
+    #[zbus(property)]
+    fn charge_threshold_enabled(&self) -> zbus::Result<bool>;
+
+    #[zbus(property)]
+    fn charge_end_threshold(&self) -> zbus::Result<u32>;
+
+    /// Turns the charge limit on or off ("Preserve battery health").
+    fn enable_charge_threshold(&self, enabled: bool) -> zbus::Result<()>;
 }

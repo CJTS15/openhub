@@ -155,6 +155,9 @@ impl AudioManager {
         let mainloop = pulse_glib::Mainloop::new(None).expect("libpulse GLib main loop");
         let mut proplist = Proplist::new().expect("proplist");
         let _ = proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Openhub");
+        // From Flatpak, WirePlumber refuses to change the default device
+        // ("Access denied") unless the client says it manages audio.
+        let _ = proplist.set_str("media.category", "Manager");
         let Some(mut context) = Context::new_with_proplist(&mainloop, "Openhub", &proplist) else {
             self.set_state(State::Unavailable);
             return;

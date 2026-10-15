@@ -2,6 +2,7 @@ mod application;
 mod audio;
 mod bluez;
 mod config;
+mod eq;
 mod input;
 mod model;
 mod ui;

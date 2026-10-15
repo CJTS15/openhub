@@ -6,7 +6,7 @@ use gtk::glib;
 
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
-use crate::upower::{PowerManager, convert};
+use crate::upower::PowerManager;
 
 mod imp {
     use super::*;
@@ -108,7 +108,7 @@ impl InputPage {
             .flatten()
             .collect();
         for device in manager.devices().iter::<InputDevice>().flatten() {
-            let mine: Vec<(String, String, f64)> = batteries
+            let mine: Vec<(String, f64)> = batteries
                 .iter()
                 .filter(|b| {
                     let by_address = !device.uniq().is_empty()
@@ -117,9 +117,9 @@ impl InputPage {
                         !device.usb_device().is_empty() && b.usb_device() == device.usb_device();
                     by_address || by_receiver
                 })
-                .map(|b| (b.title(), b.level_text(), b.fraction()))
+                .map(|b| (b.level_text(), b.fraction()))
                 .collect();
-            let (text, _) = convert::usb_battery_summary(&mine);
+            let text = battery_text(&mine);
             if device.battery() != text {
                 device.set_battery(text);
             }
@@ -141,11 +141,7 @@ fn row(device: &InputDevice) -> adw::ActionRow {
         |values| {
             let connection: String = values[1].get().unwrap_or_default();
             let battery: String = values[2].get().unwrap_or_default();
-            [connection, battery]
-                .into_iter()
-                .filter(|part| !part.is_empty())
-                .collect::<Vec<_>>()
-                .join(" · ")
+            subtitle(&connection, &battery)
         },
     )
     .bind(&row, "subtitle", Some(device));
@@ -156,4 +152,50 @@ fn row(device: &InputDevice) -> adw::ActionRow {
         .build();
     row.add_prefix(&icon);
     row
+}
+
+/// "85% Battery" for the lowest of a device's batteries (a receiver can
+/// report more than one), or nothing. Each entry is (level text, fraction).
+fn battery_text(batteries: &[(String, f64)]) -> String {
+    batteries
+        .iter()
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map_or_else(String::new, |(level, _)| {
+            format!("{} Battery", level.replace(" %", "%"))
+        })
+}
+
+/// "Connected · Bluetooth · 85% Battery"; a built-in device is just "Built-in".
+fn subtitle(connection: &str, battery: &str) -> String {
+    let connected = if connection == "Built-in" {
+        ""
+    } else {
+        "Connected"
+    };
+    [connected, connection, battery]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn subtitles() {
+        let battery = battery_text(&[("85 %".into(), 0.85)]);
+        assert_eq!(
+            subtitle("Bluetooth", &battery),
+            "Connected · Bluetooth · 85% Battery"
+        );
+        assert_eq!(subtitle("USB", ""), "Connected · USB");
+        assert_eq!(subtitle("Built-in", ""), "Built-in");
+        assert_eq!(
+            battery_text(&[("64 %".into(), 0.64), ("High".into(), 0.75)]),
+            "64% Battery"
+        );
+        assert_eq!(battery_text(&[]), "");
+    }
 }

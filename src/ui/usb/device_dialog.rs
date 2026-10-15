@@ -9,7 +9,7 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder()
         .title(device.title())
         .build();
-    let groups = [
+    let mut groups = vec![
         (
             None,
             vec![
@@ -35,6 +35,13 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
             ],
         ),
     ];
+    // A receiver's devices' batteries, from UPower, right after the identity.
+    let batteries = device
+        .batteries()
+        .into_iter()
+        .map(|line| ("Battery", line, false))
+        .collect();
+    groups.insert(1, (Some("Battery"), batteries));
     let page = adw::PreferencesPage::new();
     for (title, rows) in groups {
         let group = adw::PreferencesGroup::new();

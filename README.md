@@ -9,7 +9,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
 - **USB** (new in v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 
-Next is v0.3, which adds a Power page ([PLAN_V3.md](PLAN_V3.md)). So far (M9, M10) it shows the computer's battery status and every battery-powered device UPower knows about, updated live, with a details dialog for each battery and the "Preserve Battery Health" charge limit where the laptop supports it.
+Next is v0.3, which adds a Power page ([PLAN_V3.md](PLAN_V3.md)). So far (M9, M10) it shows the computer's battery status and every battery-powered device UPower knows about, updated live, with a details dialog for each battery and the "Preserve Battery Health" charge limit where the laptop supports it. A USB receiver whose devices report a battery shows the level on the USB page too (M11).
 
 ## Plans
 

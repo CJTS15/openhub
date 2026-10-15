@@ -49,6 +49,10 @@ mod imp {
         /// "Bluetooth", "USB" or "Other", for peripherals.
         #[property(get, set)]
         connection: RefCell<String>,
+        /// The USB device (sysfs name such as `3-2`) whose receiver reports
+        /// this battery; empty when it isn't behind one.
+        #[property(get, set)]
+        usb_device: RefCell<String>,
 
         // Details, as UPower reports them; 0 or empty when unknown.
         #[property(get, set)]
@@ -104,6 +108,7 @@ mod imp {
                 bluez: Cell::default(),
                 present: Cell::new(true),
                 connection: RefCell::default(),
+                usb_device: RefCell::default(),
                 vendor: RefCell::default(),
                 model: RefCell::default(),
                 technology: RefCell::default(),

@@ -189,6 +189,46 @@ pub fn connection(native_path: &str, device_path: Option<&Path>) -> &'static str
     }
 }
 
+/// The USB device (sysfs name such as `3-2`) that owns a kernel battery,
+/// from the battery's resolved sysfs `device` path. That path runs through
+/// one of the USB device's interface folders (`3-2:1.2`); the last such
+/// segment names the device itself, never a hub above it, since devices
+/// behind a hub sit under the hub's device folder, not its interfaces.
+pub fn usb_owner(device_path: &Path) -> Option<String> {
+    device_path.iter().rev().find_map(|segment| {
+        let (name, interface) = segment.to_str()?.split_once(':')?;
+        let usb_name = name.split_once('-').is_some_and(|(bus, ports)| {
+            !bus.is_empty()
+                && bus.chars().all(|c| c.is_ascii_digit())
+                && !ports.is_empty()
+                && ports.chars().all(|c| c.is_ascii_digit() || c == '.')
+        });
+        let interface_id = interface.split_once('.').is_some_and(|(config, number)| {
+            !config.is_empty()
+                && config.chars().all(|c| c.is_ascii_digit())
+                && !number.is_empty()
+                && number.chars().all(|c| c.is_ascii_digit())
+        });
+        (usb_name && interface_id).then(|| name.to_owned())
+    })
+}
+
+/// What a USB row says about the batteries behind it: the lowest level
+/// (a receiver can serve a mouse and a keyboard), and one line per battery
+/// for the details dialog. Each entry is (name, level text, bar fraction),
+/// as `PowerDevice` holds them.
+pub fn usb_battery_summary(batteries: &[(String, String, f64)]) -> (String, Vec<String>) {
+    let row = batteries
+        .iter()
+        .min_by(|a, b| a.2.total_cmp(&b.2))
+        .map_or_else(String::new, |(_, text, _)| format!("{text} battery"));
+    let details = batteries
+        .iter()
+        .map(|(name, text, _)| format!("{name} · {text}"))
+        .collect();
+    (row, details)
+}
+
 /// One peripheral, as far as merging duplicates needs to know.
 pub struct Entry<'a> {
     pub path: &'a str,
@@ -261,6 +301,37 @@ mod tests {
         assert_eq!(level_fraction(0.0, 3), 0.1);
         assert_eq!(technology_name(2), "Lithium polymer");
         assert_eq!(technology_name(0), "");
+    }
+
+    #[test]
+    fn usb_owners() {
+        let receiver = Path::new(
+            "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-2/3-2:1.2/0003:046D:C52B.0003/0003:046D:4082.0004",
+        );
+        assert_eq!(usb_owner(receiver).as_deref(), Some("3-2"));
+        let behind_hub = Path::new(
+            "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-1/3-1.4/3-1.4:1.0/0003:3434:0D60.0009",
+        );
+        assert_eq!(usb_owner(behind_hub).as_deref(), Some("3-1.4"));
+        let bluetooth = Path::new("/sys/devices/virtual/misc/uhid/0005:046D:B034.000B");
+        assert_eq!(usb_owner(bluetooth), None);
+        // HID ids look a bit like interfaces ("0003:046D…") but aren't.
+        let hid_only = Path::new("/sys/devices/platform/0003:046D:C52B.0003");
+        assert_eq!(usb_owner(hid_only), None);
+    }
+
+    #[test]
+    fn usb_battery_summaries() {
+        let batteries = [
+            ("MX Keys".to_owned(), "64 %".to_owned(), 0.64),
+            ("MX Master 3S".to_owned(), "30 %".to_owned(), 0.30),
+        ];
+        let (row, details) = usb_battery_summary(&batteries);
+        assert_eq!(row, "30 % battery");
+        assert_eq!(details, ["MX Keys · 64 %", "MX Master 3S · 30 %"]);
+        let coarse = [("Pad".to_owned(), level_text(0.0, 4), level_fraction(0.0, 4))];
+        assert_eq!(usb_battery_summary(&coarse).0, "Critical battery");
+        assert_eq!(usb_battery_summary(&[]), (String::new(), vec![]));
     }
 
     #[test]

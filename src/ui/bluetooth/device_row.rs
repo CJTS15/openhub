@@ -31,7 +31,7 @@ fn status(device: &Device) -> String {
     match (device.connected(), device.battery()) {
         (false, _) => "Not connected".into(),
         (true, -1) => "Connected".into(),
-        (true, battery) => format!("Connected · {battery}% battery"),
+        (true, battery) => format!("Connected · {battery}% Battery"),
     }
 }
 

@@ -29,7 +29,7 @@ Each feature you asked for, the route Linux offers, and whether it survives the 
 | Key remap | VIA dynamic keymap, stored on the keyboard | VIA/QMK boards | Same as VIA lighting | Yes |
 | Keyboard shortcuts | Open GNOME Settings > Keyboard > Keyboard Shortcuts | GNOME | Needs a check (see Keyboard page) | Yes |
 | Key remap, any keyboard | hwdb, keyd or input-remapper | All keyboards | Needs root or a host daemon; not from the sandbox | No, later |
-| Built-in equalizer | PipeWire filter-chain, saved as a config drop-in | PipeWire 0.3.x and later | Needs `xdg-config/pipewire` access and a PipeWire restart | Yes |
+| Built-in equalizer | A filter graph inside the output itself, restored by a WirePlumber rule | PipeWire 1.4 and later | Needs `xdg-run/pipewire-0` and `xdg-config/wireplumber` access; no restart | Yes |
 | Open an EQ app | Hand off to [EasyEffects](https://github.com/wwmm/easyeffects) | Any PipeWire system | Launching another app is limited | No, v0.5 |
 
 CJ confirmed that VIA on the AL68 works only over the USB cable, not through the 2.4 GHz dongle.
@@ -112,9 +112,11 @@ Each output gets its own EQ, saved per device, so your IEMs and speakers keep di
 - **Parametric import:** load an [AutoEQ](https://github.com/jaakkopasanen/AutoEq) `ParametricEQ.txt` for your headphone or IEM model. That file is a short list of peak and shelf filters, which map one to one onto PipeWire's filters.
 - **On and off:** one switch per device; off sends audio straight to the device again.
 
-How it works: the EQ is a PipeWire filter-chain of biquad filters (`bq_peaking`, `bq_lowshelf`, `bq_highshelf`). It appears as a virtual output, "Openhub EQ: \<device>", that plays into the real device, and Openhub makes it the default while the EQ is on.
+How it works (changed in M15, after testing): PipeWire 1.4 and later can run a filter graph inside any output's own audio converter. Openhub sets the output's `audioconvert.filter-graph.0` property to one `param_eq` node: a preamp (a high shelf at 0 Hz) and the bands as `bq_peaking`, `bq_lowshelf` and `bq_highshelf` filters. It applies live, to every channel, with no extra virtual output and no change of default device. Replacing the graph 40 times during playback caused no dropouts.
 
-To keep working when Openhub is closed, Openhub saves the chain as a config file in `~/.config/pipewire/pipewire.conf.d/`, which PipeWire loads at login. Slider changes apply live through the filter's controls and are written back to that file. The catch is the first time an EQ is turned on: PipeWire only reads new config files at start, and Openhub cannot restart PipeWire from the sandbox. So on first use Openhub also runs the chain itself until the next login, when PipeWire takes over. I have not built this hand-over before; M15 starts by proving it.
+To keep the EQ after the device reconnects or the next login, Openhub writes a WirePlumber rule to `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which sets the same property when the output is created. The EQ keeps working after Openhub is closed, so there is no hand-over and no PipeWire restart. Both steps were tested on 2026-10-15 with PipeWire 1.6.9 and WirePlumber 0.5.18.
+
+From Flatpak, WirePlumber gives other nodes read-only access unless the app connects as `media.category = Manager`; Openhub does that. With PipeWire older than 1.4 (such as Ubuntu 24.04) the Equalizer button is hidden.
 
 Opening EasyEffects or another EQ app moves to v0.5.
 
@@ -129,7 +131,7 @@ Each page gets its own service module beside `src/bluez/`, `src/usb/` and `src/u
 | `src/ratbag/` | ratbagd over the system bus with zbus, for non-Logitech mice | None |
 | `src/via/` | `/dev/hidraw*` with plain reads and writes; device found through sysfs | None (no hidapi) |
 | `src/audio/` | pipewire-pulse through libpulse, for outputs, inputs, volume and the level meter | `libpulse-binding` and `libpulse-glib-binding`; libpulse is in the GNOME runtime |
-| `src/eq/` | PipeWire directly, for the filter-chain and its live controls; writes the config drop-in | `pipewire` crate; needs libclang at build time (the Flatpak SDK's LLVM extension) |
+| `src/eq/` | PipeWire directly, to set the filter graph on an output; writes the WirePlumber rule | `pipewire` crate; needs libclang at build time (the Flatpak SDK's LLVM extension) |
 
 Manifest additions, six in total:
 
@@ -138,7 +140,7 @@ Manifest additions, six in total:
 | `--system-talk-name=org.freedesktop.ratbag1` | Mouse settings | Low; Piper's Flatpak uses the same |
 | `--socket=pulseaudio` | Audio lists, volume, meter | Low; standard for audio apps |
 | `--filesystem=xdg-run/pipewire-0` | EQ talks to PipeWire | Low; EasyEffects' Flatpak uses the same |
-| `--filesystem=xdg-config/pipewire:create` | EQ config drop-in | Medium; write access to one config folder |
+| `--filesystem=xdg-config/wireplumber:create` | EQ rule that restores it at login | Medium; write access to one config folder |
 | `--talk-name=org.gnome.Settings` | Keyboard Shortcuts button | Low |
 | `--device=all` | VIA and Logitech HID++ through `/dev/hidraw*` | High; Flatpak has no narrower permission for hidraw, and Flathub will ask why. Accepted for now (CJ) |
 
@@ -150,7 +152,7 @@ v0.4 starts after v0.3.0 is tagged (M12) and runs in order of risk, lowest first
 
 1. **M13 Three pages, read-only.** Mouse, Keyboard and Audio entries in the sidebar; device lists from `/sys/class/input` and pipewire-pulse, merged with Bluetooth, USB and UPower data. No settings yet.
 2. **M14 Audio Output and Input.** Default device, volume, mute, Bluetooth codec, input level meter.
-3. **M15 Built-in equalizer.** Starts by proving the hand-over from Openhub's own chain to PipeWire's config file. Then 10-band EQ, preamp, presets, AutoEQ import, per-device storage.
+3. **M15 Built-in equalizer.** A filter graph inside each output, restored by a WirePlumber rule (proven first; no hand-over needed). Then 10-band EQ, preamp, presets, AutoEQ import, per-device storage.
 4. **M16 Mouse.** Starts by testing on your MX Master 3S whether HID++ settings survive sleep and reconnect. Then HID++ for Logitech (DPI, SmartShift, scroll, battery), ratbagd for other brands (DPI, report rate, buttons, profiles), Apply, and the one-owner check.
 5. **M17 Keyboard.** VIA lighting and layer-0 remap over cable, restore defaults, udev rule hint, and the Keyboard Shortcuts button for every keyboard.
 6. **M18 Packaging and v0.4.0.** Manifest additions, udev rules documented for hidraw, metainfo release notes, screenshots, tag.
@@ -175,3 +177,4 @@ CJ answered the first round on 2026-10-15.
 | VIA over the dongle | No, cable only |
 | Logitech mice (after checking OpenLogi) | HID++ directly for Logitech (DPI, SmartShift, battery); ratbagd for other brands; Logitech button remap later |
 | EQ on first use | Yes: the EQ works at once, hosted by Openhub until the next login, then by PipeWire. Native builds restart PipeWire instead, so it is permanent at once. |
+| EQ design after the M15 test | A filter graph inside the output plus a WirePlumber rule: works at once, survives closing Openhub, no restart (CJ, 2026-10-15) |

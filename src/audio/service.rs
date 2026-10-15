@@ -20,6 +20,7 @@ use pulse::sample::{Format, Spec};
 use pulse::stream::{FlagSet as StreamFlags, PeekResult, Stream};
 use pulse::volume::{ChannelVolumes, Volume};
 
+use crate::eq;
 use crate::model::AudioDevice;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
@@ -64,6 +65,13 @@ mod imp {
         /// Input level meters, by input name, while the page is showing.
         pub(super) meters: RefCell<HashMap<String, Rc<RefCell<Stream>>>>,
         pub(super) metering: Cell<bool>,
+        /// The server is PipeWire 1.4 or later, which runs filter graphs
+        /// inside outputs.
+        #[property(get)]
+        pub(super) equalizer: Cell<bool>,
+        /// Every output's saved EQ, by name, including outputs not plugged in.
+        pub(super) eq: RefCell<Vec<(String, eq::Settings)>>,
+        pub(super) live: RefCell<Option<eq::Live>>,
     }
 
     impl Default for AudioManager {
@@ -78,6 +86,9 @@ mod imp {
                 known: RefCell::default(),
                 meters: RefCell::default(),
                 metering: Cell::default(),
+                equalizer: Cell::default(),
+                eq: RefCell::new(eq::load()),
+                live: RefCell::default(),
             }
         }
     }
@@ -106,6 +117,7 @@ mod imp {
                 context.disconnect();
             }
             self.mainloop.take();
+            self.live.take();
         }
     }
 }
@@ -143,6 +155,9 @@ impl AudioManager {
         let mainloop = pulse_glib::Mainloop::new(None).expect("libpulse GLib main loop");
         let mut proplist = Proplist::new().expect("proplist");
         let _ = proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Openhub");
+        // From Flatpak, WirePlumber refuses to change the default device
+        // ("Access denied") unless the client says it manages audio.
+        let _ = proplist.set_str("media.category", "Manager");
         let Some(mut context) = Context::new_with_proplist(&mainloop, "Openhub", &proplist) else {
             self.set_state(State::Unavailable);
             return;
@@ -183,6 +198,8 @@ impl AudioManager {
     }
 
     fn on_ready(&self) {
+        // A new server (PipeWire restarted) needs a new EQ connection.
+        self.imp().live.take();
         let manager = self.downgrade();
         let mut context = self.imp().context.borrow_mut();
         let Some(context) = context.as_mut() else {
@@ -222,6 +239,11 @@ impl AudioManager {
         let manager = self.downgrade();
         let introspect_next = introspect.clone();
         introspect.get_server_info(move |server| {
+            let equalizer = pipewire_version(server.server_name.as_deref().unwrap_or_default())
+                .is_some_and(|version| version >= (1, 4));
+            if let Some(manager) = manager.upgrade() {
+                manager.set_equalizer(equalizer);
+            }
             let defaults = (
                 server
                     .default_sink_name
@@ -306,6 +328,58 @@ impl AudioManager {
         if imp.metering.get() {
             self.sync_meters();
         }
+    }
+
+    fn set_equalizer(&self, available: bool) {
+        let imp = self.imp();
+        if available && imp.live.borrow().is_none() {
+            let live = eq::Live::start();
+            // Outputs keep their graph while they exist, but one replugged
+            // while Openhub was closed has lost it until WirePlumber restarts.
+            if let Some(live) = &live {
+                for (name, settings) in imp.eq.borrow().iter() {
+                    if settings.enabled {
+                        live.set(name, eq::graph(settings));
+                    }
+                }
+            }
+            imp.live.replace(live);
+        }
+        if imp.equalizer.replace(available) != available {
+            self.notify_equalizer();
+        }
+    }
+
+    /// The output's saved EQ, or a flat one that is off.
+    pub fn eq(&self, device: &AudioDevice) -> eq::Settings {
+        let name = device.name();
+        self.imp()
+            .eq
+            .borrow()
+            .iter()
+            .find(|(saved, _)| *saved == name)
+            .map(|(_, settings)| settings.clone())
+            .unwrap_or_default()
+    }
+
+    /// Applies the output's EQ now and saves it for the next login.
+    pub fn set_eq(&self, device: &AudioDevice, settings: eq::Settings) -> Result<(), String> {
+        let imp = self.imp();
+        let name = device.name();
+        if let Some(live) = imp.live.borrow().as_ref() {
+            let graph = if settings.enabled {
+                eq::graph(&settings)
+            } else {
+                String::new()
+            };
+            live.set(&name, graph);
+        }
+        let mut all = imp.eq.borrow_mut();
+        match all.iter_mut().find(|(saved, _)| *saved == name) {
+            Some((_, saved)) => *saved = settings,
+            None => all.push((name, settings)),
+        }
+        eq::save(&all)
     }
 
     /// Makes `device` the default output or input.
@@ -561,6 +635,14 @@ fn icon_name(output: bool, form_factor: &str, name: &str) -> &'static str {
     }
 }
 
+/// PipeWire's version from pipewire-pulse's server name,
+/// "PulseAudio (on PipeWire 1.6.9)".
+fn pipewire_version(server_name: &str) -> Option<(u32, u32)> {
+    let version = server_name.split("PipeWire ").nth(1)?;
+    let mut parts = version.split(['.', ')']).map(str::parse::<u32>);
+    Some((parts.next()?.ok()?, parts.next()?.ok()?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,6 +654,19 @@ mod tests {
         assert_eq!(codec_name("sbc_xq"), "SBC-XQ");
         assert_eq!(codec_name("opus_05"), "OPUS_05");
         assert_eq!(codec_name(""), "");
+    }
+
+    #[test]
+    fn pipewire_versions() {
+        assert_eq!(
+            pipewire_version("PulseAudio (on PipeWire 1.6.9)"),
+            Some((1, 6))
+        );
+        assert_eq!(
+            pipewire_version("PulseAudio (on PipeWire 1.0.5)"),
+            Some((1, 0))
+        );
+        assert_eq!(pipewire_version("pulseaudio"), None);
     }
 
     #[test]

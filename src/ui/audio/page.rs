@@ -2,6 +2,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
+use super::device_dialog;
 use crate::audio::{AudioManager, State};
 use crate::model::{AudioDevice, PowerDevice};
 use crate::upower::{PowerManager, convert};
@@ -200,18 +201,15 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    // Clicking a row makes it the default; the default carries a check mark.
+    // Clicking a row opens its details and equalizer; the default carries
+    // a check mark and is set from there.
     row.set_activatable(true);
     row.connect_activated(glib::clone!(
         #[strong]
         manager,
         #[weak]
         device,
-        move |_| {
-            if !device.is_default() {
-                manager.set_default(&device);
-            }
-        }
+        move |row| device_dialog::new(&manager, &device).present(Some(row))
     ));
 
     // Inputs show their live level here; outputs keep the same width

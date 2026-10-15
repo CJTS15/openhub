@@ -3,13 +3,18 @@
   "runtime": "org.gnome.Platform",
   "runtime-version": "50",
   "sdk": "org.gnome.Sdk",
-  "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable",
+    "org.freedesktop.Sdk.Extension.llvm21"
+  ],
   "command": "openhub",
   "finish-args": [
     "--share=ipc",
     "--socket=fallback-x11",
     "--socket=wayland",
     "--socket=pulseaudio",
+    "--filesystem=xdg-run/pipewire-0",
+    "--filesystem=xdg-config/wireplumber:create",
     "--device=dri",
     "--talk-name=org.blueman.Applet",
     "--system-talk-name=org.bluez",
@@ -17,10 +22,11 @@
     "--system-talk-name=org.freedesktop.UPower"
   ],
   "build-options": {
-    "append-path": "/usr/lib/sdk/rust-stable/bin",
+    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm21/bin",
     "build-args": ["--share=network"],
     "env": {
-      "RUST_BACKTRACE": "1"
+      "RUST_BACKTRACE": "1",
+      "LIBCLANG_PATH": "/usr/lib/sdk/llvm21/lib"
     }
   },
   "cleanup": ["/include", "/lib/pkgconfig", "/share/doc", "*.la", "*.a"],

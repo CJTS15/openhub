@@ -214,10 +214,13 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         }
     ));
 
-    if !device.output() {
-        // The input's live level, from the page's peak meter.
+    // Inputs show their live level here; outputs keep the same width
+    // empty, so every row's mute button and slider line up.
+    if device.output() {
+        row.add_suffix(&gtk::Box::builder().width_request(METER_WIDTH).build());
+    } else {
         let meter = gtk::LevelBar::builder()
-            .width_request(80)
+            .width_request(METER_WIDTH)
             .valign(gtk::Align::Center)
             .build();
         for name in ["low", "high", "full"] {
@@ -285,6 +288,8 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         }
     ));
     row.add_suffix(&volume);
+    // A fixed slot keeps its space when the check mark is hidden, so rows
+    // don't shift as the default changes.
     let check = gtk::Image::from_icon_name("object-select-symbolic");
     check.set_tooltip_text(Some("Default"));
     check.update_property(&[gtk::accessible::Property::Label("Default")]);
@@ -292,6 +297,14 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         .bind_property("is-default", &check, "visible")
         .sync_create()
         .build();
-    row.add_suffix(&check);
+    let slot = gtk::Box::builder()
+        .width_request(24)
+        .halign(gtk::Align::End)
+        .build();
+    slot.append(&check);
+    row.add_suffix(&slot);
     row
 }
+
+/// The input level meter is short, as in GNOME Settings.
+const METER_WIDTH: i32 = 40;

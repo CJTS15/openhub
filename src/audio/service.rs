@@ -98,7 +98,7 @@ mod imp {
         fn dispose(&self) {
             // Streams belong to the context, so they go first.
             for (_, meter) in self.meters.take() {
-                let _ = meter.borrow_mut().disconnect();
+                close_meter(&meter);
             }
             // libpulse must free the context before the main loop it runs on;
             // the other order aborts in glib_defer_free when the window closes.
@@ -375,7 +375,7 @@ impl AudioManager {
         meters.retain(|name, meter| {
             let keep = wanted.iter().any(|device| &device.name() == name);
             if !keep {
-                let _ = meter.borrow_mut().disconnect();
+                close_meter(meter);
             }
             keep
         });
@@ -447,6 +447,15 @@ fn peak_stream(context: &mut Context, device: &AudioDevice) -> Option<Rc<RefCell
         return None;
     }
     Some(stream)
+}
+
+/// Stops a meter stream. libpulse can still have a read queued for it, so
+/// the read callback is unset on the C side first; dropping the stream with
+/// it set freed the Rust closure under a pending read and crashed.
+fn close_meter(meter: &Rc<RefCell<Stream>>) {
+    let mut stream = meter.borrow_mut();
+    stream.set_read_callback(None);
+    let _ = stream.disconnect();
 }
 
 fn report(what: &str, ok: bool) {

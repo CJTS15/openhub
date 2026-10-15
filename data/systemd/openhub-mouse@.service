@@ -1,0 +1,11 @@
+# Restores a Logitech mouse's saved settings (DPI, scroll wheel) when it
+# connects; mice forget them when switched off. Started by udev through
+# data/udev/70-openhub-logitech.rules with the hidraw node as the instance.
+# Install to ~/.config/systemd/user/ (or /usr/lib/systemd/user/).
+[Unit]
+Description=Restore Openhub settings for Logitech mouse %I
+
+[Service]
+Type=oneshot
+# A native install first, else the Flatpak.
+ExecStart=/bin/sh -c 'if command -v openhub >/dev/null; then exec openhub --apply-mice "$1"; else exec flatpak run --command=openhub io.github.cjts15.Openhub --apply-mice "$1"; fi' openhub-mouse %i

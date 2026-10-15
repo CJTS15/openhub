@@ -3,7 +3,7 @@
 //! (0x2121). Solaar's protocol notes are the reference. Calls block for up
 //! to a few seconds, so run them off the main thread.
 
-mod keeper;
+mod saved;
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
@@ -11,7 +11,7 @@ use std::os::fd::AsFd;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-pub use keeper::Keeper;
+pub use saved::{apply, save};
 
 /// A mouse paired directly (Bluetooth or cable) answers on this index.
 // ponytail: mice behind a Bolt or Unifying receiver use indexes 1 to 6;

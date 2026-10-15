@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use gtk::{gio, glib};
 
-use crate::hidpp::{self, Keeper, Node, Settings, State, Wheel};
+use crate::hidpp::{self, Node, Settings, State, Wheel};
 use crate::model::InputDevice;
 
 /// The settings a Logitech mouse stores: DPI, scroll wheel and direction.
@@ -151,9 +151,7 @@ fn fill(
                     let written = gio::spawn_blocking(move || hidpp::write(&path, &wanted)).await;
                     button.set_sensitive(true);
                     let result = match written {
-                        Ok(Ok(())) => gio::Application::default()
-                            .ok_or_else(|| "No application".to_owned())
-                            .and_then(|app| Keeper::shared().save(&app, &node.uniq, wanted)),
+                        Ok(Ok(())) => hidpp::save(&node.uniq, wanted),
                         Ok(Err(error)) => Err(error.to_string()),
                         Err(_) => Err("Writing to the mouse failed".to_owned()),
                     };

@@ -380,6 +380,13 @@ impl PowerManager {
             .property("bluez", native_path.starts_with("/org/bluez/"))
             .property("icon-name", convert::kind_icon(kind))
             .property("connection", connection)
+            .property(
+                "usb-device",
+                sysfs
+                    .as_deref()
+                    .and_then(convert::usb_owner)
+                    .unwrap_or_default(),
+            )
             .build();
         let manager = self.downgrade();
         let watcher = watch(

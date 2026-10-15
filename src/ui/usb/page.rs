@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use adw::prelude::*;
@@ -6,7 +7,8 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::device_dialog;
-use crate::model::UsbDevice;
+use crate::model::{PowerDevice, UsbDevice};
+use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
 
 /// How often the page rescans sysfs while it's on screen.
@@ -70,8 +72,18 @@ mod imp {
             self.show_internal
                 .connect_active_notify(move |_| filter.changed(gtk::FilterChange::Different));
 
+            // Batteries come from UPower; they're matched to rows on each rescan
+            // and whenever UPower's device list changes.
+            PowerManager::shared()
+                .peripherals()
+                .connect_items_changed(glib::clone!(
+                    #[weak]
+                    obj,
+                    move |_, _, _, _| obj.update_batteries()
+                ));
+
             obj.connect_map(|page| {
-                page.imp().manager.refresh();
+                page.rescan();
                 let rescan = glib::timeout_add_seconds_local(
                     RESCAN_SECONDS,
                     glib::clone!(
@@ -80,7 +92,7 @@ mod imp {
                         #[upgrade_or]
                         glib::ControlFlow::Break,
                         move || {
-                            page.imp().manager.refresh();
+                            page.rescan();
                             glib::ControlFlow::Continue
                         }
                     ),
@@ -106,6 +118,44 @@ glib::wrapper! {
 }
 
 impl UsbPage {
+    fn rescan(&self) {
+        self.imp().manager.refresh();
+        self.update_batteries();
+    }
+
+    /// Puts the batteries UPower reports through USB receivers on the rows
+    /// of those receivers. UsbManager doesn't know about UPower; the two
+    /// meet only here, by the USB device's sysfs name.
+    fn update_batteries(&self) {
+        let mut by_usb: HashMap<String, Vec<(String, String, f64)>> = HashMap::new();
+        for battery in PowerManager::shared()
+            .peripherals()
+            .iter::<PowerDevice>()
+            .flatten()
+        {
+            let usb_device = battery.usb_device();
+            if !usb_device.is_empty() {
+                by_usb.entry(usb_device).or_default().push((
+                    battery.title(),
+                    battery.level_text(),
+                    battery.fraction(),
+                ));
+            }
+        }
+        let mut pending: Vec<UsbDevice> = self.imp().manager.devices().iter().flatten().collect();
+        while let Some(device) = pending.pop() {
+            pending.extend(device.children().iter::<UsbDevice>().flatten());
+            let batteries = by_usb.remove(&device.name()).unwrap_or_default();
+            let (row, details) = convert::usb_battery_summary(&batteries);
+            if device.battery() != row {
+                device.set_battery(row);
+            }
+            if device.batteries() != details {
+                device.set_batteries(details);
+            }
+        }
+    }
+
     fn shows(&self, device: &UsbDevice) -> bool {
         self.imp().show_internal.is_active() || !device.internal()
     }
@@ -372,15 +422,26 @@ fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&Usb
         .sync_create()
         .build();
     let hub = through.map(UsbDevice::title);
-    device
-        .bind_property("subtitle", row, "subtitle")
-        .transform_to(move |_, vendor: String| {
-            Some(match &hub {
-                Some(hub) if vendor.is_empty() => format!("Connected through {hub}"),
-                Some(hub) => format!("{vendor} · Connected through {hub}"),
-                None => vendor,
-            })
-        })
-        .sync_create()
-        .build();
+    let property =
+        |name| gtk::PropertyExpression::new(UsbDevice::static_type(), gtk::Expression::NONE, name);
+    gtk::ClosureExpression::with_callback(
+        [property("subtitle"), property("battery")],
+        move |values| {
+            let vendor: String = values[1].get().unwrap_or_default();
+            let battery: String = values[2].get().unwrap_or_default();
+            subtitle(&vendor, &battery, hub.as_deref())
+        },
+    )
+    .bind(row, "subtitle", Some(device));
+}
+
+/// "Vendor · 80 % battery · Connected through USB2.1 Hub", without the
+/// parts a device doesn't have.
+fn subtitle(vendor: &str, battery: &str, hub: Option<&str>) -> String {
+    let through = hub.map(|hub| format!("Connected through {hub}"));
+    [vendor, battery, through.as_deref().unwrap_or_default()]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" · ")
 }

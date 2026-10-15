@@ -43,6 +43,13 @@ mod imp {
         /// Disks (`sdb`…) when it's a storage device; empty otherwise.
         #[property(get, set)]
         disks: RefCell<Vec<String>>,
+        /// "80 % battery" when it's a receiver whose devices report a battery
+        /// (the lowest of them); empty otherwise. Set by the USB page from UPower.
+        #[property(get, set)]
+        battery: RefCell<String>,
+        /// One line per battery behind it, for the details dialog.
+        #[property(get, set)]
+        batteries: RefCell<Vec<String>>,
         /// `UsbDevice` items plugged into this one, when it's a hub.
         pub(super) children: gio::ListStore,
     }
@@ -64,6 +71,8 @@ mod imp {
                 driver: RefCell::default(),
                 max_power: RefCell::default(),
                 disks: RefCell::default(),
+                battery: RefCell::default(),
+                batteries: RefCell::default(),
                 children: gio::ListStore::new::<super::UsbDevice>(),
             }
         }

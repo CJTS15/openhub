@@ -21,6 +21,7 @@ Each feature you asked for, the route Linux offers, and whether it survives the 
 | Feature | Route | Works on | Flatpak | In v0.4 |
 | --- | --- | --- | --- | --- |
 | Mouse DPI, Logitech | HID++ over `/dev/hidraw*`, as [OpenLogi](https://github.com/AprilNEA/OpenLogi) and Solaar do | Logitech mice on Bolt, Unifying, Bluetooth or cable, MX Master 3S included | Covered by `--device=all` (already accepted for VIA) and a host udev rule | Yes |
+| Mouse DPI and polling rate, Razer | Razer's control reports over `/dev/hidraw*`, as OpenRazer's kernel driver sends them; no module or daemon | Razer mice; tested on an Orochi V2 | Covered by `--device=all` and a host udev rule | Yes (added in M16) |
 | Mouse DPI, other brands | [ratbagd](https://github.com/libratbag/libratbag) on the system bus | SteelSeries, Roccat, some ASUS and others; not generic mice | One `--system-talk-name`; ratbagd must be installed on the host | Yes |
 | Mouse button shortcuts, other brands | ratbagd button mapping | Same list, where the mouse accepts writes | Same | Yes, where it works |
 | Mouse button remap, Logitech | Software remap by a background agent (evdev grab and uinput) | Logitech mice, only while the agent runs | Needs a background service | No, later |
@@ -70,11 +71,12 @@ Decision (CJ, 2026-10-15): Openhub borrows OpenLogi's device side and speaks HID
 
 - **List:** every mouse and touchpad from `/sys/class/input`, named and merged with its Bluetooth or USB entry. Battery comes from the existing UPower service.
 - **Logitech (HID++):** DPI with presets (feature 0x2201), SmartShift mode and sensitivity (0x2111), scroll direction (0x2121), battery. Openhub keeps its own HID++ code in `src/hidpp/`, using the 0BSD `hidpp` crate as reference or dependency, and Solaar's protocol notes.
+- **Razer (added in M16):** libratbag has no Razer driver, so Openhub sends Razer's control reports itself: DPI (stored on the mouse) and polling rate, plus battery. An Orochi V2 kept its DPI after being switched off, so Razer mice need no restore step.
 - **Other brands (ratbagd):** DPI steps and range, report rate (125 to 1000 Hz), button shortcuts (another button, a key combination, or a special action such as DPI cycle), onboard profiles. If ratbagd refuses a button write, buttons go read-only with a note.
 - **Apply:** changes are held until Apply, then sent in one write.
 - **Re-apply:** tested on the MX Master 3S over Bluetooth (2026-10-15): DPI set to 2000 survived 5 minutes of sleep, but turning the mouse off and on reset it to the default 1000. The 3S has no feature for storing these settings on the mouse (none of its 36 HID++ features is onboard profiles, 0x8100), so Openhub saves each mouse's settings and sends them again whenever it reconnects. The udev rule that grants access also has the user's systemd start `openhub-mouse@hidrawN.service`, which runs `openhub --apply-mice hidrawN`: it restores the settings without a window and exits. Nothing runs between reconnects (CJ's decision, replacing an earlier background mode that held about 100 MB). Tested: the trigger fires on a Bluetooth reconnect, and the unit restores the saved DPI.
 - **One owner at a time:** only one app can talk HID++ to a receiver. When Options+, Solaar or OpenLogi is running, the dialog says so and stays read-only.
-- **Unsupported mice:** a plain row with "This mouse has no settings Openhub can change". When ratbagd is missing, non-Logitech mice get one banner saying to install `ratbagd`.
+- **Unsupported mice:** a dialog with the connection and battery, saying Openhub can't change its settings and pointing to GNOME Settings. When ratbagd is missing, non-Logitech mice get one banner saying to install `ratbagd`.
 
 Pointer speed, acceleration and natural scrolling stay in GNOME Settings; they are system settings, not device settings.
 
@@ -153,7 +155,7 @@ v0.4 starts after v0.3.0 is tagged (M12) and runs in order of risk, lowest first
 1. **M13 Three pages, read-only.** Mouse, Keyboard and Audio entries in the sidebar; device lists from `/sys/class/input` and pipewire-pulse, merged with Bluetooth, USB and UPower data. No settings yet.
 2. **M14 Audio Output and Input.** Default device, volume, mute, Bluetooth codec, input level meter.
 3. **M15 Built-in equalizer.** A filter graph inside each output, restored by a WirePlumber rule (proven first; no hand-over needed). Then 10-band EQ, preamp, presets, AutoEQ import, per-device storage.
-4. **M16 Mouse.** Starts by testing on your MX Master 3S whether HID++ settings survive sleep and reconnect. Then HID++ for Logitech (DPI, SmartShift, scroll, battery), ratbagd for other brands (DPI, report rate, buttons, profiles), Apply, and the one-owner check.
+4. **M16 Mouse.** Starts by testing on your MX Master 3S whether HID++ settings survive sleep and reconnect. Then HID++ for Logitech (DPI, SmartShift, scroll, battery), Razer's own protocol (DPI, polling rate), ratbagd for other brands (DPI, report rate, buttons, profiles), Apply, and the one-owner check.
 5. **M17 Keyboard.** VIA lighting and layer-0 remap over cable, restore defaults, udev rule hint, and the Keyboard Shortcuts button for every keyboard.
 6. **M18 Packaging and v0.4.0.** Manifest additions, udev rules documented for hidraw, metainfo release notes, screenshots, tag.
 
@@ -178,4 +180,5 @@ CJ answered the first round on 2026-10-15.
 | Logitech mice (after checking OpenLogi) | HID++ directly for Logitech (DPI, SmartShift, battery); ratbagd for other brands; Logitech button remap later |
 | EQ on first use | Yes: the EQ works at once, hosted by Openhub until the next login, then by PipeWire. Native builds restart PipeWire instead, so it is permanent at once. |
 | Logitech settings reset on power off (M16 test) | udev starts a one-shot `openhub --apply-mice` on each reconnect; nothing runs in between (CJ, 2026-10-15, replacing background mode) |
+| Razer mice (Orochi V2 plugged in, M16) | Razer's protocol directly over hidraw, then ratbagd for other brands (CJ, 2026-10-16) |
 | EQ design after the M15 test | A filter graph inside the output plus a WirePlumber rule: works at once, survives closing Openhub, no restart (CJ, 2026-10-15) |

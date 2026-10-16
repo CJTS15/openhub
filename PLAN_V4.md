@@ -87,14 +87,15 @@ The Keyboard page lists every keyboard and opens lighting and remap settings for
 VIA is a small command set over a raw HID interface (usage page 0xFF60). Openhub opens `/dev/hidraw*` for that interface and sends the same commands the VIA web app does. No daemon is involved.
 
 - **Lighting:** brightness, effect, effect speed and colour (hue and saturation). Only the controls the firmware reports are shown. Per-key colour is out of v0.4.
-- **Key remap:** pick a key by what it does now ("Caps Lock"), then pick what it should do ("Escape"). Openhub reads the keymap from the board, so no layout picture is needed. Layer 0 only in v0.4; layers 1 to 3 later.
+- **Key remap:** the layout is drawn from the keyboard's VIA definition; click a key and pick what it should do. Layer 0 only in v0.4; layers 1 to 3 later.
+- **Definition file (found in M17):** VIA's protocol can't say where keys sit or which lighting the board has, so Openhub needs the keyboard's VIA definition JSON, imported once and kept per USB ID. Its menus drive the lighting controls, with the board's own effect names. The AL68 isn't in VIA's public repository; Yunzii ships the file. Later options: read it from Vial keyboards, or download it from VIA's repository.
 - **Storage:** VIA writes to the keyboard's EEPROM, so the change follows the keyboard to other computers and survives a reinstall.
 - **Reset:** a "Restore default keymap" button, with a confirmation, since a bad remap can make a key unusable.
-- **Other keyboards:** a plain row with name, connection and battery, plus "This keyboard has no settings Openhub can change".
+- **Other keyboards:** the dialog says why Openhub can't change them (not VIA, or on Bluetooth) and keeps the Keyboard Shortcuts row.
 
-VIA on the AL68 works only over the USB cable (confirmed by CJ). When the board is on the dongle or Bluetooth, the dialog shows its settings greyed out with "Connect with a USB cable to change lighting and keys". One thing still needs a test in M17: whether Yunzii's firmware uses stock VIA lighting commands or a custom channel.
+VIA on the AL68 works only over the USB cable (confirmed by CJ). When the board is on the dongle or Bluetooth, the dialog shows its settings greyed out with "Connect with a USB cable to change lighting and keys". Tested in M17: the AL68 (`4d4b:304e` on the cable) speaks VIA protocol 12 with stock lighting commands on channel 3 (RGB matrix), using 64-byte reports instead of the usual 32. Lighting and keys survive unplugging. Over the cable it reports no battery. The Zuoya GMK65 on its cable presents itself as an Apple keyboard (`05ac:024f`) with no raw HID interface, so it isn't VIA with its current firmware.
 
-**Keyboard Shortcuts button:** every keyboard, VIA or not, gets a row that opens GNOME Settings at the Keyboard panel, where Keyboard Shortcuts lives. From Flatpak this goes through GNOME Settings' D-Bus `launch-panel` action, which needs `--talk-name=org.gnome.Settings`. I expect it lands on the Keyboard panel, one click from Keyboard Shortcuts; opening the shortcuts list directly needs a check.
+**Keyboard Shortcuts button:** every keyboard, VIA or not, gets a row that opens GNOME Settings at the Keyboard panel, where Keyboard Shortcuts lives. From Flatpak this goes through GNOME Settings' D-Bus `launch-panel` action, which needs `--talk-name=org.gnome.Settings`. It lands on the Keyboard panel, one click from Keyboard Shortcuts, and passes an activation token so GNOME brings Settings to the front.
 
 On Linux, `/dev/hidraw*` is root-only until a udev rule grants it to the logged-in user. VIA users already need this rule. Openhub cannot install it from the sandbox, so the dialog shows the one-line rule and the command to add it when access is denied.
 

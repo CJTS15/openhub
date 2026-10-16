@@ -32,12 +32,14 @@ pub struct InputInfo {
     pub uniq: String,
     /// The input node's directory, to find its USB device later.
     pub node: String,
+    /// The kernel's physical path, ending in the USB interface ("/input2").
+    pub phys: String,
 }
 
 /// Every mouse, touchpad, pointing stick and keyboard under `root`, one
 /// per physical device, sorted by name.
 pub fn scan(root: &Path) -> io::Result<Vec<InputInfo>> {
-    let mut groups: BTreeMap<String, InputInfo> = BTreeMap::new();
+    let mut groups: BTreeMap<String, Vec<InputInfo>> = BTreeMap::new();
     for entry in fs::read_dir(root)? {
         let node = entry?.file_name().to_string_lossy().into_owned();
         if !node.starts_with("input") {
@@ -47,16 +49,51 @@ pub fn scan(root: &Path) -> io::Result<Vec<InputInfo>> {
         let Some(info) = read_node(&root.join(&node), node) else {
             continue;
         };
-        match groups.get(&info.key) {
-            Some(kept) if kept.kind <= info.kind => {}
-            _ => {
-                groups.insert(info.key.clone(), info);
-            }
-        }
+        groups.entry(info.key.clone()).or_default().push(info);
     }
-    let mut devices: Vec<InputInfo> = groups.into_values().collect();
+    let mut devices: Vec<InputInfo> = groups.into_values().map(pick).collect();
     devices.sort_by_key(|device| device.name.to_lowercase());
     Ok(devices)
+}
+
+/// What one physical device is, from its nodes. Normally the highest kind
+/// wins: a keyboard's media keys show up as a mouse node. But a 2.4 GHz mouse
+/// dongle also has a keyboard node for macro keys, so when a device has both,
+/// its name decides if it says, else its first USB interface: a mouse
+/// dongle's is the mouse (the Razer Orochi V2's boot mouse), a keyboard's is
+/// the keyboard.
+fn pick(mut nodes: Vec<InputInfo>) -> InputInfo {
+    nodes.sort_by_key(|node| (node.kind, interface(node)));
+    let has = |kind| nodes.iter().any(|node| node.kind == kind);
+    if has(Kind::Keyboard) && has(Kind::Mouse) {
+        // The base name: the Razer's nodes are "Razer Orochi V2" and
+        // "Razer Orochi V2 Keyboard".
+        let name = nodes
+            .iter()
+            .map(|node| node.name.to_lowercase())
+            .min_by_key(String::len)
+            .unwrap_or_default();
+        let first = nodes.iter().min_by_key(|node| interface(node));
+        let mouse = if name.contains("mouse") {
+            true
+        } else if name.contains("keyboard") {
+            false
+        } else {
+            first.is_some_and(|node| node.kind == Kind::Mouse)
+        };
+        if mouse && let Some(at) = nodes.iter().position(|node| node.kind == Kind::Mouse) {
+            return nodes.swap_remove(at);
+        }
+    }
+    nodes.swap_remove(0)
+}
+
+/// The USB interface number from `phys` ("usb-…-3/input2" is interface 2).
+fn interface(info: &InputInfo) -> u32 {
+    info.phys
+        .rsplit_once("/input")
+        .and_then(|(_, n)| n.parse().ok())
+        .unwrap_or(u32::MAX)
 }
 
 fn read_node(dir: &Path, node: String) -> Option<InputInfo> {
@@ -81,7 +118,10 @@ fn read_node(dir: &Path, node: String) -> Option<InputInfo> {
         0x06 => return None,
         _ => "Other",
     };
-    let uniq = attr("uniq").unwrap_or_default();
+    // Razer dongles report "000000000000" on every node: no serial at all.
+    let uniq = attr("uniq")
+        .filter(|uniq| uniq.chars().any(|c| c != '0'))
+        .unwrap_or_default();
     let phys = attr("phys").unwrap_or_default();
     // Bluetooth nodes all carry the adapter's address as `phys`; their own
     // address is `uniq`.
@@ -111,6 +151,7 @@ fn read_node(dir: &Path, node: String) -> Option<InputInfo> {
         connection,
         uniq,
         node,
+        phys,
     })
 }
 
@@ -179,7 +220,9 @@ mod tests {
             names,
             [
                 "Built-in Keyboard",
+                "Compx VXE NordicMouse 1K Dongle",
                 "Logitech MX Master 3S",
+                "Razer Orochi V2",
                 "SmartCloud AL68 Keyboard",
                 "Touchpad",
                 "TrackPoint"
@@ -192,6 +235,17 @@ mod tests {
         let al68 = named("SmartCloud AL68 Keyboard");
         assert_eq!((al68.kind, al68.connection), (Kind::Keyboard, "USB"));
         assert_eq!(al68.key, "usb-0000:00:14.0-9");
+    }
+
+    #[test]
+    fn mouse_dongles_with_a_macro_keyboard_are_mice() {
+        // Razer: no hint in the name; its first USB interface is the mouse.
+        let razer = named("Razer Orochi V2");
+        assert_eq!((razer.kind, razer.connection), (Kind::Mouse, "USB"));
+        assert_eq!(razer.key, "usb-0000:00:14.0-3");
+        assert_eq!(razer.uniq, "");
+        // VXE: keyboard on interface 0, but the name says mouse.
+        assert_eq!(named("Compx VXE NordicMouse 1K Dongle").kind, Kind::Mouse);
     }
 
     #[test]

@@ -4,6 +4,8 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 
+use super::mouse_dialog;
+use crate::hidpp;
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
@@ -151,6 +153,19 @@ fn row(device: &InputDevice) -> adw::ActionRow {
         .sync_create()
         .build();
     row.add_prefix(&icon);
+    // A Logitech mouse opens its settings; others have none Openhub can change.
+    let uniq = device.uniq();
+    let node = hidpp::find()
+        .into_iter()
+        .find(|node| !uniq.is_empty() && node.uniq.eq_ignore_ascii_case(&uniq));
+    if let Some(node) = node {
+        row.set_activatable(true);
+        row.connect_activated(glib::clone!(
+            #[weak]
+            device,
+            move |row| mouse_dialog::new(&device, node.clone()).present(Some(row))
+        ));
+    }
     row
 }
 

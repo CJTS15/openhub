@@ -999,6 +999,7 @@ dependencies = [
  "libpulse-binding",
  "libpulse-glib-binding",
  "pipewire",
+ "rustix",
  "zbus",
 ]
 

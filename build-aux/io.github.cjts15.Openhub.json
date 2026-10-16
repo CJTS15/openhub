@@ -15,7 +15,7 @@
     "--socket=pulseaudio",
     "--filesystem=xdg-run/pipewire-0",
     "--filesystem=xdg-config/wireplumber:create",
-    "--device=dri",
+    "--device=all",
     "--talk-name=org.blueman.Applet",
     "--system-talk-name=org.bluez",
     "--system-talk-name=org.freedesktop.UDisks2",

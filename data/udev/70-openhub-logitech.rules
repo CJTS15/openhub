@@ -1,0 +1,17 @@
+# Lets the logged-in user talk HID++ to Logitech mice and receivers, so
+# Openhub can change DPI, SmartShift and scrolling (same devices as Solaar's
+# rule), and has the user's systemd run `openhub --apply-mice` each time one
+# connects, since mice forget their settings when switched off.
+ACTION=="remove", GOTO="openhub_logitech_end"
+SUBSYSTEM!="hidraw", GOTO="openhub_logitech_end"
+
+# Receivers (Bolt, Unifying) and mice on a USB cable
+ATTRS{idVendor}=="046d", GOTO="openhub_logitech_apply"
+# Mice paired directly over Bluetooth
+KERNELS=="0005:046D:*", GOTO="openhub_logitech_apply"
+GOTO="openhub_logitech_end"
+
+LABEL="openhub_logitech_apply"
+TAG+="uaccess", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="openhub-mouse@%k.service"
+
+LABEL="openhub_logitech_end"

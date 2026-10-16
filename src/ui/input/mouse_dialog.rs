@@ -48,7 +48,7 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
 /// Connection, battery, and why there's nothing to change.
 fn info(device: &InputDevice, without_ratbagd: bool) -> adw::PreferencesGroup {
     let mut text = "Openhub can't change this device's settings. Pointer speed and scrolling \
-                    are in GNOME Settings, under Mouse & Touchpad."
+                    are in GNOME Settings, under Mouse &amp; Touchpad."
         .to_owned();
     if without_ratbagd {
         text.push_str(

@@ -8,7 +8,7 @@ use super::{logitech_dialog, mouse_dialog, razer_dialog};
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
-use crate::{battery, hidpp, razer};
+use crate::{hidpp, razer};
 
 mod imp {
     use super::*;
@@ -110,9 +110,8 @@ impl InputPage {
             .iter()
             .flatten()
             .collect();
-        let others = battery::usb();
         for device in manager.devices().iter::<InputDevice>().flatten() {
-            let mut mine: Vec<(String, f64)> = batteries
+            let mine: Vec<(String, f64)> = batteries
                 .iter()
                 .filter(|b| {
                     let by_address = !device.uniq().is_empty()
@@ -123,15 +122,6 @@ impl InputPage {
                 })
                 .map(|b| (b.level_text(), b.fraction()))
                 .collect();
-            // Where UPower has nothing: the kernel's own batteries and Razer's.
-            if mine.is_empty() && !device.usb_device().is_empty() {
-                mine.extend(
-                    others
-                        .iter()
-                        .filter(|b| b.usb_device == device.usb_device())
-                        .map(battery::Battery::text),
-                );
-            }
             let text = battery_text(&mine);
             if device.battery() != text {
                 device.set_battery(text);

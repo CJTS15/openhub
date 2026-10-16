@@ -15,6 +15,8 @@ pub struct Battery {
     pub name: String,
     /// 0 to 100.
     pub level: u8,
+    /// Read through Razer's protocol: a mouse.
+    pub razer: bool,
 }
 
 impl Battery {
@@ -32,6 +34,7 @@ pub fn usb() -> Vec<Battery> {
                 usb_device: node.usb_device,
                 name: node.name,
                 level,
+                razer: true,
             });
         }
     }
@@ -60,6 +63,7 @@ fn kernel(root: &Path) -> Vec<Battery> {
                 usb_device,
                 name: attr("model_name").unwrap_or_default(),
                 level: attr("capacity")?.parse().ok()?,
+                razer: false,
             })
         })
         .collect()
@@ -101,6 +105,7 @@ mod tests {
                 usb_device: "3-1.3".into(),
                 name: "Compx VXE NordicMouse 1K Dongle".into(),
                 level: 25,
+                razer: false,
             }]
         );
         assert_eq!(found[0].text(), ("25%".to_owned(), 0.25));

@@ -7,7 +7,6 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::device_dialog;
-use crate::battery;
 use crate::model::{PowerDevice, UsbDevice};
 use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
@@ -123,14 +122,6 @@ impl UsbPage {
                     battery.level_text(),
                     battery.fraction(),
                 ));
-            }
-        }
-        // Where UPower has nothing: the kernel's own batteries and Razer's.
-        for battery in battery::usb() {
-            let known = by_usb.entry(battery.usb_device.clone()).or_default();
-            if known.is_empty() {
-                let (text, fraction) = battery.text();
-                known.push((battery.name, text, fraction));
             }
         }
         let mut pending: Vec<UsbDevice> = self.imp().manager.devices().iter().flatten().collect();

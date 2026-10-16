@@ -1,19 +1,62 @@
 use adw::prelude::*;
+use gtk::glib;
 
+use super::ratbag_dialog;
 use crate::model::InputDevice;
+use crate::ratbag;
 
-/// A mouse or touchpad Openhub can't configure: what it is, and where its
-/// pointer settings are.
+/// A mouse or touchpad that isn't Logitech or Razer. If ratbagd knows it
+/// (by USB ID), its settings from there; otherwise what it is, and where
+/// its pointer settings are.
 pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
-    let dialog = adw::PreferencesDialog::builder()
-        .title(device.title())
-        .build();
-    let group = adw::PreferencesGroup::builder()
-        .description(
-            "Openhub can't change this device's settings. Pointer speed and scrolling \
-             are in GNOME Settings, under Mouse & Touchpad.",
-        )
-        .build();
+    let Some((vendor, product)) = usb_ids(&device.usb_device()) else {
+        let dialog = adw::PreferencesDialog::builder()
+            .title(device.title())
+            .build();
+        let page = adw::PreferencesPage::new();
+        page.add(&info(device, false));
+        dialog.add(&page);
+        return dialog;
+    };
+    let (dialog, page, loading) = loading(device);
+    glib::spawn_future_local(glib::clone!(
+        #[weak]
+        dialog,
+        #[weak]
+        page,
+        #[weak]
+        device,
+        async move {
+            let found = match zbus::Connection::system().await {
+                Ok(conn) => ratbag::find(&conn, vendor, product)
+                    .await
+                    .map(|mouse| mouse.map(|mouse| (conn, mouse))),
+                Err(error) => Err(error),
+            };
+            page.remove(&loading);
+            match found {
+                Ok(Some((conn, mouse))) => ratbag_dialog::fill(&dialog, &page, conn, mouse),
+                Ok(None) => page.add(&info(&device, false)),
+                // Usually: ratbagd isn't installed.
+                Err(_) => page.add(&info(&device, true)),
+            }
+        }
+    ));
+    dialog
+}
+
+/// Connection, battery, and why there's nothing to change.
+fn info(device: &InputDevice, without_ratbagd: bool) -> adw::PreferencesGroup {
+    let mut text = "Openhub can't change this device's settings. Pointer speed and scrolling \
+                    are in GNOME Settings, under Mouse &amp; Touchpad."
+        .to_owned();
+    if without_ratbagd {
+        text.push_str(
+            " If libratbag supports this mouse, installing ratbagd (Piper's backend) lets \
+             Openhub change its DPI and buttons.",
+        );
+    }
+    let group = adw::PreferencesGroup::builder().description(&text).build();
     for (label, value) in [
         ("Connection", device.connection()),
         ("Battery", device.battery()),
@@ -29,10 +72,20 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
             );
         }
     }
-    let page = adw::PreferencesPage::new();
-    page.add(&group);
-    dialog.add(&page);
-    dialog
+    group
+}
+
+/// The USB vendor and product ID of a device such as `3-1.3`.
+fn usb_ids(usb_device: &str) -> Option<(u16, u16)> {
+    if usb_device.is_empty() {
+        return None;
+    }
+    let dir = std::path::Path::new("/sys/bus/usb/devices").join(usb_device);
+    let id = |file: &str| {
+        let text = std::fs::read_to_string(dir.join(file)).ok()?;
+        u16::from_str_radix(text.trim(), 16).ok()
+    };
+    Some((id("idVendor")?, id("idProduct")?))
 }
 
 /// The frame the Logitech and Razer dialogs fill once the mouse is read:

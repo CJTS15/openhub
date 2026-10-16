@@ -7,6 +7,7 @@ mod eq;
 mod hidpp;
 mod input;
 mod model;
+mod ratbag;
 mod razer;
 mod ui;
 mod upower;

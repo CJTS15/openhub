@@ -7,8 +7,8 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::device_dialog;
+use crate::battery;
 use crate::model::{PowerDevice, UsbDevice};
-use crate::razer;
 use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
 
@@ -125,14 +125,12 @@ impl UsbPage {
                 ));
             }
         }
-        // Razer mice report their battery only through their own protocol.
-        for node in razer::find() {
-            if let Some(level) = razer::battery(&node) {
-                by_usb.entry(node.usb_device).or_default().push((
-                    node.name,
-                    format!("{level} %"),
-                    f64::from(level) / 100.0,
-                ));
+        // Where UPower has nothing: the kernel's own batteries and Razer's.
+        for battery in battery::usb() {
+            let known = by_usb.entry(battery.usb_device.clone()).or_default();
+            if known.is_empty() {
+                let (text, fraction) = battery.text();
+                known.push((battery.name, text, fraction));
             }
         }
         let mut pending: Vec<UsbDevice> = self.imp().manager.devices().iter().flatten().collect();
@@ -428,11 +426,11 @@ fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&Usb
     .bind(row, "subtitle", Some(device));
 }
 
-/// "Vendor · 80% battery · Connected through USB2.1 Hub", without the
+/// "Vendor · Connected through USB2.1 Hub · 80% Battery", without the
 /// parts a device doesn't have.
 fn subtitle(vendor: &str, battery: &str, hub: Option<&str>) -> String {
     let through = hub.map(|hub| format!("Connected through {hub}"));
-    [vendor, battery, through.as_deref().unwrap_or_default()]
+    [vendor, through.as_deref().unwrap_or_default(), battery]
         .into_iter()
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()

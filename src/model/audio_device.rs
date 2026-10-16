@@ -25,7 +25,7 @@ mod imp {
         address: RefCell<String>,
         #[property(get, set)]
         is_default: Cell<bool>,
-        /// "85% battery" when UPower reports one; set by the page.
+        /// "85% Battery" when UPower reports one; set by the page.
         #[property(get, set)]
         battery: RefCell<String>,
         /// Output (sink) rather than input (source).

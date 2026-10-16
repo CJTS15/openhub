@@ -8,7 +8,7 @@ use super::{logitech_dialog, mouse_dialog, razer_dialog};
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
-use crate::{hidpp, razer};
+use crate::{battery, hidpp, razer};
 
 mod imp {
     use super::*;
@@ -110,7 +110,7 @@ impl InputPage {
             .iter()
             .flatten()
             .collect();
-        let razers = razer::find();
+        let others = battery::usb();
         for device in manager.devices().iter::<InputDevice>().flatten() {
             let mut mine: Vec<(String, f64)> = batteries
                 .iter()
@@ -123,15 +123,14 @@ impl InputPage {
                 })
                 .map(|b| (b.level_text(), b.fraction()))
                 .collect();
-            // Razer mice report theirs only through their own protocol.
-            let level = razers
-                .iter()
-                .find(|node| {
-                    !device.usb_device().is_empty() && node.usb_device == device.usb_device()
-                })
-                .and_then(razer::battery);
-            if let Some(level) = level {
-                mine.push((format!("{level} %"), f64::from(level) / 100.0));
+            // Where UPower has nothing: the kernel's own batteries and Razer's.
+            if mine.is_empty() && !device.usb_device().is_empty() {
+                mine.extend(
+                    others
+                        .iter()
+                        .filter(|b| b.usb_device == device.usb_device())
+                        .map(battery::Battery::text),
+                );
             }
             let text = battery_text(&mine);
             if device.battery() != text {
@@ -201,9 +200,7 @@ fn battery_text(batteries: &[(String, f64)]) -> String {
     batteries
         .iter()
         .min_by(|a, b| a.1.total_cmp(&b.1))
-        .map_or_else(String::new, |(level, _)| {
-            format!("{} Battery", level.replace(" %", "%"))
-        })
+        .map_or_else(String::new, |(level, _)| format!("{level} Battery"))
 }
 
 /// "Connected · Bluetooth · 85% Battery"; a built-in device is just "Built-in".
@@ -226,7 +223,7 @@ mod tests {
 
     #[test]
     fn subtitles() {
-        let battery = battery_text(&[("85 %".into(), 0.85)]);
+        let battery = battery_text(&[("85%".into(), 0.85)]);
         assert_eq!(
             subtitle("Bluetooth", &battery),
             "Connected · Bluetooth · 85% Battery"
@@ -234,7 +231,7 @@ mod tests {
         assert_eq!(subtitle("USB", ""), "Connected · USB");
         assert_eq!(subtitle("Built-in", ""), "Built-in");
         assert_eq!(
-            battery_text(&[("64 %".into(), 0.64), ("High".into(), 0.75)]),
+            battery_text(&[("64%".into(), 0.64), ("High".into(), 0.75)]),
             "64% Battery"
         );
         assert_eq!(battery_text(&[]), "");

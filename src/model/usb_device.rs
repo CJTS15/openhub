@@ -43,7 +43,7 @@ mod imp {
         /// Disks (`sdb`…) when it's a storage device; empty otherwise.
         #[property(get, set)]
         disks: RefCell<Vec<String>>,
-        /// "80% battery" when it's a receiver whose devices report a battery
+        /// "80% Battery" when it's a receiver whose devices report a battery
         /// (the lowest of them); empty otherwise. Set by the USB page from UPower.
         #[property(get, set)]
         battery: RefCell<String>,

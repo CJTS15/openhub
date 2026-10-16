@@ -1,5 +1,6 @@
 mod application;
 mod audio;
+mod battery;
 mod bluez;
 mod config;
 mod eq;

@@ -168,7 +168,7 @@ pub fn technology_name(technology: u32) -> &'static str {
 
 /// `78.4` gives `78 %`, spaced as GNOME Settings shows it.
 pub fn percent(percentage: f64) -> String {
-    format!("{percentage:.0} %")
+    format!("{percentage:.0}%")
 }
 
 /// How a peripheral is connected. UPower reports Bluetooth batteries
@@ -221,10 +221,7 @@ pub fn usb_battery_summary(batteries: &[(String, String, f64)]) -> (String, Vec<
     let row = batteries
         .iter()
         .min_by(|a, b| a.2.total_cmp(&b.2))
-        // "80% battery" in a subtitle, not the "80 %" of a level on its own.
-        .map_or_else(String::new, |(_, text, _)| {
-            format!("{} battery", text.replace(" %", "%"))
-        });
+        .map_or_else(String::new, |(_, text, _)| format!("{text} Battery"));
     let details = batteries
         .iter()
         .map(|(name, text, _)| format!("{name} · {text}"))
@@ -292,12 +289,12 @@ mod tests {
             status_text(false, state::FULLY_CHARGED, 0, 0),
             "Fully charged"
         );
-        assert_eq!(percent(78.4), "78 %");
+        assert_eq!(percent(78.4), "78%");
     }
 
     #[test]
     fn coarse_levels() {
-        assert_eq!(level_text(85.2, 1), "85 %");
+        assert_eq!(level_text(85.2, 1), "85%");
         assert_eq!(level_text(0.0, 7), "High");
         assert_eq!(level_text(0.0, 4), "Critical");
         assert_eq!(level_fraction(85.0, 1), 0.85);
@@ -326,14 +323,14 @@ mod tests {
     #[test]
     fn usb_battery_summaries() {
         let batteries = [
-            ("MX Keys".to_owned(), "64 %".to_owned(), 0.64),
-            ("MX Master 3S".to_owned(), "30 %".to_owned(), 0.30),
+            ("MX Keys".to_owned(), "64%".to_owned(), 0.64),
+            ("MX Master 3S".to_owned(), "30%".to_owned(), 0.30),
         ];
         let (row, details) = usb_battery_summary(&batteries);
-        assert_eq!(row, "30% battery");
-        assert_eq!(details, ["MX Keys · 64 %", "MX Master 3S · 30 %"]);
+        assert_eq!(row, "30% Battery");
+        assert_eq!(details, ["MX Keys · 64%", "MX Master 3S · 30%"]);
         let coarse = [("Pad".to_owned(), level_text(0.0, 4), level_fraction(0.0, 4))];
-        assert_eq!(usb_battery_summary(&coarse).0, "Critical battery");
+        assert_eq!(usb_battery_summary(&coarse).0, "Critical Battery");
         assert_eq!(usb_battery_summary(&[]), (String::new(), vec![]));
     }
 

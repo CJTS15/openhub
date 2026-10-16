@@ -1,11 +1,13 @@
 mod application;
 mod audio;
+mod battery;
 mod bluez;
 mod config;
 mod eq;
 mod hidpp;
 mod input;
 mod model;
+mod razer;
 mod ui;
 mod upower;
 mod usb;

@@ -417,11 +417,11 @@ fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&Usb
     .bind(row, "subtitle", Some(device));
 }
 
-/// "Vendor · 80 % battery · Connected through USB2.1 Hub", without the
+/// "Vendor · Connected through USB2.1 Hub · 80% Battery", without the
 /// parts a device doesn't have.
 fn subtitle(vendor: &str, battery: &str, hub: Option<&str>) -> String {
     let through = hub.map(|hub| format!("Connected through {hub}"));
-    [vendor, battery, through.as_deref().unwrap_or_default()]
+    [vendor, through.as_deref().unwrap_or_default(), battery]
         .into_iter()
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()

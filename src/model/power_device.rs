@@ -23,7 +23,7 @@ mod imp {
         /// Percentage, or -1 when there's none to show (a charger).
         #[property(get, set, minimum = -1.0, maximum = 100.0, default = -1.0)]
         level: Cell<f64>,
-        /// "85 %", or a coarse word such as "High" for devices that only report that.
+        /// "85%", or a coarse word such as "High" for devices that only report that.
         #[property(get, set)]
         level_text: RefCell<String>,
         /// Where its bar sits, 0 to 1.

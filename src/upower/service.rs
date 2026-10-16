@@ -61,6 +61,8 @@ mod imp {
         pub(super) peripherals: gio::ListStore,
         /// Every UPower device and the task keeping it current.
         pub(super) devices: RefCell<HashMap<String, (PowerDevice, glib::JoinHandle<()>)>>,
+        /// Batteries UPower doesn't list (see `crate::battery`), by USB device.
+        pub(super) extra: RefCell<HashMap<String, PowerDevice>>,
         /// The task keeping the status line current.
         pub(super) status_watcher: RefCell<Option<glib::JoinHandle<()>>>,
         pub(super) conn: OnceCell<zbus::Connection>,
@@ -76,6 +78,7 @@ mod imp {
                 computer: gio::ListStore::new::<PowerDevice>(),
                 peripherals: gio::ListStore::new::<PowerDevice>(),
                 devices: RefCell::default(),
+                extra: RefCell::default(),
                 status_watcher: RefCell::default(),
                 battery: RefCell::default(),
                 conn: OnceCell::new(),
@@ -95,6 +98,27 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj().clone();
             glib::spawn_future_local(async move { obj.run().await });
+            // Kernel and Razer batteries send no signals, so they're re-read;
+            // a sysfs read, and Razer's own cache limits the mouse to once a
+            // minute.
+            let manager = self.obj().downgrade();
+            glib::timeout_add_seconds_local(10, move || match manager.upgrade() {
+                Some(manager) => {
+                    manager.refresh_extra();
+                    glib::ControlFlow::Continue
+                }
+                None => glib::ControlFlow::Break,
+            });
+            let manager = self.obj().downgrade();
+            // Twice early: Razer's first read only starts in the background.
+            for delay in [1, 3] {
+                let manager = manager.clone();
+                glib::timeout_add_seconds_local_once(delay, move || {
+                    if let Some(manager) = manager.upgrade() {
+                        manager.refresh_extra();
+                    }
+                });
+            }
         }
     }
 }
@@ -459,6 +483,63 @@ impl PowerManager {
         Ok((device, watcher))
     }
 
+    /// Adds a peripheral for each USB device whose battery only the kernel or
+    /// its own protocol reports, and drops those that left or that UPower
+    /// now lists.
+    fn refresh_extra(&self) {
+        let known: Vec<String> = self
+            .imp()
+            .devices
+            .borrow()
+            .values()
+            .map(|(device, _)| device.usb_device())
+            .filter(|usb| !usb.is_empty())
+            .collect();
+        let mut extra = self.imp().extra.borrow_mut();
+        let before: Vec<String> = extra.keys().cloned().collect();
+        let mut next = HashMap::new();
+        for battery in crate::battery::usb() {
+            if known.contains(&battery.usb_device) || next.contains_key(&battery.usb_device) {
+                continue;
+            }
+            let device = extra.remove(&battery.usb_device).unwrap_or_else(|| {
+                let name = battery.name.to_lowercase();
+                let kind = if name.contains("mouse") || battery.razer {
+                    kind::MOUSE
+                } else if name.contains("keyboard") {
+                    kind::KEYBOARD
+                } else {
+                    0
+                };
+                glib::Object::builder::<PowerDevice>()
+                    .property("path", format!("openhub:{}", battery.usb_device))
+                    .property("kind", kind)
+                    .property("icon-name", convert::kind_icon(kind))
+                    .property("connection", "USB")
+                    .property("usb-device", &battery.usb_device)
+                    .property("present", true)
+                    .property("charge-cycles", -1)
+                    .build()
+            });
+            let (text, fraction) = battery.text();
+            device.set_title(battery.name.as_str());
+            device.set_model(battery.name.as_str());
+            device.set_level(f64::from(battery.level));
+            device.set_subtitle(format!("{text} · USB"));
+            device.set_level_text(text);
+            device.set_fraction(fraction);
+            next.insert(battery.usb_device, device);
+        }
+        // Levels update in place; only a device coming or going relists.
+        let changed =
+            before.len() != next.len() || before.iter().any(|usb| !next.contains_key(usb));
+        *extra = next;
+        drop(extra);
+        if changed {
+            self.relist();
+        }
+    }
+
     /// Recomputes both lists from the tracked devices, replacing a list only
     /// when its members change so rows aren't rebuilt on every level tick.
     fn relist(&self) {
@@ -494,6 +575,7 @@ impl PowerManager {
             .iter()
             .filter(|d| !d.power_supply() && !hidden.contains(&d.path()))
             .cloned()
+            .chain(self.imp().extra.borrow().values().cloned())
             .collect();
         peripherals.sort_by_key(|d| (d.title().to_lowercase(), d.path()));
         replace_if_changed(&self.imp().computer, &computer);

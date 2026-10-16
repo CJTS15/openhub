@@ -10,6 +10,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use gtk::{gio, glib};
 use rustix::ioctl::{Updater, ioctl, opcode};
 
 const RAZER: u32 = 0x1532;
@@ -27,6 +28,8 @@ pub struct Node {
     /// The USB device, such as `3-3`; matches `InputDevice::usb_device`.
     pub usb_device: String,
     pub product: u16,
+    /// "Razer Orochi V2".
+    pub name: String,
 }
 
 pub fn find() -> Vec<Node> {
@@ -46,6 +49,10 @@ fn find_in(sys: &Path, dev: &Path) -> Vec<Node> {
             let id = uevent
                 .lines()
                 .find_map(|line| line.strip_prefix("HID_ID="))?;
+            let name = uevent
+                .lines()
+                .find_map(|line| line.strip_prefix("HID_NAME="))
+                .unwrap_or_default();
             let mut parts = id.split(':');
             let bus = parts.next()?;
             let vendor = u32::from_str_radix(parts.next()?, 16).ok()?;
@@ -61,6 +68,7 @@ fn find_in(sys: &Path, dev: &Path) -> Vec<Node> {
                 path: dev.join(entry.file_name()),
                 usb_device: usb_device.to_owned(),
                 product,
+                name: name.to_owned(),
             })
         })
         .collect();
@@ -160,6 +168,44 @@ impl Device {
     }
 }
 
+/// The mouse's battery for list subtitles, which can't wait on the mouse:
+/// the last level read, refreshed in the background at most once a minute.
+/// `None` until the first read, and for wired mice.
+pub fn battery(node: &Node) -> Option<u8> {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::time::Instant;
+    thread_local! {
+        static LEVELS: RefCell<HashMap<PathBuf, (Instant, Option<u8>)>> = RefCell::default();
+    }
+    let (fresh, level) = LEVELS.with_borrow(|levels| match levels.get(&node.path) {
+        Some((read, level)) => (read.elapsed() < Duration::from_secs(60), *level),
+        None => (false, None),
+    });
+    if !fresh {
+        let path = node.path.clone();
+        LEVELS.with_borrow_mut(|levels| levels.insert(path.clone(), (Instant::now(), level)));
+        glib::spawn_future_local(async move {
+            let read = path.clone();
+            let level = gio::spawn_blocking(move || read_battery(&read)).await;
+            if let Ok(Ok(level)) = level {
+                LEVELS.with_borrow_mut(|levels| levels.insert(path, (Instant::now(), Some(level))));
+            }
+        });
+    }
+    level
+}
+
+fn read_battery(path: &Path) -> io::Result<u8> {
+    let reply = Device::open(path)?.call(0x07, 0x80, 0x02, &[])?;
+    Ok(level(reply[1]))
+}
+
+/// The battery byte, 0 to 255, as a percentage.
+fn level(byte: u8) -> u8 {
+    (u16::from(byte) * 100 / 255) as u8
+}
+
 pub fn read(node: &Node) -> io::Result<State> {
     let mut device = Device::open(&node.path)?;
     let dpi = device.call(0x04, 0x85, 0x07, &[VARSTORE])?;
@@ -171,7 +217,7 @@ pub fn read(node: &Node) -> io::Result<State> {
     let battery = device
         .call(0x07, 0x80, 0x02, &[])
         .ok()
-        .map(|reply| (u16::from(reply[1]) * 100 / 255) as u8);
+        .map(|reply| level(reply[1]));
     Ok(State {
         dpi: u16::from_be_bytes([dpi[1], dpi[2]]),
         max_dpi: max_dpi(node.product),
@@ -242,7 +288,11 @@ mod tests {
         for (node, interface) in [("hidraw5", "1.0"), ("hidraw6", "1.1")] {
             let device = usb.join(format!("3-3:{interface}/0003:1532:0094.0005"));
             std::fs::create_dir_all(&device).unwrap();
-            std::fs::write(device.join("uevent"), "HID_ID=0003:00001532:00000094\n").unwrap();
+            std::fs::write(
+                device.join("uevent"),
+                "HID_ID=0003:00001532:00000094\nHID_NAME=Razer Orochi V2\n",
+            )
+            .unwrap();
             let class = root.join("class").join(node);
             std::fs::create_dir_all(&class).unwrap();
             std::os::unix::fs::symlink(&device, class.join("device")).unwrap();
@@ -255,8 +305,11 @@ mod tests {
                 path: "/dev/hidraw5".into(),
                 usb_device: "3-3".into(),
                 product: 0x0094,
+                name: "Razer Orochi V2".into(),
             }]
         );
         assert_eq!(max_dpi(0x0094), 18000);
+        // The Orochi V2 reported 0xFF on fresh batteries.
+        assert_eq!((level(0xFF), level(0x80), level(0)), (100, 50, 0));
     }
 }

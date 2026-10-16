@@ -221,7 +221,10 @@ pub fn usb_battery_summary(batteries: &[(String, String, f64)]) -> (String, Vec<
     let row = batteries
         .iter()
         .min_by(|a, b| a.2.total_cmp(&b.2))
-        .map_or_else(String::new, |(_, text, _)| format!("{text} battery"));
+        // "80% battery" in a subtitle, not the "80 %" of a level on its own.
+        .map_or_else(String::new, |(_, text, _)| {
+            format!("{} battery", text.replace(" %", "%"))
+        });
     let details = batteries
         .iter()
         .map(|(name, text, _)| format!("{name} · {text}"))
@@ -327,7 +330,7 @@ mod tests {
             ("MX Master 3S".to_owned(), "30 %".to_owned(), 0.30),
         ];
         let (row, details) = usb_battery_summary(&batteries);
-        assert_eq!(row, "30 % battery");
+        assert_eq!(row, "30% battery");
         assert_eq!(details, ["MX Keys · 64 %", "MX Master 3S · 30 %"]);
         let coarse = [("Pad".to_owned(), level_text(0.0, 4), level_fraction(0.0, 4))];
         assert_eq!(usb_battery_summary(&coarse).0, "Critical battery");

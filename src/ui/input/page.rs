@@ -110,8 +110,9 @@ impl InputPage {
             .iter()
             .flatten()
             .collect();
+        let razers = razer::find();
         for device in manager.devices().iter::<InputDevice>().flatten() {
-            let mine: Vec<(String, f64)> = batteries
+            let mut mine: Vec<(String, f64)> = batteries
                 .iter()
                 .filter(|b| {
                     let by_address = !device.uniq().is_empty()
@@ -122,6 +123,16 @@ impl InputPage {
                 })
                 .map(|b| (b.level_text(), b.fraction()))
                 .collect();
+            // Razer mice report theirs only through their own protocol.
+            let level = razers
+                .iter()
+                .find(|node| {
+                    !device.usb_device().is_empty() && node.usb_device == device.usb_device()
+                })
+                .and_then(razer::battery);
+            if let Some(level) = level {
+                mine.push((format!("{level} %"), f64::from(level) / 100.0));
+            }
             let text = battery_text(&mine);
             if device.battery() != text {
                 device.set_battery(text);

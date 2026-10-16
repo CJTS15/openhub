@@ -8,6 +8,7 @@ use gtk::glib;
 
 use super::device_dialog;
 use crate::model::{PowerDevice, UsbDevice};
+use crate::razer;
 use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
 
@@ -121,6 +122,16 @@ impl UsbPage {
                     battery.title(),
                     battery.level_text(),
                     battery.fraction(),
+                ));
+            }
+        }
+        // Razer mice report their battery only through their own protocol.
+        for node in razer::find() {
+            if let Some(level) = razer::battery(&node) {
+                by_usb.entry(node.usb_device).or_default().push((
+                    node.name,
+                    format!("{level} %"),
+                    f64::from(level) / 100.0,
                 ));
             }
         }
@@ -417,7 +428,7 @@ fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&Usb
     .bind(row, "subtitle", Some(device));
 }
 
-/// "Vendor · 80 % battery · Connected through USB2.1 Hub", without the
+/// "Vendor · 80% battery · Connected through USB2.1 Hub", without the
 /// parts a device doesn't have.
 fn subtitle(vendor: &str, battery: &str, hub: Option<&str>) -> String {
     let through = hub.map(|hub| format!("Connected through {hub}"));

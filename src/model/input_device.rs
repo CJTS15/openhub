@@ -26,7 +26,7 @@ mod imp {
         /// USB device (sysfs name such as `3-9`) it hangs off, for battery.
         #[property(get, set)]
         usb_device: RefCell<String>,
-        /// "85 % battery" when UPower reports one; set by the page.
+        /// "85% Battery" when UPower reports one; set by the page.
         #[property(get, set)]
         battery: RefCell<String>,
     }

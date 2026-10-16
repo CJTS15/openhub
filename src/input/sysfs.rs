@@ -66,11 +66,11 @@ fn pick(mut nodes: Vec<InputInfo>) -> InputInfo {
     nodes.sort_by_key(|node| (node.kind, interface(node)));
     let has = |kind| nodes.iter().any(|node| node.kind == kind);
     if has(Kind::Keyboard) && has(Kind::Mouse) {
-        // The base name: the Razer's nodes are "Razer Orochi V2" and
-        // "Razer Orochi V2 Keyboard".
+        // The device's own name, without the kernel's per-node suffix: the
+        // Yunzii's nodes are "YUNZII AL68 BT1 Keyboard" and "… Mouse".
         let name = nodes
             .iter()
-            .map(|node| node.name.to_lowercase())
+            .map(|node| base_name(&node.name).to_lowercase())
             .min_by_key(String::len)
             .unwrap_or_default();
         let first = nodes.iter().min_by_key(|node| interface(node));
@@ -86,6 +86,19 @@ fn pick(mut nodes: Vec<InputInfo>) -> InputInfo {
         }
     }
     nodes.swap_remove(0)
+}
+
+/// A node's name without the suffix the kernel adds per HID collection.
+fn base_name(name: &str) -> &str {
+    [
+        " Keyboard",
+        " Mouse",
+        " Consumer Control",
+        " System Control",
+    ]
+    .iter()
+    .find_map(|suffix| name.strip_suffix(suffix))
+    .unwrap_or(name)
 }
 
 /// The USB interface number from `phys` ("usb-…-3/input2" is interface 2).
@@ -225,7 +238,8 @@ mod tests {
                 "Razer Orochi V2",
                 "SmartCloud AL68 Keyboard",
                 "Touchpad",
-                "TrackPoint"
+                "TrackPoint",
+                "YUNZII AL68 BT1 Keyboard"
             ]
         );
     }
@@ -246,6 +260,17 @@ mod tests {
         assert_eq!(razer.uniq, "");
         // VXE: keyboard on interface 0, but the name says mouse.
         assert_eq!(named("Compx VXE NordicMouse 1K Dongle").kind, Kind::Mouse);
+    }
+
+    #[test]
+    fn a_bluetooth_keyboards_mouse_node_stays_a_keyboard() {
+        // Its nodes end in " Keyboard" and " Mouse"; neither suffix counts.
+        let yunzii = named("YUNZII AL68 BT1 Keyboard");
+        assert_eq!(
+            (yunzii.kind, yunzii.connection),
+            (Kind::Keyboard, "Bluetooth")
+        );
+        assert_eq!(base_name("YUNZII AL68 BT1 Mouse"), "YUNZII AL68 BT1");
     }
 
     #[test]

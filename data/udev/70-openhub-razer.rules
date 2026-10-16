@@ -1,0 +1,7 @@
+# Lets the logged-in user send Razer's control reports to Razer mice, so
+# Openhub can change DPI and polling rate. Razer mice store these themselves,
+# so nothing needs restoring when they reconnect.
+ACTION=="remove", GOTO="openhub_razer_end"
+SUBSYSTEM!="hidraw", GOTO="openhub_razer_end"
+ATTRS{idVendor}=="1532", TAG+="uaccess"
+LABEL="openhub_razer_end"

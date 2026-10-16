@@ -4,11 +4,11 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 
-use super::mouse_dialog;
-use crate::hidpp;
+use super::{logitech_dialog, mouse_dialog, razer_dialog};
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
+use crate::{hidpp, razer};
 
 mod imp {
     use super::*;
@@ -43,6 +43,7 @@ mod imp {
                 ),
             };
             let manager = self.manager.get_or_init(|| InputManager::new(kinds));
+            let mice = !kinds.contains(&Kind::Keyboard);
 
             let list = gtk::ListBox::builder()
                 .selection_mode(gtk::SelectionMode::None)
@@ -56,8 +57,8 @@ mod imp {
                     .css_classes(["dim-label"])
                     .build(),
             ));
-            list.bind_model(Some(&manager.devices()), |item| {
-                row(item.downcast_ref().unwrap()).upcast()
+            list.bind_model(Some(&manager.devices()), move |item| {
+                row(item.downcast_ref().unwrap(), mice).upcast()
             });
             let group = adw::PreferencesGroup::builder().title(title).build();
             group.add(&list);
@@ -129,7 +130,8 @@ impl InputPage {
     }
 }
 
-fn row(device: &InputDevice) -> adw::ActionRow {
+/// `mice` is true on the Mouse page.
+fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
     let row = adw::ActionRow::builder().use_markup(false).build();
     device
         .bind_property("title", &row, "title")
@@ -153,19 +155,32 @@ fn row(device: &InputDevice) -> adw::ActionRow {
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    // A Logitech mouse opens its settings; others have none Openhub can change.
+    // Logitech and Razer mice open their settings; other mice and touchpads
+    // a dialog that says where theirs are. Keyboards get theirs in M17.
     let uniq = device.uniq();
-    let node = hidpp::find()
+    let usb_device = device.usb_device();
+    let logitech = hidpp::find()
         .into_iter()
         .find(|node| !uniq.is_empty() && node.uniq.eq_ignore_ascii_case(&uniq));
-    if let Some(node) = node {
-        row.set_activatable(true);
-        row.connect_activated(glib::clone!(
-            #[weak]
-            device,
-            move |row| mouse_dialog::new(&device, node.clone()).present(Some(row))
-        ));
+    let razer = razer::find()
+        .into_iter()
+        .find(|node| !usb_device.is_empty() && node.usb_device == usb_device);
+    if logitech.is_none() && razer.is_none() && !mice {
+        return row;
     }
+    row.set_activatable(true);
+    row.connect_activated(glib::clone!(
+        #[weak]
+        device,
+        move |row| {
+            let dialog = match (&logitech, &razer) {
+                (Some(node), _) => logitech_dialog::new(&device, node.clone()),
+                (None, Some(node)) => razer_dialog::new(&device, node.clone()),
+                (None, None) => mouse_dialog::new(&device),
+            };
+            dialog.present(Some(row));
+        }
+    ));
     row
 }
 

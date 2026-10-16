@@ -6,6 +6,7 @@ mod eq;
 mod hidpp;
 mod input;
 mod model;
+mod razer;
 mod ui;
 mod upower;
 mod usb;

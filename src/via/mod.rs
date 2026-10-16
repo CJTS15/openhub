@@ -175,6 +175,26 @@ impl Device {
     }
 }
 
+/// Whether the user may open the keyboard's VIA interface yet.
+pub fn can_open(node: &Node) -> bool {
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&node.path)
+        .is_ok()
+}
+
+/// A terminal command that lets the logged-in user open this keyboard,
+/// like the lines in `data/udev/70-openhub-via.rules`.
+pub fn access_command(vendor: u16, product: u16) -> String {
+    format!(
+        "echo 'SUBSYSTEM==\"hidraw\", ATTRS{{idVendor}}==\"{vendor:04x}\", \
+         ATTRS{{idProduct}}==\"{product:04x}\", TAG+=\"uaccess\"' | sudo tee \
+         /etc/udev/rules.d/70-openhub-via-{vendor:04x}-{product:04x}.rules && sudo udevadm \
+         control --reload && sudo udevadm trigger --action=add --subsystem-match=hidraw"
+    )
+}
+
 /// Saved definitions live per USB ID, imported once by the user.
 pub fn definition_path(vendor: u16, product: u16) -> PathBuf {
     gtk::glib::user_config_dir().join(format!("openhub/via/{vendor:04x}-{product:04x}.json"))
@@ -219,5 +239,13 @@ mod tests {
         // A boot keyboard interface has no raw HID collection.
         let keyboard = [0x05, 0x01, 0x09, 0x06, 0xa1, 0x01, 0x95, 0x08, 0xc0];
         assert_eq!(raw_report_size(&keyboard), None);
+    }
+
+    #[test]
+    fn access_command_names_the_keyboard() {
+        let command = access_command(0x4D4B, 0x304E);
+        assert!(command.starts_with(
+            r#"echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-openhub-via-4d4b-304e.rules"#
+        ));
     }
 }

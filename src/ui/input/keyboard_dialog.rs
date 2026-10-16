@@ -36,6 +36,8 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
             "Openhub can't change this keyboard's lighting or keys. It works with VIA \
              keyboards connected by cable."
         })),
+        // udev can't match "any VIA keyboard", so each one needs its own line.
+        Some(node) if !via::can_open(&node) => page.add(&access_group(&dialog, &node)),
         Some(node) => match via::load_definition(node.vendor, node.product) {
             Some(definition) => {
                 load(&dialog, &page, node, definition, shortcuts);
@@ -46,6 +48,50 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
     }
     page.add(&shortcuts);
     dialog
+}
+
+/// How to give the user access to a VIA keyboard Openhub found but can't open.
+fn access_group(dialog: &adw::PreferencesDialog, node: &Node) -> adw::PreferencesGroup {
+    let command = via::access_command(node.vendor, node.product);
+    let group = adw::PreferencesGroup::builder()
+        .title("Lighting and Keys")
+        .description(
+            "This is a VIA keyboard, but Openhub isn't allowed to talk to it yet. Run this \
+             once in a terminal to allow it, then reopen this window.",
+        )
+        .build();
+    let text = gtk::Label::builder()
+        .label(&command)
+        .selectable(true)
+        .wrap(true)
+        .wrap_mode(gtk::pango::WrapMode::WordChar)
+        .xalign(0.0)
+        .css_classes(["monospace"])
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+    let card = gtk::Box::builder().css_classes(["card"]).build();
+    card.append(&text);
+    text.set_hexpand(true);
+    group.add(&card);
+    let copy = gtk::Button::builder()
+        .label("Copy")
+        .halign(gtk::Align::Center)
+        .margin_top(12)
+        .css_classes(["pill"])
+        .build();
+    copy.connect_clicked(glib::clone!(
+        #[weak]
+        dialog,
+        move |button| {
+            button.clipboard().set_text(&command);
+            toast(&dialog, "Copied");
+        }
+    ));
+    group.add(&copy);
+    group
 }
 
 fn note(text: &str) -> adw::PreferencesGroup {

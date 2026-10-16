@@ -6,7 +6,7 @@
   <name>Openhub</name>
   <summary>Manage your connected devices</summary>
   <description>
-    <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB and power.</p>
+    <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB, power, mice, keyboards and audio.</p>
     <ul>
       <li>Turn Bluetooth on and off</li>
       <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
@@ -17,13 +17,43 @@
       <li>Safely eject USB drives</li>
       <li>See your laptop's battery and the battery of every wireless device in one place</li>
       <li>Check battery health, charge cycles and energy</li>
-      <li>Preserve battery health by stopping charging at 80 %, on laptops that support it</li>
+      <li>Preserve battery health by stopping charging at 80%, on laptops that support it</li>
+      <li>Change the DPI, scroll wheel and buttons of Logitech, Razer and other gaming mice</li>
+      <li>Change the lighting and keys of VIA keyboards, stored on the keyboard</li>
+      <li>Choose your audio output and input, set their volume, and see each microphone's level</li>
+      <li>Shape each output's sound with a 10-band equalizer or an AutoEQ profile</li>
     </ul>
   </description>
   <developer id="io.github.cjts15">
     <name>CJ</name>
   </developer>
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/bluetooth.png</image>
+      <caption>Bluetooth devices, connected ones first, with their batteries</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/audio.png</image>
+      <caption>Audio outputs and inputs, with volume, mute and microphone levels</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/mouse.png</image>
+      <caption>Mice and touchpads, with their connection and battery</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/keyboard.png</image>
+      <caption>Keyboards, with their connection and battery</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/power.png</image>
+      <caption>The laptop's battery, the charge limit and every wireless device's battery</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/usb.png</image>
+      <caption>USB devices, grouped under the hubs they're connected through</caption>
+    </screenshot>
+  </screenshots>
   <url type="homepage">https://github.com/CJTS15/openhub</url>
   <url type="bugtracker">https://github.com/CJTS15/openhub/issues</url>
   <content_rating type="oars-1.1"/>
@@ -36,6 +66,19 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.4.0" date="2026-10-16">
+      <description>
+        <p>Adds Mouse, Keyboard and Audio pages:</p>
+        <ul>
+          <li>Logitech mice: DPI, SmartShift and scroll direction, restored automatically when the mouse reconnects</li>
+          <li>Razer mice: DPI and polling rate, stored on the mouse; other brands through ratbagd</li>
+          <li>VIA keyboards on their cable: lighting and key remapping from the keyboard's VIA definition, and a shortcut to GNOME Settings' keyboard shortcuts</li>
+          <li>Audio outputs and inputs: default device, volume, mute, Bluetooth codec and a live microphone level</li>
+          <li>A built-in equalizer for each output, with presets and AutoEQ import, that keeps working when Openhub is closed</li>
+          <li>Batteries the kernel reports but UPower misses, such as some 2.4 GHz mice</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-10-15">
       <description>
         <p>Adds a Power page:</p>

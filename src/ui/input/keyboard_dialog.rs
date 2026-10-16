@@ -188,6 +188,7 @@ fn load(
                 definition,
                 values: RefCell::new(snapshot.values),
                 rows: RefCell::default(),
+                labels: RefCell::default(),
                 pending: RefCell::default(),
                 write_queued: Cell::new(false),
                 dialog: dialog.downgrade(),
@@ -211,6 +212,8 @@ struct Editor {
     values: RefCell<HashMap<(u8, u8), Vec<u8>>>,
     /// Each control's row, for `showIf`.
     rows: RefCell<Vec<(Control, gtk::Widget)>>,
+    /// Each key's label, in the definition's key order.
+    labels: RefCell<Vec<gtk::Label>>,
     /// Lighting writes not sent yet, coalesced while a slider moves.
     pending: RefCell<HashMap<(u8, u8), Vec<u8>>>,
     write_queued: Cell<bool>,
@@ -396,8 +399,10 @@ impl Editor {
             .build();
         let layout = gtk::Fixed::new();
         layout.set_halign(gtk::Align::Center);
-        layout.set_margin_top(6);
-        layout.set_margin_bottom(6);
+        layout.set_margin_top(12);
+        layout.set_margin_bottom(12);
+        layout.set_margin_start(12);
+        layout.set_margin_end(12);
         for (key, code) in self.definition.keys.iter().zip(codes) {
             // Long names wrap to two lines rather than widen the key past
             // its place on the layout.
@@ -432,6 +437,7 @@ impl Editor {
                 move |button| editor.pick(button, &label, row, col)
             ));
             layout.put(&button, key.x * UNIT, key.y * UNIT);
+            self.labels.borrow_mut().push(label);
         }
         let card = gtk::Box::builder().css_classes(["card"]).build();
         card.append(&layout);
@@ -559,7 +565,15 @@ impl Editor {
                 })
                 .await;
                 match result {
-                    Ok(Ok(_)) => editor.toast("Keys restored. Reopen this window to see them."),
+                    Ok(Ok(snapshot)) => {
+                        for (label, code) in editor.labels.borrow().iter().zip(snapshot.keycodes) {
+                            label.set_label(&keycodes::name(
+                                code,
+                                &editor.definition.custom_keycodes,
+                            ));
+                        }
+                        editor.toast("Keys restored");
+                    }
                     Ok(Err(error)) => editor.toast(&format!("Couldn't restore the keys: {error}")),
                     Err(_) => editor.toast("Couldn't restore the keys"),
                 }

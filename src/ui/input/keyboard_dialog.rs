@@ -399,13 +399,21 @@ impl Editor {
         layout.set_margin_top(6);
         layout.set_margin_bottom(6);
         for (key, code) in self.definition.keys.iter().zip(codes) {
+            // Long names wrap to two lines rather than widen the key past
+            // its place on the layout.
             let label = gtk::Label::builder()
                 .label(keycodes::name(code, &self.definition.custom_keycodes))
+                .wrap(true)
+                .wrap_mode(gtk::pango::WrapMode::WordChar)
+                .lines(2)
                 .ellipsize(gtk::pango::EllipsizeMode::End)
+                .max_width_chars(1)
+                .justify(gtk::Justification::Center)
                 .css_classes(["caption"])
                 .build();
             let button = gtk::Button::builder()
                 .child(&label)
+                .css_classes(["via-key"])
                 .width_request((key.w * UNIT) as i32 - 4)
                 .height_request((key.h * UNIT) as i32 - 4)
                 .build();
@@ -580,9 +588,15 @@ fn shortcuts_group() -> adw::PreferencesGroup {
         .activatable(true)
         .build();
     row.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
-    row.connect_activated(|_| {
-        glib::spawn_future_local(async {
-            if let Err(error) = open_keyboard_settings().await {
+    row.connect_activated(|row| {
+        // Wayland only lets GNOME Settings come to the front with a token
+        // from the app that asked.
+        let token = row
+            .display()
+            .app_launch_context()
+            .startup_notify_id(None::<&gio::AppInfo>, &[]);
+        glib::spawn_future_local(async move {
+            if let Err(error) = open_keyboard_settings(token.as_deref()).await {
                 glib::g_warning!("openhub", "Can't open GNOME Settings: {error}");
             }
         });
@@ -592,13 +606,20 @@ fn shortcuts_group() -> adw::PreferencesGroup {
 }
 
 /// GNOME Settings' Keyboard panel, through its `launch-panel` action.
-async fn open_keyboard_settings() -> Result<(), glib::Error> {
+async fn open_keyboard_settings(token: Option<&str>) -> Result<(), glib::Error> {
     let bus = gio::bus_get_future(gio::BusType::Session).await?;
     let panel = ("keyboard", Vec::<glib::Variant>::new()).to_variant();
     let args = (
         "launch-panel",
         vec![panel],
-        HashMap::<String, glib::Variant>::new(),
+        token
+            .map(|token| {
+                HashMap::from([
+                    ("activation-token".to_owned(), token.to_variant()),
+                    ("desktop-startup-id".to_owned(), token.to_variant()),
+                ])
+            })
+            .unwrap_or_default(),
     )
         .to_variant();
     bus.call_future(

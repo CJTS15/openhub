@@ -10,3 +10,10 @@ levelbar.battery block.high {
 levelbar.battery block.low {
   background-color: @warning_color;
 }
+
+/* Keys on a VIA keyboard's layout: tight, so each stays within its place. */
+button.via-key {
+  padding: 2px;
+  min-width: 0;
+  min-height: 0;
+}

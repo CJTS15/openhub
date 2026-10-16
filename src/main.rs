@@ -11,6 +11,7 @@ mod razer;
 mod ui;
 mod upower;
 mod usb;
+mod via;
 mod watch;
 mod window;
 

@@ -25,14 +25,15 @@ install_data(
   install_dir: datadir / 'icons/hicolor/symbolic/apps',
 )
 
-# Logitech and Razer mice: user access to hidraw, and restoring Logitech
-# settings when they connect. A Flatpak can't install these; its users copy them by hand.
+# Logitech and Razer mice and VIA keyboards: user access to hidraw, and
+# restoring Logitech settings when they connect. A Flatpak can't install these; its users copy them by hand.
 install_data(
   'udev/70-openhub-logitech.rules',
   install_dir: get_option('prefix') / 'lib/udev/rules.d',
 )
 install_data(
   'udev/70-openhub-razer.rules',
+  'udev/70-openhub-via.rules',
   install_dir: get_option('prefix') / 'lib/udev/rules.d',
 )
 install_data(

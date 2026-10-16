@@ -4,7 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 
-use super::{logitech_dialog, mouse_dialog, razer_dialog};
+use super::{keyboard_dialog, logitech_dialog, mouse_dialog, razer_dialog};
 use crate::input::{InputManager, Kind};
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
@@ -155,8 +155,8 @@ fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
         .sync_create()
         .build();
     row.add_prefix(&icon);
-    // Logitech and Razer mice open their settings; other mice and touchpads
-    // a dialog that says where theirs are. Keyboards get theirs in M17.
+    // Logitech and Razer mice open their settings, other mice and touchpads a
+    // dialog that says where theirs are, keyboards their VIA settings.
     let uniq = device.uniq();
     let usb_device = device.usb_device();
     let logitech = hidpp::find()
@@ -165,9 +165,7 @@ fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
     let razer = razer::find()
         .into_iter()
         .find(|node| !usb_device.is_empty() && node.usb_device == usb_device);
-    if logitech.is_none() && razer.is_none() && !mice {
-        return row;
-    }
+
     row.set_activatable(true);
     row.connect_activated(glib::clone!(
         #[weak]
@@ -176,7 +174,8 @@ fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
             let dialog = match (&logitech, &razer) {
                 (Some(node), _) => logitech_dialog::new(&device, node.clone()),
                 (None, Some(node)) => razer_dialog::new(&device, node.clone()),
-                (None, None) => mouse_dialog::new(&device),
+                (None, None) if mice => mouse_dialog::new(&device),
+                (None, None) => keyboard_dialog::new(&device),
             };
             dialog.present(Some(row));
         }

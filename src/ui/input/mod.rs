@@ -1,3 +1,4 @@
+mod keyboard_dialog;
 mod logitech_dialog;
 mod mouse_dialog;
 mod page;

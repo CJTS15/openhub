@@ -201,14 +201,15 @@ pub fn can_open(node: &Node) -> bool {
 /// A terminal command that lets the logged-in user open this keyboard,
 /// like the lines in `data/udev/70-openhub-via.rules`.
 /// Only the VIA interface: the keyboard's own interface would let any
-/// program read keystrokes. The IDs and the interface number sit on
-/// different parent devices, which one udev line can't match together.
+/// program read keystrokes. Two steps, as in `data/udev/70-openhub-via.rules`:
+/// the IDs and the interface number sit on different parent devices.
 pub fn access_command(vendor: u16, product: u16, interface: u8) -> String {
-    let end = format!("openhub_via_{vendor:04x}_{product:04x}_end");
+    let id = format!("{vendor:04x}_{product:04x}");
+    let (keyboard, end) = (format!("openhub_via_{id}"), format!("openhub_via_{id}_end"));
     format!(
         "printf '%s\\n' 'SUBSYSTEM!=\"hidraw\", GOTO=\"{end}\"' \
-         'ATTRS{{idVendor}}!=\"{vendor:04x}\", GOTO=\"{end}\"' \
-         'ATTRS{{idProduct}}!=\"{product:04x}\", GOTO=\"{end}\"' \
+         'ATTRS{{idVendor}}==\"{vendor:04x}\", ATTRS{{idProduct}}==\"{product:04x}\", GOTO=\"{keyboard}\"' \
+         'GOTO=\"{end}\"' 'LABEL=\"{keyboard}\"' \
          'ATTRS{{bInterfaceNumber}}==\"{interface:02x}\", TAG+=\"uaccess\"' \
          'LABEL=\"{end}\"' | sudo tee /etc/udev/rules.d/70-openhub-via-{vendor:04x}-{product:04x}.rules \
          && sudo udevadm control --reload && sudo udevadm trigger --action=add \
@@ -268,7 +269,9 @@ mod tests {
     #[test]
     fn access_command_names_the_keyboard() {
         let command = access_command(0x4D4B, 0x304E, 1);
-        assert!(command.contains(r#"'ATTRS{idVendor}!="4d4b", GOTO="openhub_via_4d4b_304e_end"'"#));
+        assert!(command.contains(
+            r#"'ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", GOTO="openhub_via_4d4b_304e"'"#
+        ));
         assert!(command.contains(r#"'ATTRS{bInterfaceNumber}=="01", TAG+="uaccess"'"#));
         assert!(command.contains("/etc/udev/rules.d/70-openhub-via-4d4b-304e.rules"));
     }

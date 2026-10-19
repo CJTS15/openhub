@@ -3,12 +3,15 @@
 # so nothing needs restoring when they reconnect. Each mouse is listed by its
 # USB IDs, and only its control interface (0): a rule for every Razer device
 # would include Razer keyboards, whose raw input any program could then read.
+# Two steps, as in 70-openhub-via.rules: the IDs and the interface number sit
+# on different parents.
 ACTION=="remove", GOTO="openhub_razer_end"
 SUBSYSTEM!="hidraw", GOTO="openhub_razer_end"
-ATTRS{idVendor}!="1532", GOTO="openhub_razer_end"
-ATTRS{bInterfaceNumber}!="00", GOTO="openhub_razer_end"
 
 # Orochi V2 on its USB dongle
-ATTRS{idProduct}=="0094", TAG+="uaccess"
+ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0094", GOTO="openhub_razer_mouse"
+GOTO="openhub_razer_end"
+LABEL="openhub_razer_mouse"
+ATTRS{bInterfaceNumber}=="00", TAG+="uaccess"
 
 LABEL="openhub_razer_end"

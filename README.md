@@ -6,7 +6,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-[v0.4.0](https://github.com/CJTS15/openhub/releases/tag/v0.4.0) is the latest release.
+[v0.4.1](https://github.com/CJTS15/openhub/releases/tag/v0.4.1) is the latest release.
 
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
 - **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
@@ -17,11 +17,11 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download `openhub-0.4.0-x86_64.flatpak` from the [v0.4.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.4.0). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-0.4.1-x86_64.flatpak` from the [v0.4.1 release](https://github.com/CJTS15/openhub/releases/tag/v0.4.1). It needs the GNOME 50 runtime from Flathub:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-0.4.0-x86_64.flatpak
+flatpak install --user openhub-0.4.1-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 

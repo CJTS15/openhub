@@ -66,6 +66,16 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.4.1" date="2026-10-19">
+      <description>
+        <p>Security and reliability fixes:</p>
+        <ul>
+          <li>The VIA and Razer udev rules now open only the interface Openhub uses, so a keyboard's own interface can't be read by other programs</li>
+          <li>A VIA keyboard sending unexpected replies, or an unusual VIA definition file, can no longer crash Openhub</li>
+          <li>Equalizer settings are saved only for outputs with ordinary names, so a crafted output name can't change WirePlumber's configuration</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-10-16">
       <description>
         <p>Adds Mouse, Keyboard and Audio pages:</p>

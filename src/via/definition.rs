@@ -121,10 +121,11 @@ fn layout(rows: &[Value]) -> Vec<Key> {
             match item {
                 Value::Object(props) => {
                     let number = |key: &str| props.get(key).and_then(Value::as_f64);
-                    x += number("x").unwrap_or(0.0);
-                    y += number("y").unwrap_or(0.0);
-                    w = number("w").unwrap_or(w);
-                    h = number("h").unwrap_or(h);
+                    // Imported files are untrusted: keep keys on a sane board.
+                    x = (x + number("x").unwrap_or(0.0)).clamp(0.0, 40.0);
+                    y = (y + number("y").unwrap_or(0.0)).clamp(0.0, 40.0);
+                    w = number("w").unwrap_or(w).clamp(0.25, 10.0);
+                    h = number("h").unwrap_or(h).clamp(0.25, 10.0);
                 }
                 Value::String(label) => {
                     let lines: Vec<&str> = label.split('\n').collect();
@@ -296,6 +297,11 @@ mod tests {
         );
         assert_eq!((def.controls[2].channel, def.controls[2].value_id), (3, 4));
         assert!(Definition::parse("{}").is_err());
+        // Absurd sizes from a bad file stay on the board.
+        let huge = r#"{"vendorId": "0x1", "productId": "0x2",
+            "layouts": {"keymap": [[{"x": -5, "w": 1e9, "h": -3}, "0,0"]]}}"#;
+        let key = Definition::parse(huge).unwrap().keys[0];
+        assert_eq!((key.x, key.w, key.h), (0.0, 10.0, 0.25));
     }
 
     #[test]

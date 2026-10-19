@@ -15,13 +15,6 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 - **Keyboard** (new in v0.4.0): lighting and key remapping for VIA keyboards on their cable, from the keyboard's VIA definition; a Keyboard Shortcuts button for every keyboard.
 - **Audio** (new in v0.4.0): default output and input, volume, mute, Bluetooth codec and a live microphone level; a 10-band equalizer per output with presets and AutoEQ import, which keeps working when Openhub is closed (PipeWire 1.4 or later).
 
-## Plans
-
-- [PLAN_V1.md](PLAN_V1.md): v0.1, Bluetooth (milestones M0 to M4, released)
-- [PLAN_V2.md](PLAN_V2.md): v0.2, USB devices (milestones M5 to M8, released)
-- [PLAN_V3.md](PLAN_V3.md): v0.3, Power (milestones M9 to M12, released)
-- [PLAN_V4.md](PLAN_V4.md): v0.4, Mouse, Keyboard and Audio (milestones M13 to M18, released)
-
 ## Installing
 
 Download `openhub-0.4.0-x86_64.flatpak` from the [v0.4.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.4.0). It needs the GNOME 50 runtime from Flathub:
@@ -50,7 +43,14 @@ cp data/systemd/openhub-mouse@.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 ```
 
-The VIA rule lists the keyboards tested so far. For another VIA keyboard, its dialog in Openhub shows the one-line rule to add. Mice of other brands need ratbagd (Piper's backend) installed.
+The VIA and Razer rules list the devices tested so far, each limited to the one interface Openhub talks to. For another VIA keyboard, its dialog in Openhub shows the one-line rule to add. Mice of other brands need ratbagd (Piper's backend) installed.
+
+### What the access means
+
+- A udev rule lets **every program you run** open that device's raw HID interface, not only Openhub. On a keyboard's own interface that would let a program read keystrokes, so the VIA and Razer rules grant only the configuration interface. The Logitech rule is the same as [Solaar's](https://github.com/pwr-Solaar/Solaar): over Bluetooth, HID++ shares one interface with the device's input, so it covers Logitech keyboards' input too. Skip it if you don't use a Logitech mouse.
+- The Flatpak asks for `--device=all`, because Flatpak has no narrower permission for `/dev/hidraw*`. Openhub only opens the HID devices it recognises.
+- The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it.
+- Openhub's Bluetooth pairing agent asks before confirming a pairing code, and refuses requests to authorize a device or service that it didn't start.
 
 If blueman-applet is running, Openhub turns off its connection notifications, which can freeze GNOME Shell when many devices reconnect at once ([#4](https://github.com/CJTS15/openhub/issues/4)).
 

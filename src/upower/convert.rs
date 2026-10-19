@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn connections() {
-        let bluez = "/org/bluez/hci0/dev_E7_1E_F6_9D_9E_4A";
+        let bluez = "/org/bluez/hci0/dev_02_00_00_00_00_02";
         assert_eq!(connection(bluez, None), "Bluetooth");
         let uhid = Path::new("/sys/devices/virtual/misc/uhid/0005:046D:B034.000B");
         assert_eq!(connection("hidpp_battery_0", Some(uhid)), "Bluetooth");
@@ -352,17 +352,17 @@ mod tests {
         let entries = [
             Entry {
                 path: "/up/battery_hidpp_battery_0",
-                serial: "d5:79:24:d9:f8:be",
+                serial: "0a:00:00:00:00:01",
                 bluez: false,
             },
             Entry {
                 path: "/up/mouse_dev_D5_79",
-                serial: "D5:79:24:D9:F8:BE",
+                serial: "0A:00:00:00:00:01",
                 bluez: true,
             },
             Entry {
                 path: "/up/keyboard_dev_E7",
-                serial: "E7:1E:F6:9D:9E:4A",
+                serial: "02:00:00:00:00:02",
                 bluez: true,
             },
             Entry {

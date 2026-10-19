@@ -1,7 +1,14 @@
-# Lets the logged-in user send Razer's control reports to Razer mice, so
+# Lets the logged-in user send Razer's control reports to these Razer mice, so
 # Openhub can change DPI and polling rate. Razer mice store these themselves,
-# so nothing needs restoring when they reconnect.
+# so nothing needs restoring when they reconnect. Each mouse is listed by its
+# USB IDs, and only its control interface (0): a rule for every Razer device
+# would include Razer keyboards, whose raw input any program could then read.
 ACTION=="remove", GOTO="openhub_razer_end"
 SUBSYSTEM!="hidraw", GOTO="openhub_razer_end"
-ATTRS{idVendor}=="1532", TAG+="uaccess"
+ATTRS{idVendor}!="1532", GOTO="openhub_razer_end"
+ATTRS{bInterfaceNumber}!="00", GOTO="openhub_razer_end"
+
+# Orochi V2 on its USB dongle
+ATTRS{idProduct}=="0094", TAG+="uaccess"
+
 LABEL="openhub_razer_end"

@@ -21,6 +21,8 @@ pub struct Node {
     pub product: u16,
     /// The USB device, such as `3-1.4`; matches `InputDevice::usb_device`.
     pub usb_device: String,
+    /// The USB interface number of the VIA interface (1 on the Yunzii AL68).
+    pub interface: u8,
     /// Bytes per report: 32 normally, 64 on the Yunzii AL68.
     pub report_size: usize,
 }
@@ -54,12 +56,15 @@ fn find_in(sys: &Path, dev: &Path) -> Vec<Node> {
             // …/3-1.4/3-1.4:1.1/0003:4D4B:304E.0012: the parent is the interface.
             let resolved = std::fs::canonicalize(&device).ok()?;
             let interface = resolved.parent()?.file_name()?.to_str()?;
-            let (usb_device, _) = interface.split_once(':')?;
+            // "3-1.4:1.1": USB device 3-1.4, configuration 1, interface 1.
+            let (usb_device, numbers) = interface.split_once(':')?;
+            let interface = numbers.split_once('.')?.1.parse().ok()?;
             Some(Node {
                 path: dev.join(entry.file_name()),
                 vendor,
                 product,
                 usb_device: usb_device.to_owned(),
+                interface,
                 report_size,
             })
         })
@@ -89,7 +94,13 @@ fn raw_report_size(descriptor: &[u8]) -> Option<usize> {
         match prefix & 0xFC {
             0x04 => usage_page = value, // Usage Page
             0x08 if usage_page == 0xFF60 && value == 0x61 => in_raw = true, // Usage
-            0x94 if in_raw => return usize::try_from(value).ok(), // Report Count
+            // Report Count. QMK's reports are 32 bytes or more; the requests
+            // and replies below assume that much room.
+            0x94 if in_raw => {
+                return usize::try_from(value)
+                    .ok()
+                    .filter(|size| (32..=1024).contains(size));
+            }
             _ => {}
         }
         at += 1 + size;
@@ -133,7 +144,10 @@ impl Device {
         }
         let mut reply = vec![0u8; self.report_size];
         let length = self.file.read(&mut reply)?;
-        reply.truncate(length);
+        // QMK always sends whole reports; a short one isn't an answer.
+        if length < self.report_size {
+            return Err(io::Error::other("The keyboard sent a short reply"));
+        }
         // 0xFF: the firmware doesn't know the command.
         match reply.first() {
             Some(&command) if command == request[0] => Ok(reply),
@@ -186,10 +200,13 @@ pub fn can_open(node: &Node) -> bool {
 
 /// A terminal command that lets the logged-in user open this keyboard,
 /// like the lines in `data/udev/70-openhub-via.rules`.
-pub fn access_command(vendor: u16, product: u16) -> String {
+/// Only the VIA interface: the keyboard's own interface would let any
+/// program read keystrokes.
+pub fn access_command(vendor: u16, product: u16, interface: u8) -> String {
     format!(
         "echo 'SUBSYSTEM==\"hidraw\", ATTRS{{idVendor}}==\"{vendor:04x}\", \
-         ATTRS{{idProduct}}==\"{product:04x}\", TAG+=\"uaccess\"' | sudo tee \
+         ATTRS{{idProduct}}==\"{product:04x}\", ATTRS{{bInterfaceNumber}}==\"{interface:02x}\", \
+         TAG+=\"uaccess\"' | sudo tee \
          /etc/udev/rules.d/70-openhub-via-{vendor:04x}-{product:04x}.rules && sudo udevadm \
          control --reload && sudo udevadm trigger --action=add --subsystem-match=hidraw"
     )
@@ -239,13 +256,16 @@ mod tests {
         // A boot keyboard interface has no raw HID collection.
         let keyboard = [0x05, 0x01, 0x09, 0x06, 0xa1, 0x01, 0x95, 0x08, 0xc0];
         assert_eq!(raw_report_size(&keyboard), None);
+        // A raw HID collection too small to hold VIA's commands.
+        let tiny = [0x06, 0x60, 0xff, 0x09, 0x61, 0xa1, 0x01, 0x95, 0x04, 0xc0];
+        assert_eq!(raw_report_size(&tiny), None);
     }
 
     #[test]
     fn access_command_names_the_keyboard() {
-        let command = access_command(0x4D4B, 0x304E);
+        let command = access_command(0x4D4B, 0x304E, 1);
         assert!(command.starts_with(
-            r#"echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-openhub-via-4d4b-304e.rules"#
+            r#"echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", ATTRS{bInterfaceNumber}=="01", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-openhub-via-4d4b-304e.rules"#
         ));
     }
 }

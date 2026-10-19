@@ -52,7 +52,7 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
 
 /// How to give the user access to a VIA keyboard Openhub found but can't open.
 fn access_group(dialog: &adw::PreferencesDialog, node: &Node) -> adw::PreferencesGroup {
-    let command = via::access_command(node.vendor, node.product);
+    let command = via::access_command(node.vendor, node.product, node.interface);
     let group = adw::PreferencesGroup::builder()
         .title("Lighting and Keys")
         .description(

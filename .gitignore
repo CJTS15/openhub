@@ -5,3 +5,6 @@
 /.flatpak
 /repo
 /_flatpak
+
+# Planning notes, kept local
+/data/resources/md/

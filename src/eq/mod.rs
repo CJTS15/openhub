@@ -249,7 +249,7 @@ pub fn parse_autoeq(text: &str) -> Result<(f64, Vec<Filter>), String> {
 /// applies where that output exists.
 pub fn rules(enabled: &[(String, Settings)]) -> String {
     let mut entries = String::new();
-    for (name, settings) in enabled {
+    for (name, settings) in enabled.iter().filter(|(name, _)| safe_name(name)) {
         let _ = write!(
             entries,
             "  {{\n    matches = [ {{ node.name = \"{name}\" }} ]\n    actions = {{ update-props = {{ audioconvert.filter-graph.0 = \"{}\" }} }}\n  }}\n",
@@ -331,9 +331,20 @@ pub fn load() -> Vec<(String, Settings)> {
 }
 
 /// Saves every output's EQ and rewrites the WirePlumber rule to match.
+/// Whether an output's name can go into the saved file and the rule as is.
+/// Any app can create an output, and a name with a quote in it would end
+/// the rule's string and add configuration WirePlumber loads at login.
+/// Real names (`alsa_output.usb-…`, `bluez_output.XX_XX.1`) never need more.
+fn safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | ':' | '-'))
+}
+
 pub fn save(all: &[(String, Settings)]) -> Result<(), String> {
     let file = glib::KeyFile::new();
-    for (name, settings) in all {
+    for (name, settings) in all.iter().filter(|(name, _)| safe_name(name)) {
         file.set_boolean(name, "enabled", settings.enabled);
         file.set_double(name, "preamp", settings.preamp);
         let filters: Vec<String> = settings
@@ -453,6 +464,24 @@ mod tests {
         assert!((response(&[shelf(Kind::LowShelf)], 20.0) - 6.0).abs() < 0.1);
         assert!((response(&[shelf(Kind::HighShelf)], 20000.0) - 6.0).abs() < 0.3);
         assert!(response(&[shelf(Kind::HighShelf)], 20.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn rules_skip_names_that_could_inject_config() {
+        let crafted = "x\" } ] }\nwireplumber.components = [ { name = \"evil\"";
+        let rules = rules(&[
+            (crafted.into(), Settings::default()),
+            (
+                "bluez_output.0A_00_00_00_00_01.1".into(),
+                Settings::default(),
+            ),
+        ]);
+        assert!(!rules.contains("evil"));
+        assert!(rules.contains("bluez_output.0A_00_00_00_00_01.1"));
+        assert!(safe_name(
+            "alsa_output.usb-KTMicro_CDS.KT_USB_Audio_2020-02-20-0000-0000-0000-00.iec958-stereo"
+        ));
+        assert!(!safe_name(""));
     }
 
     #[test]

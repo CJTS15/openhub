@@ -66,6 +66,15 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.4.2" date="2026-10-19">
+      <description>
+        <p>A new app icon, and clearer setup for the Flatpak:</p>
+        <ul>
+          <li>A new icon: a ring of devices around a switch, in Catppuccin colours, with a matching symbolic icon</li>
+          <li>The README copies the udev rules from the installed Flatpak, so Flatpak users don't need the source code</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.1" date="2026-10-19">
       <description>
         <p>Security and reliability fixes:</p>

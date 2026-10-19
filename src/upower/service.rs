@@ -726,14 +726,14 @@ mod tests {
                 &conn,
                 "battery_hidpp_battery_0",
                 "hidpp_battery_0",
-                "d5:79:24:d9:f8:be",
+                "0a:00:00:00:00:01",
             )
             .await;
             let bluez = add_peripheral(
                 &conn,
                 "mouse_dev_D5",
                 "/org/bluez/hci0/dev_D5",
-                "D5:79:24:D9:F8:BE",
+                "0A:00:00:00:00:01",
             )
             .await;
             wait_until("both tracked", || manager.imp().devices.borrow().len() == 3).await;

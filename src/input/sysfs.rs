@@ -286,7 +286,7 @@ mod tests {
     fn bluetooth_mouse_is_keyed_by_its_own_address() {
         let mx = named("Logitech MX Master 3S");
         assert_eq!((mx.kind, mx.connection), (Kind::Mouse, "Bluetooth"));
-        assert_eq!(mx.key, "d5:79:24:d9:f8:be");
+        assert_eq!(mx.key, "0a:00:00:00:00:01");
         assert_eq!(named("TrackPoint").kind, Kind::PointingStick);
         assert_eq!(named("Built-in Keyboard").kind, Kind::Keyboard);
     }

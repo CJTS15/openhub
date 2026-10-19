@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn settings_round_trip_through_the_key_file() {
         let saved = vec![(
-            "d5:79:24:d9:f8:be".to_owned(),
+            "0a:00:00:00:00:01".to_owned(),
             Settings {
                 dpi: Some(1600),
                 wheel: Some(Wheel::SmartShift(12)),

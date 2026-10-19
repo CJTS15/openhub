@@ -1,10 +1,20 @@
 # Lets the logged-in user talk VIA's raw HID protocol to these keyboards over
 # USB, so Openhub can change their lighting and keys. udev can't match "is a
-# VIA keyboard", so each keyboard is listed by its USB vendor and product ID.
+# VIA keyboard", so each keyboard is listed by its USB vendor and product ID,
+# and only its VIA interface: the keyboard's own interface would let any
+# program read keystrokes.
+#
+# The IDs sit on the USB device and the interface number on the USB
+# interface, and one line's ATTRS checks must all match one parent, so each
+# keyboard is two steps. Negated checks (ATTRS{idVendor}!="…") don't work
+# here: any parent, such as a hub, has some other vendor.
 ACTION=="remove", GOTO="openhub_via_end"
 SUBSYSTEM!="hidraw", GOTO="openhub_via_end"
 
-# Yunzii AL68 (SmartCloud), on its cable
-ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", TAG+="uaccess"
+# Yunzii AL68 (SmartCloud), on its cable: VIA is interface 1
+ATTRS{idVendor}=="4d4b", ATTRS{idProduct}=="304e", GOTO="openhub_via_al68"
+GOTO="openhub_via_end"
+LABEL="openhub_via_al68"
+ATTRS{bInterfaceNumber}=="01", TAG+="uaccess"
 
 LABEL="openhub_via_end"

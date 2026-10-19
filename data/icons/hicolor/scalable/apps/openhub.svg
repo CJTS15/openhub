@@ -1,23 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
   <defs>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#45475a"/><stop offset="1" stop-color="#313244"/></linearGradient>
-    <clipPath id="clip"><rect x="12" y="12" width="104" height="96" rx="14"/></clipPath>
+    <linearGradient id="c2-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#363a4f" />
+      <stop offset="100%" stop-color="#24273a" />
+    </linearGradient>
+    <linearGradient id="c2-switch-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c6a0f6" />
+      <stop offset="100%" stop-color="#8aadf4" />
+    </linearGradient>
+    <filter id="c2-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
   </defs>
-  <!-- Adwaita slab: a darker base band under the face, with a faint Lavender edge for dark backgrounds -->
-  <rect x="12" y="12" width="104" height="104" rx="14" fill="#181825"/>
-  <rect x="12" y="12" width="104" height="96" rx="14" fill="url(#face)"/>
-  <path d="M 81.7 40.3 L 181.7 140.3 L 146.3 175.7 L 46.3 75.7 Z" fill="#11111b" opacity="0.35" clip-path="url(#clip)"/>
-  <rect x="12.75" y="12.75" width="102.5" height="102.5" rx="13.25" fill="none" stroke="#b4befe" stroke-opacity="0.3" stroke-width="1.5"/>
-  <path d="M 88.36 52.38 A 25 25 0 1 1 72.96 34.66" fill="none" stroke="#b4befe" stroke-width="12" stroke-linecap="round"/>
-  <circle cx="64" cy="58" r="9.5" fill="#cba6f7"/>
-  <rect x="87" y="17" width="18" height="27" rx="9" fill="#fab387"/>
-  <line x1="96" y1="21.5" x2="96" y2="28.5" stroke="#1e1e2e" stroke-width="2.6" stroke-linecap="round"/>
-  <rect x="21" y="19" width="23" height="23" rx="5.5" fill="#a6e3a1"/>
-  <rect x="25.5" y="22.5" width="14" height="13" rx="3" fill="#1e1e2e" opacity="0.28"/>
-  <path d="M 22 87 a 10.5 10.5 0 0 1 21 0" fill="none" stroke="#f5c2e7" stroke-width="4.5" stroke-linecap="round"/>
-  <rect x="19.5" y="84" width="7.5" height="13" rx="3" fill="#f5c2e7"/>
-  <rect x="38" y="84" width="7.5" height="13" rx="3" fill="#f5c2e7"/>
-  <rect x="83" y="80" width="22" height="15" rx="3.5" fill="#f9e2af"/>
-  <rect x="105" y="84.5" width="3.5" height="6" rx="1.2" fill="#f9e2af"/>
-  <rect x="86.5" y="83.5" width="10" height="8" rx="1.8" fill="#1e1e2e" opacity="0.45"/>
+
+  <!-- Outer Rounded Squircle Base -->
+  <rect x="14" y="14" width="100" height="100" rx="26" fill="url(#c2-bg)" stroke="#494d64" stroke-width="2" filter="url(#c2-shadow)"/>
+
+  <!-- Peripheral Ring Orbit Lines -->
+  <circle cx="64" cy="64" r="36" fill="none" stroke="undefined" stroke-width="3"/>
+  <circle cx="64" cy="64" r="36" fill="none" stroke="#8bd5ca" stroke-width="3" stroke-dasharray="25 15 30 10"/>
+
+  <!-- Satellite Peripheral Status Dots -->
+  <circle cx="64" cy="28" r="5" fill="#f5a97f"/> <!-- Power -->
+  <circle cx="100" cy="64" r="5" fill="#8aadf4"/> <!-- Bluetooth -->
+  <circle cx="64" cy="100" r="5" fill="#a6da95"/> <!-- Mouse/KB -->
+  <circle cx="28" cy="64" r="5" fill="#ee99a0"/> <!-- Audio -->
+
+  <!-- Central Floating Master Control Switch Box -->
+  <g filter="url(#c2-shadow)">
+    <rect x="40" y="44" width="48" height="40" rx="12" fill="#1e2030" stroke="#494d64" stroke-width="1.5"/>
+    
+    <!-- Active Toggle Track -->
+    <rect x="46" y="56" width="36" height="16" rx="8" fill="url(#c2-switch-grad)"/>
+    
+    <!-- Switch Knob (On State) -->
+    <circle cx="70" cy="64" r="6" fill="#cad3f5"/>
+  </g>
+
+  <!-- Connection Link Indicator Overlay -->
+  <path d="M 64 28 L 64 44" stroke="#f5a97f" stroke-width="2" stroke-dasharray="2 2"/>
+  <path d="M 88 64 L 100 64" stroke="#8aadf4" stroke-width="2" stroke-dasharray="2 2"/>
 </svg>

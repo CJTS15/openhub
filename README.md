@@ -1,3 +1,5 @@
+<img src="data/icons/hicolor/scalable/apps/openhub.svg" width="96" alt="">
+
 # Openhub
 
 A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth, USB, power, mice, keyboards and audio.

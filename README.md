@@ -27,21 +27,13 @@ flatpak run io.github.cjts15.Openhub
 
 ### Mouse and keyboard access
 
-Openhub talks to Logitech and Razer mice and to VIA keyboards directly, through `/dev/hidraw*`, which only root can open until a udev rule gives it to the logged-in user. A native install (`meson install` or a distribution package) puts the rules in place. With the Flatpak, copy them once from this repository:
+Openhub talks to Logitech and Razer mice and to VIA keyboards directly, through `/dev/hidraw*`, which only root can open until a udev rule gives it to the logged-in user. A native install (`meson install` or a distribution package) puts the rules in place. The Flatpak carries them too, and they need copying once into the system, along with the user unit that restores Logitech mice's settings when they connect (they forget them when switched off). This works in any shell:
 
 ```sh
-sudo cp data/udev/70-openhub-*.rules /etc/udev/rules.d/
-sudo udevadm control --reload
-sudo udevadm trigger --action=add --subsystem-match=hidraw
+sh -c 'd="$(flatpak info --show-location io.github.cjts15.Openhub)/files/lib"; sudo cp "$d"/udev/rules.d/70-openhub-*.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger --action=add --subsystem-match=hidraw && mkdir -p ~/.config/systemd/user && cp "$d"/systemd/user/openhub-mouse@.service ~/.config/systemd/user/ && systemctl --user daemon-reload'
 ```
 
-Logitech mice forget their DPI and scroll settings when switched off, so the Logitech rule has your user's systemd restore them each time the mouse connects. That needs this user unit too:
-
-```sh
-mkdir -p ~/.config/systemd/user
-cp data/systemd/openhub-mouse@.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-```
+Run it again after updating Openhub, so the rules match the new version. From a source checkout, the same files are in `data/udev/` and `data/systemd/`.
 
 The VIA and Razer rules list the devices tested so far, each limited to the one interface Openhub talks to. For another VIA keyboard, its dialog in Openhub shows the one-line rule to add. Mice of other brands need ratbagd (Piper's backend) installed.
 

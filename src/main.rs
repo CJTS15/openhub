@@ -3,6 +3,7 @@ mod audio;
 mod battery;
 mod bluez;
 mod config;
+mod ddc;
 mod display;
 mod eq;
 mod hidpp;

@@ -8,6 +8,7 @@ pub mod state;
 
 use std::path::{Path, PathBuf};
 
+use gtk::glib::prelude::*;
 use gtk::{gio, glib};
 
 pub use state::{Logical, Mode, Monitor, State};
@@ -51,6 +52,95 @@ pub async fn apply(bus: &gio::DBusConnection, draft: &config::Draft) -> Result<(
         .await?;
     }
     Ok(())
+}
+
+/// A backlight Mutter controls (the built-in panel, or a monitor the
+/// `ddcci` kernel driver serves).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Backlight {
+    pub connector: String,
+    pub min: i32,
+    pub max: i32,
+    pub value: i32,
+}
+
+/// Mutter's backlights (GNOME 49 and later), with the serial `SetBacklight`
+/// wants back. `Err` where Mutter has no `Backlight` property.
+pub async fn backlights(bus: &gio::DBusConnection) -> Result<(u32, Vec<Backlight>), glib::Error> {
+    let reply = bus
+        .call_future(
+            Some(NAME),
+            PATH,
+            "org.freedesktop.DBus.Properties",
+            "Get",
+            Some(&(NAME, "Backlight").to_variant()),
+            Some(glib::VariantTy::new("(v)").unwrap()),
+            gio::DBusCallFlags::NONE,
+            5000,
+        )
+        .await?;
+    parse_backlights(&reply.child_value(0).as_variant().unwrap_or(reply)).ok_or_else(|| {
+        glib::Error::new(gio::IOErrorEnum::InvalidData, "Mutter's backlights changed")
+    })
+}
+
+/// `(uaa{sv})`: serial, then each backlight's connector, min, max, value.
+fn parse_backlights(value: &glib::Variant) -> Option<(u32, Vec<Backlight>)> {
+    if value.type_().as_str() != "(uaa{sv})" {
+        return None;
+    }
+    let serial = value.child_value(0).get()?;
+    let list = value.child_value(1);
+    let backlights = (0..list.n_children())
+        .filter_map(|i| {
+            let dict = glib::VariantDict::new(Some(&list.child_value(i)));
+            let get = |key| dict.lookup_value(key, None);
+            Some(Backlight {
+                connector: get("connector")?.get()?,
+                min: get("min")?.get()?,
+                max: get("max")?.get()?,
+                value: get("value")?.get()?,
+            })
+        })
+        .collect();
+    Some((serial, backlights))
+}
+
+pub async fn set_backlight(
+    bus: &gio::DBusConnection,
+    serial: u32,
+    connector: &str,
+    value: i32,
+) -> Result<(), glib::Error> {
+    bus.call_future(
+        Some(NAME),
+        PATH,
+        NAME,
+        "SetBacklight",
+        Some(&(serial, connector, value).to_variant()),
+        None,
+        gio::DBusCallFlags::NONE,
+        5000,
+    )
+    .await
+    .map(drop)
+}
+
+/// Calls `changed` when a backlight changes outside Openhub, such as with
+/// the brightness keys or Quick Settings.
+pub fn watch_backlights(
+    bus: &gio::DBusConnection,
+    changed: impl Fn() + 'static,
+) -> gio::SignalSubscription {
+    bus.subscribe_to_signal(
+        Some(NAME),
+        Some("org.freedesktop.DBus.Properties"),
+        Some("PropertiesChanged"),
+        Some(PATH),
+        Some(NAME),
+        gio::DBusSignalFlags::NONE,
+        move |_| changed(),
+    )
 }
 
 /// Calls `changed` whenever Mutter's layout changes. Dropping the returned
@@ -125,6 +215,25 @@ pub fn edid_for(connector: &str) -> Option<edid::Edid> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_mutters_backlights() {
+        // As GNOME 50 reports CJ's built-in panel.
+        let text = "(uint32 46, [{'connector': <'eDP-1'>, 'active': <true>, 'min': <153>, 'max': <15360>, 'value': <4713>}])";
+        let value = glib::Variant::parse(None, text).unwrap();
+        let (serial, backlights) = parse_backlights(&value).unwrap();
+        assert_eq!(serial, 46);
+        assert_eq!(
+            backlights,
+            [Backlight {
+                connector: "eDP-1".into(),
+                min: 153,
+                max: 15360,
+                value: 4713
+            }]
+        );
+        assert_eq!(parse_backlights(&1u32.to_variant()), None);
+    }
 
     #[test]
     fn lists_connected_monitors_from_sysfs() {

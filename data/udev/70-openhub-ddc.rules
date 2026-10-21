@@ -1,0 +1,9 @@
+# Lets the logged-in user talk DDC/CI to external monitors, so Openhub can
+# set their brightness. Only the I2C buses of display adapters (PCI class
+# 0x03xxxx), the same match as ddcutil's rule: the laptop's other I2C buses,
+# such as its touchpad's, stay root-only.
+ACTION=="remove", GOTO="openhub_ddc_end"
+SUBSYSTEM!="i2c-dev", GOTO="openhub_ddc_end"
+KERNEL!="i2c-[0-9]*", GOTO="openhub_ddc_end"
+ATTRS{class}=="0x03[0-9]*", TAG+="uaccess"
+LABEL="openhub_ddc_end"

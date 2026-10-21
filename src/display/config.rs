@@ -48,6 +48,10 @@ pub struct Draft {
     supports_layout_mode: bool,
     /// Each monitor's modes, to size groups and check choices.
     modes: HashMap<String, Vec<Mode>>,
+    /// Each monitor's own mode, scale and orientation when the page loaded,
+    /// to give back when it's turned on again or leaves a mirror. Mirrored
+    /// monitors have none: their mode was the shared one.
+    own: HashMap<String, (String, f64, u32)>,
 }
 
 impl Draft {
@@ -60,7 +64,7 @@ impl Draft {
                 .and_then(Monitor::current_mode)
                 .map(|mode| mode.id.clone())
         };
-        Self {
+        let mut draft = Self {
             serial: state.serial,
             groups: state
                 .logical
@@ -86,7 +90,35 @@ impl Draft {
                 .iter()
                 .map(|m| (m.connector.clone(), m.modes.clone()))
                 .collect(),
+            own: HashMap::new(),
+        };
+        draft.own = draft
+            .groups
+            .iter()
+            .filter(|g| g.monitors.len() == 1)
+            .map(|g| {
+                let (connector, id) = g.monitors[0].clone();
+                (connector, (id, g.scale, g.transform))
+            })
+            .collect();
+        draft
+    }
+
+    /// The mode, scale and orientation a monitor gets when it's turned on
+    /// or leaves a mirror: its own from when the page loaded, else its
+    /// preferred resolution at its fastest rate (Mutter's "preferred" mode
+    /// is often 60 Hz on a faster monitor).
+    fn own_settings(&self, connector: &str) -> Option<(String, f64, u32)> {
+        if let Some(own) = self.own.get(connector) {
+            return Some(own.clone());
         }
+        let modes = self.modes.get(connector)?;
+        let preferred = modes.iter().find(|m| m.preferred).or(modes.first())?;
+        let mode = modes
+            .iter()
+            .filter(|m| !m.variable && (m.width, m.height) == (preferred.width, preferred.height))
+            .max_by(|a, b| a.refresh.total_cmp(&b.refresh))?;
+        Some((mode.id.clone(), mode.preferred_scale, 0))
     }
 
     fn group_of(&self, connector: &str) -> Option<usize> {
@@ -114,23 +146,16 @@ impl Draft {
     pub fn set_enabled(&mut self, connector: &str, on: bool) {
         match (on, self.group_of(connector)) {
             (true, None) => {
-                let Some(modes) = self.modes.get(connector) else {
-                    return;
-                };
-                let Some(mode) = modes
-                    .iter()
-                    .find(|m| m.preferred && !m.variable)
-                    .or(modes.first())
-                else {
+                let Some((id, scale, transform)) = self.own_settings(connector) else {
                     return;
                 };
                 self.groups.push(Group {
                     x: 0,
                     y: 0,
-                    scale: mode.preferred_scale,
-                    transform: 0,
+                    scale,
+                    transform,
                     primary: self.groups.is_empty(),
-                    monitors: vec![(connector.to_owned(), mode.id.clone())],
+                    monitors: vec![(connector.to_owned(), id)],
                 });
             }
             (false, Some(index))
@@ -379,17 +404,21 @@ impl Draft {
 
     /// Every connected monitor on, side by side.
     pub fn join(&mut self) {
-        // Out of a mirror: each monitor gets its own group at its mode.
+        // Out of a mirror: each monitor gets its own group, at its own mode,
+        // scale and orientation rather than the shared ones.
         if let [only] = self.groups.as_slice()
             && only.monitors.len() > 1
         {
             let group = self.groups.remove(0);
-            for (i, (connector, id)) in group.monitors.into_iter().enumerate() {
+            for (i, (connector, shared)) in group.monitors.into_iter().enumerate() {
+                let (id, scale, transform) =
+                    self.own_settings(&connector)
+                        .unwrap_or((shared, group.scale, group.transform));
                 self.groups.push(Group {
                     x: 0,
                     y: 0,
-                    scale: group.scale,
-                    transform: group.transform,
+                    scale,
+                    transform,
                     primary: i == 0,
                     monitors: vec![(connector, id)],
                 });
@@ -587,6 +616,47 @@ mod tests {
     }
 
     #[test]
+    fn leaving_mirror_or_single_gives_each_monitor_its_own_mode_back() {
+        // The bug CJ found: Mirror then Join kept the shared 1920×1080 on the
+        // panel, and a re-enabled ASUS came back at 60 Hz.
+        for detour in ["mirror", "single"] {
+            let mut draft = Draft::new(&cjs_state());
+            match detour {
+                "mirror" => {
+                    draft.mirror();
+                }
+                _ => draft.single("eDP-1"),
+            }
+            draft.join();
+            let mode = |c| draft.mode(c).map(|m| m.id.clone());
+            assert_eq!(
+                mode("DP-2").as_deref(),
+                Some("1920x1080@144.001"),
+                "{detour}"
+            );
+            assert_eq!(
+                mode("eDP-1").as_deref(),
+                Some("1920x1200@60.002"),
+                "{detour}"
+            );
+            assert!(draft.valid(), "{detour}");
+        }
+    }
+
+    #[test]
+    fn a_monitor_off_at_load_comes_on_at_its_fastest_preferred_size() {
+        let mut draft = Draft::new(&cjs_state());
+        draft.own.remove("DP-2");
+        draft.set_enabled("DP-2", false);
+        draft.set_enabled("DP-2", true);
+        // Mutter's preferred ASUS mode is 60 Hz; the same size goes to 144.
+        assert_eq!(
+            draft.mode("DP-2").map(|m| m.id.as_str()),
+            Some("1920x1080@144.001")
+        );
+    }
+
+    #[test]
     fn display_modes() {
         let mut draft = Draft::new(&cjs_state());
         assert_eq!(draft.mode_kind(), Kind::Join);
@@ -628,11 +698,11 @@ mod tests {
         // The last monitor stays on.
         draft.set_enabled("eDP-1", false);
         assert!(draft.enabled("eDP-1"));
-        // Back on: the ASUS at its preferred mode, to the right.
+        // Back on: the ASUS at its own 144 Hz again, to the right.
         draft.set_enabled("DP-2", true);
         assert_eq!(
             draft.mode("DP-2").map(|m| m.id.as_str()),
-            Some("1920x1080@60.000")
+            Some("1920x1080@144.001")
         );
         assert_eq!(draft.group("DP-2").map(|g| g.x), Some(1920));
     }

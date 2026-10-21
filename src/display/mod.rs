@@ -126,6 +126,56 @@ pub async fn set_backlight(
     .map(drop)
 }
 
+/// Calls `changed` when GNOME Shell changes the brightness: the brightness
+/// keys and Quick Settings on GNOME 50 go through GNOME Shell, which
+/// changes the backlight without updating Mutter's `Backlight` property.
+pub fn watch_shell_brightness(
+    bus: &gio::DBusConnection,
+    changed: impl Fn() + 'static,
+) -> gio::SignalSubscription {
+    bus.subscribe_to_signal(
+        Some("org.gnome.Shell"),
+        Some("org.gnome.Shell.Brightness"),
+        Some("BrightnessChanged"),
+        Some("/org/gnome/Shell/Brightness"),
+        None,
+        gio::DBusSignalFlags::NONE,
+        move |_| changed(),
+    )
+}
+
+/// The panel's real backlight level from the kernel, on the same scale as
+/// Mutter's: the backlight device sits under its DRM connector
+/// (`card1-eDP-1/intel_backlight/brightness`).
+pub fn kernel_backlight(connector: &str) -> Option<i32> {
+    kernel_backlight_in(Path::new("/sys/class/drm"), connector)
+}
+
+fn kernel_backlight_in(drm: &Path, connector: &str) -> Option<i32> {
+    let card = std::fs::read_dir(drm).ok()?.flatten().find(|entry| {
+        entry
+            .file_name()
+            .to_str()
+            .and_then(|name| name.split_once('-'))
+            .is_some_and(|(_, name)| name == connector)
+    })?;
+    std::fs::read_dir(card.path())
+        .ok()?
+        .flatten()
+        .find_map(|entry| {
+            let path = entry.path();
+            // A backlight class device: a folder with both files.
+            if !path.join("max_brightness").exists() {
+                return None;
+            }
+            std::fs::read_to_string(path.join("brightness"))
+                .ok()?
+                .trim()
+                .parse()
+                .ok()
+        })
+}
+
 /// Calls `changed` when a backlight changes outside Openhub, such as with
 /// the brightness keys or Quick Settings.
 pub fn watch_backlights(
@@ -215,6 +265,22 @@ pub fn edid_for(connector: &str) -> Option<edid::Edid> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_panels_kernel_backlight() {
+        let root = std::env::temp_dir().join(format!("openhub-backlight-{}", std::process::id()));
+        let backlight = root.join("card1-eDP-1/intel_backlight");
+        std::fs::create_dir_all(&backlight).unwrap();
+        std::fs::write(backlight.join("brightness"), "6996\n").unwrap();
+        std::fs::write(backlight.join("max_brightness"), "15360\n").unwrap();
+        std::fs::create_dir_all(root.join("card1-DP-2/i2c-13")).unwrap();
+        let found = (
+            kernel_backlight_in(&root, "eDP-1"),
+            kernel_backlight_in(&root, "DP-2"),
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(found, (Some(6996), None));
+    }
 
     #[test]
     fn reads_mutters_backlights() {

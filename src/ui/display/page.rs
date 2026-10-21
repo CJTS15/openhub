@@ -30,6 +30,9 @@ mod imp {
         /// External monitors' DDC/CI brightness: (current, maximum).
         pub ddc: RefCell<HashMap<String, (u16, u16)>>,
         pub backlight_subscription: RefCell<Option<gio::SignalSubscription>>,
+        pub shell_subscription: RefCell<Option<gio::SignalSubscription>>,
+        /// A burst of GNOME Shell's signals is followed once.
+        pub follow_queued: Cell<bool>,
         /// Each monitor's brightness slider, updated in place when the
         /// brightness changes elsewhere.
         pub sliders: RefCell<HashMap<String, gtk::Scale>>,
@@ -156,6 +159,28 @@ impl DisplayPage {
             ),
         );
         self.imp().backlight_subscription.replace(Some(backlights));
+        // The brightness keys and Quick Settings go through GNOME Shell,
+        // which sends a burst of these while a key is held.
+        let shell = display::watch_shell_brightness(
+            &bus,
+            glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move || {
+                    if !page.imp().follow_queued.replace(true) {
+                        glib::idle_add_local_once(glib::clone!(
+                            #[weak]
+                            page,
+                            move || {
+                                page.imp().follow_queued.set(false);
+                                page.follow_kernel_brightness();
+                            }
+                        ));
+                    }
+                }
+            ),
+        );
+        self.imp().shell_subscription.replace(Some(shell));
         self.imp().bus.replace(Some(bus.clone()));
         self.reload(&bus).await;
     }
@@ -350,6 +375,24 @@ impl DisplayPage {
         self.render();
     }
 
+    /// Moves Mutter-controlled sliders to the kernel's real level, which the
+    /// brightness keys change without updating Mutter's property.
+    fn follow_kernel_brightness(&self) {
+        let imp = self.imp();
+        if imp.writing.get() {
+            return;
+        }
+        let mutter = imp.backlights.borrow();
+        for (connector, slider) in imp.sliders.borrow().iter() {
+            let controlled = mutter
+                .as_ref()
+                .is_some_and(|(_, list)| list.iter().any(|b| &b.connector == connector));
+            if let (true, Some(level)) = (controlled, display::kernel_backlight(connector)) {
+                slider.set_value(f64::from(level));
+            }
+        }
+    }
+
     /// Mutter's backlights again, moving sliders that aren't being dragged.
     async fn reload_backlights(&self) {
         let Some(bus) = self.imp().bus.borrow().clone() else {
@@ -379,7 +422,11 @@ impl DisplayPage {
             .as_ref()
             .and_then(|(_, list)| list.iter().find(|b| b.connector == connector).cloned())
         {
-            Some(b) => (f64::from(b.min), f64::from(b.max), f64::from(b.value)),
+            // The kernel's level: Mutter's can be stale after the keys.
+            Some(b) => {
+                let level = display::kernel_backlight(connector).unwrap_or(b.value);
+                (f64::from(b.min), f64::from(b.max), f64::from(level))
+            }
             None => {
                 let (current, max) = *imp.ddc.borrow().get(connector)?;
                 (0.0, f64::from(max), f64::from(current))

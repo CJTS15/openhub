@@ -2,6 +2,7 @@
 //! Settings and `gdctl` use) reports, and the monitors in sysfs as a
 //! fallback where Mutter isn't running.
 
+pub mod config;
 pub mod edid;
 pub mod state;
 
@@ -9,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use gtk::{gio, glib};
 
-pub use state::{Logical, Monitor, State};
+pub use state::{Logical, Mode, Monitor, State};
 
 const NAME: &str = "org.gnome.Mutter.DisplayConfig";
 const PATH: &str = "/org/gnome/Mutter/DisplayConfig";
@@ -30,6 +31,26 @@ pub async fn current_state(bus: &gio::DBusConnection) -> Result<State, glib::Err
         .await?;
     State::parse(&reply)
         .ok_or_else(|| glib::Error::new(gio::IOErrorEnum::InvalidData, "Mutter's reply changed"))
+}
+
+/// Applies `draft`: Mutter first checks it (`verify`), so a layout it
+/// would refuse is never applied, then keeps it (`persistent`), which has
+/// GNOME Shell ask "Keep these display settings?" and revert after 20 s.
+pub async fn apply(bus: &gio::DBusConnection, draft: &config::Draft) -> Result<(), glib::Error> {
+    for method in [config::VERIFY, config::PERSISTENT] {
+        bus.call_future(
+            Some(NAME),
+            PATH,
+            NAME,
+            "ApplyMonitorsConfig",
+            Some(&draft.payload(method)),
+            None,
+            gio::DBusCallFlags::NONE,
+            30_000,
+        )
+        .await?;
+    }
+    Ok(())
 }
 
 /// Calls `changed` whenever Mutter's layout changes. Dropping the returned

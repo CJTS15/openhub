@@ -14,6 +14,8 @@ pub struct State {
     pub logical: Vec<Logical>,
     /// 1: positions in logical pixels (scaled), 2: physical pixels.
     pub layout_mode: u32,
+    /// Whether `layout-mode` may be sent back when applying.
+    pub supports_layout_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,6 +98,8 @@ impl State {
                 .filter_map(|i| logical_monitor(&logical.child_value(i)))
                 .collect(),
             layout_mode: lookup(&properties, "layout-mode").unwrap_or(1),
+            supports_layout_mode: lookup(&properties, "supports-changing-layout-mode")
+                .unwrap_or(false),
         })
     }
 }

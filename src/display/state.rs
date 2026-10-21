@@ -8,7 +8,9 @@ pub const SIGNATURE: &str = "(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct State {
-    /// Mutter's configuration serial; a change means a new layout.
+    /// Mutter's serial for the set of connected monitors: it changes on a
+    /// hotplug, not when the layout changes (seen on GNOME 50), and
+    /// `ApplyMonitorsConfig` must send it back.
     pub serial: u32,
     pub monitors: Vec<Monitor>,
     pub logical: Vec<Logical>,

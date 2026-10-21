@@ -17,8 +17,6 @@ mod imp {
         pub page: adw::PreferencesPage,
         /// The groups currently shown, replaced on each change.
         pub groups: RefCell<Vec<adw::PreferencesGroup>>,
-        /// The Mutter serial shown, so a repeated signal doesn't rebuild.
-        pub serial: Cell<Option<u32>>,
         pub subscription: RefCell<Option<gio::SignalSubscription>>,
         pub bus: RefCell<Option<gio::DBusConnection>>,
         pub state: RefCell<Option<State>>,
@@ -135,7 +133,10 @@ impl DisplayPage {
     async fn reload(&self, bus: &gio::DBusConnection) {
         match display::current_state(bus).await {
             Ok(state) => {
-                if self.imp().serial.replace(Some(state.serial)) != Some(state.serial) {
+                // The serial stays the same across layout changes, so the
+                // whole layout is compared: a revert in GNOME Shell's dialog
+                // only differs in where the monitors are.
+                if self.imp().state.borrow().as_ref() != Some(&state) {
                     self.show_state(state);
                 }
             }
@@ -198,7 +199,6 @@ impl DisplayPage {
                     // dialog arrives as a signal, as before.
                     Ok(()) => {
                         if let Ok(state) = display::current_state(&bus).await {
-                            page.imp().serial.set(Some(state.serial));
                             page.show_state(state);
                         }
                     }
@@ -601,7 +601,7 @@ impl DisplayPage {
 
     /// Without Mutter: the monitors sysfs lists, read-only.
     fn show_fallback(&self) {
-        self.imp().serial.set(None);
+        self.imp().state.replace(None);
         let group = adw::PreferencesGroup::builder()
             .title("Displays")
             .description("Display settings can only be changed on GNOME.")

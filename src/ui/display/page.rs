@@ -580,10 +580,18 @@ impl DisplayPage {
             .build();
         row.add_suffix(&temperature);
         group.add(&row);
-        enabled
-            .bind_property("active", &schedule, "sensitive")
-            .sync_create()
-            .build();
+        // The schedule and temperature do nothing while Night Light is off.
+        for widget in [
+            schedule.upcast_ref::<gtk::Widget>(),
+            from.upcast_ref(),
+            to.upcast_ref(),
+            row.upcast_ref(),
+        ] {
+            enabled
+                .bind_property("active", widget, "sensitive")
+                .sync_create()
+                .build();
+        }
         Some(group)
     }
 

@@ -4,6 +4,7 @@ use gtk::{gio, glib};
 
 use crate::ui::audio::AudioPage;
 use crate::ui::bluetooth::BluetoothPage;
+use crate::ui::display::DisplayPage;
 use crate::ui::input::InputPage;
 use crate::ui::power::PowerPage;
 use crate::ui::usb::UsbPage;
@@ -36,6 +37,7 @@ mod imp {
             PowerPage::ensure_type();
             InputPage::ensure_type();
             AudioPage::ensure_type();
+            DisplayPage::ensure_type();
             klass.bind_template();
             klass.bind_template_callbacks();
         }

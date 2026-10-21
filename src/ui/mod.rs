@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod bluetooth;
+pub mod display;
 pub mod input;
 pub mod power;
 pub mod usb;

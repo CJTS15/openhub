@@ -184,14 +184,24 @@ impl DisplayPage {
             #[weak(rename_to = page)]
             self,
             async move {
-                // On success Mutter signals the new layout, which resets the
-                // page; GNOME Shell asks whether to keep it.
-                if let Err(error) = display::apply(&bus, &draft).await {
-                    let imp = page.imp();
-                    imp.bar_label
-                        .set_label(&format!("Couldn't apply: {}", error.message()));
-                    imp.apply.set_sensitive(true);
-                    imp.cancel.set_sensitive(true);
+                match display::apply(&bus, &draft).await {
+                    // Mutter sends no MonitorsChanged for a layout it finds
+                    // unchanged, so the page resets from a fresh read rather
+                    // than waiting for one. A later revert in GNOME Shell's
+                    // dialog arrives as a signal, as before.
+                    Ok(()) => {
+                        if let Ok(state) = display::current_state(&bus).await {
+                            page.imp().serial.set(Some(state.serial));
+                            page.show_state(state);
+                        }
+                    }
+                    Err(error) => {
+                        let imp = page.imp();
+                        imp.bar_label
+                            .set_label(&format!("Couldn't apply: {}", error.message()));
+                        imp.apply.set_sensitive(true);
+                        imp.cancel.set_sensitive(true);
+                    }
                 }
             }
         ));

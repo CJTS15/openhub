@@ -1,3 +1,4 @@
+mod canvas;
 mod details_dialog;
 mod page;
 

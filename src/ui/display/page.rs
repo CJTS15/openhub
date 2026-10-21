@@ -4,8 +4,9 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
+use super::canvas::{Canvas, Item};
 use super::details_dialog;
-use crate::display::config::{Draft, ORIENTATIONS};
+use crate::display::config::{Draft, Kind, ORIENTATIONS};
 use crate::display::{self, Mode, Monitor, State, edid};
 
 mod imp {
@@ -177,6 +178,12 @@ impl DisplayPage {
         else {
             return;
         };
+        // Never sent with a gap or an overlap; Mutter would refuse it anyway.
+        if !draft.valid() {
+            imp.bar_label
+                .set_label("These displays overlap or don't touch. Move them together first.");
+            return;
+        }
         imp.apply.set_sensitive(false);
         imp.cancel.set_sensitive(false);
         imp.bar_label.set_label("Applying…");
@@ -233,15 +240,165 @@ impl DisplayPage {
             return;
         };
         imp.bar.set_reveal_child(draft != Draft::new(&state));
-        // Built-in first, then the rest in Mutter's order.
+        // Built-in first, then the rest in Mutter's order; numbered so.
         let mut monitors: Vec<&Monitor> = state.monitors.iter().collect();
         monitors.sort_by_key(|monitor| !monitor.builtin);
         let several = monitors.len() > 1;
-        let groups = monitors
-            .into_iter()
-            .map(|monitor| self.monitor_group(&state, &draft, monitor, several))
-            .collect();
+        let mut groups = Vec::new();
+        if several {
+            groups.push(self.mode_group(&draft, &monitors));
+            if draft.mode_kind() == Kind::Join {
+                groups.push(self.arrangement_group(&draft, &monitors));
+            }
+        }
+        if draft.mode_kind() == Kind::Mirror {
+            // Mirrored monitors share one picture, so their settings go
+            // together; Mutter picks the shared resolution.
+            let size = draft
+                .groups
+                .first()
+                .and_then(|g| g.monitors.first())
+                .and_then(|(c, _)| draft.mode(c))
+                .map(|m| format!("{} × {}", m.width, m.height))
+                .unwrap_or_default();
+            groups.push(
+                adw::PreferencesGroup::builder()
+                    .title("Mirrored Displays")
+                    .description(format!("Every display shows the same picture, at {size}."))
+                    .build(),
+            );
+        } else {
+            groups.extend(
+                monitors
+                    .iter()
+                    .map(|monitor| self.monitor_group(&state, &draft, monitor, several)),
+            );
+        }
         self.replace_groups(groups);
+    }
+
+    /// Join, Mirror or a single display, and which one is primary or shown.
+    fn mode_group(&self, draft: &Draft, monitors: &[&Monitor]) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::builder()
+            .title("Display Mode")
+            .build();
+        let kinds = [Kind::Join, Kind::Mirror, Kind::Single];
+        let kind = draft.mode_kind();
+        let selected = kinds.iter().position(|k| *k == kind).unwrap_or(0);
+        let names: Vec<String> = monitors
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                format!(
+                    "{} {}",
+                    i + 1,
+                    title(m, display::edid_for(&m.connector).as_ref())
+                )
+            })
+            .collect();
+        let connectors: Vec<String> = monitors.iter().map(|m| m.connector.clone()).collect();
+        let first = connectors.first().cloned().unwrap_or_default();
+        group.add(&self.combo(
+            "Mode",
+            &["Join Displays", "Mirror", "Single Display"],
+            selected,
+            move |page, index| match kinds.get(index) {
+                Some(Kind::Join) => page.edit(Draft::join),
+                Some(Kind::Mirror) => page.edit(|d| {
+                    d.mirror();
+                }),
+                Some(Kind::Single) => page.edit(|d| d.single(&first)),
+                None => {}
+            },
+        ));
+        let labels: Vec<&str> = names.iter().map(String::as_str).collect();
+        match kind {
+            Kind::Join => {
+                let primary = connectors
+                    .iter()
+                    .position(|c| draft.group(c).is_some_and(|g| g.primary))
+                    .unwrap_or(0);
+                let c = connectors.clone();
+                group.add(
+                    &self.combo("Primary Display", &labels, primary, move |page, index| {
+                        if let Some(connector) = c.get(index) {
+                            page.edit(|d| d.set_primary(connector));
+                        }
+                    }),
+                );
+            }
+            Kind::Single => {
+                let shown = connectors
+                    .iter()
+                    .position(|c| draft.enabled(c))
+                    .unwrap_or(0);
+                let c = connectors.clone();
+                group.add(&self.combo("Display", &labels, shown, move |page, index| {
+                    if let Some(connector) = c.get(index) {
+                        page.edit(|d| d.single(connector));
+                    }
+                }));
+            }
+            Kind::Mirror => {}
+        }
+        group
+    }
+
+    /// The monitors drawn to scale, to drag into place, and Identify.
+    fn arrangement_group(&self, draft: &Draft, monitors: &[&Monitor]) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::builder()
+            .title("Arrangement")
+            .description("Drag displays to match how they're placed on your desk.")
+            .build();
+        let identify = gtk::Button::builder()
+            .label("Identify")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        let numbers: Vec<(String, usize)> = monitors
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (m.connector.clone(), i + 1))
+            .collect();
+        identify.connect_clicked(move |button| identify_displays(button, &numbers));
+        group.set_header_suffix(Some(&identify));
+        let rects = draft.rects();
+        let items = draft
+            .groups
+            .iter()
+            .zip(rects)
+            .filter_map(|(g, rect)| {
+                let (connector, _) = g.monitors.first()?;
+                let (number, monitor) = monitors
+                    .iter()
+                    .enumerate()
+                    .find(|(_, m)| &m.connector == connector)?;
+                Some(Item {
+                    connector: connector.clone(),
+                    number: number + 1,
+                    name: title(monitor, display::edid_for(connector).as_ref()),
+                    rect,
+                    primary: g.primary,
+                })
+            })
+            .collect();
+        let canvas = Canvas::default();
+        canvas.set_items(items);
+        canvas.connect_dropped(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |connector, x, y| {
+                // A drop with no flush place snaps back on the redraw.
+                let connector = connector.to_owned();
+                page.edit(|d| {
+                    d.move_to(&connector, x, y);
+                });
+            }
+        ));
+        let card = gtk::Box::builder().css_classes(["card"]).build();
+        card.append(&canvas);
+        group.add(&card);
+        group
     }
 
     fn monitor_group(
@@ -497,6 +654,36 @@ fn subtitle(state: &State, monitor: &Monitor) -> String {
         parts.push("Primary".to_owned());
     }
     parts.join(" · ")
+}
+
+/// Shows each monitor's number on its own screen for two seconds. GNOME
+/// Shell's own labels (`ShowMonitorLabels`) only answer GNOME Settings, so
+/// these are short-lived transparent windows, one per monitor.
+fn identify_displays(widget: &impl IsA<gtk::Widget>, numbers: &[(String, usize)]) {
+    let monitors = widget.display().monitors();
+    for monitor in monitors.iter::<gtk::gdk::Monitor>().flatten() {
+        let connector = monitor
+            .connector()
+            .map(|c| c.to_string())
+            .unwrap_or_default();
+        let Some((_, number)) = numbers.iter().find(|(c, _)| *c == connector) else {
+            continue;
+        };
+        let label = gtk::Label::builder()
+            .label(number.to_string())
+            .halign(gtk::Align::Center)
+            .valign(gtk::Align::Center)
+            .css_classes(["openhub-identify-number"])
+            .build();
+        let window = gtk::Window::builder()
+            .decorated(false)
+            .css_classes(["openhub-identify"])
+            .child(&label)
+            .build();
+        window.fullscreen_on_monitor(&monitor);
+        window.present();
+        glib::timeout_add_seconds_local_once(2, move || window.close());
+    }
 }
 
 /// The mode with `base`'s size and rate, with variable refresh on or off.

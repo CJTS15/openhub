@@ -17,3 +17,17 @@ button.via-key {
   min-width: 0;
   min-height: 0;
 }
+
+/* Identify: each display's number, shown on that display for a moment. */
+window.openhub-identify {
+  background: transparent;
+}
+
+.openhub-identify-number {
+  font-size: 96pt;
+  font-weight: 800;
+  padding: 12px 64px;
+  border-radius: 24px;
+  background-color: alpha(@window_bg_color, 0.92);
+  color: @window_fg_color;
+}

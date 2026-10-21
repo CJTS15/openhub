@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -6,6 +7,7 @@ use gtk::{gio, glib};
 
 use super::canvas::{Canvas, Item};
 use super::details_dialog;
+use crate::ddc;
 use crate::display::config::{Draft, Kind, ORIENTATIONS};
 use crate::display::{self, Mode, Monitor, State, edid};
 
@@ -23,6 +25,21 @@ mod imp {
         /// The layout as edited, until Apply or Cancel.
         pub draft: RefCell<Option<Draft>>,
         pub render_queued: Cell<bool>,
+        /// Mutter's backlights and the serial `SetBacklight` wants.
+        pub backlights: RefCell<Option<(u32, Vec<display::Backlight>)>>,
+        /// External monitors' DDC/CI brightness: (current, maximum).
+        pub ddc: RefCell<HashMap<String, (u16, u16)>>,
+        pub backlight_subscription: RefCell<Option<gio::SignalSubscription>>,
+        pub shell_subscription: RefCell<Option<gio::SignalSubscription>>,
+        /// A burst of GNOME Shell's signals is followed once.
+        pub follow_queued: Cell<bool>,
+        /// Each monitor's brightness slider, updated in place when the
+        /// brightness changes elsewhere.
+        pub sliders: RefCell<HashMap<String, gtk::Scale>>,
+        /// Brightness values waiting to be sent, at most one write per
+        /// monitor every 200 ms while a slider moves.
+        pub pending: RefCell<HashMap<String, f64>>,
+        pub writing: Cell<bool>,
         pub bar: gtk::Revealer,
         pub bar_label: gtk::Label,
         pub apply: gtk::Button,
@@ -126,6 +143,44 @@ impl DisplayPage {
             ),
         );
         self.imp().subscription.replace(Some(subscription));
+        // Brightness keys and Quick Settings change it too.
+        let backlights = display::watch_backlights(
+            &bus,
+            glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move || {
+                    glib::spawn_future_local(glib::clone!(
+                        #[weak]
+                        page,
+                        async move { page.reload_backlights().await }
+                    ));
+                }
+            ),
+        );
+        self.imp().backlight_subscription.replace(Some(backlights));
+        // The brightness keys and Quick Settings go through GNOME Shell,
+        // which sends a burst of these while a key is held.
+        let shell = display::watch_shell_brightness(
+            &bus,
+            glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move || {
+                    if !page.imp().follow_queued.replace(true) {
+                        glib::idle_add_local_once(glib::clone!(
+                            #[weak]
+                            page,
+                            move || {
+                                page.imp().follow_queued.set(false);
+                                page.follow_kernel_brightness();
+                            }
+                        ));
+                    }
+                }
+            ),
+        );
+        self.imp().shell_subscription.replace(Some(shell));
         self.imp().bus.replace(Some(bus.clone()));
         self.reload(&bus).await;
     }
@@ -157,6 +212,13 @@ impl DisplayPage {
 
     /// A new layout from Mutter: any edits are dropped.
     fn show_state(&self, state: State) {
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[strong]
+            state,
+            async move { page.load_brightness(&state).await }
+        ));
         let imp = self.imp();
         imp.draft.replace(Some(Draft::new(&state)));
         imp.state.replace(Some(state));
@@ -274,7 +336,263 @@ impl DisplayPage {
                     .map(|monitor| self.monitor_group(&state, &draft, monitor, several)),
             );
         }
+        if let Some(group) = self.night_light_group() {
+            groups.push(group);
+        }
         self.replace_groups(groups);
+    }
+
+    /// Reads Mutter's backlights, and external monitors' brightness over
+    /// DDC/CI once (many answer slowly), then redraws.
+    async fn load_brightness(&self, state: &State) {
+        self.reload_backlights().await;
+        let mutter: Vec<String> = self
+            .imp()
+            .backlights
+            .borrow()
+            .iter()
+            .flat_map(|(_, b)| b.iter().map(|b| b.connector.clone()))
+            .collect();
+        let external: Vec<String> = state
+            .monitors
+            .iter()
+            .filter(|m| !m.builtin && !mutter.contains(&m.connector))
+            .map(|m| m.connector.clone())
+            .collect();
+        let read = gio::spawn_blocking(move || {
+            external
+                .into_iter()
+                .filter_map(|connector| {
+                    let bus = ddc::bus_for(&connector)?;
+                    let value = ddc::Monitor::open(&bus).ok()?.get(ddc::BRIGHTNESS).ok()?;
+                    Some((connector, value))
+                })
+                .collect::<HashMap<_, _>>()
+        })
+        .await
+        .unwrap_or_default();
+        self.imp().ddc.replace(read);
+        self.render();
+    }
+
+    /// Moves Mutter-controlled sliders to the kernel's real level, which the
+    /// brightness keys change without updating Mutter's property.
+    fn follow_kernel_brightness(&self) {
+        let imp = self.imp();
+        if imp.writing.get() {
+            return;
+        }
+        let mutter = imp.backlights.borrow();
+        for (connector, slider) in imp.sliders.borrow().iter() {
+            let controlled = mutter
+                .as_ref()
+                .is_some_and(|(_, list)| list.iter().any(|b| &b.connector == connector));
+            if let (true, Some(level)) = (controlled, display::kernel_backlight(connector)) {
+                slider.set_value(f64::from(level));
+            }
+        }
+    }
+
+    /// Mutter's backlights again, moving sliders that aren't being dragged.
+    async fn reload_backlights(&self) {
+        let Some(bus) = self.imp().bus.borrow().clone() else {
+            return;
+        };
+        let Ok(backlights) = display::backlights(&bus).await else {
+            return;
+        };
+        let imp = self.imp();
+        if !imp.writing.get() {
+            for backlight in &backlights.1 {
+                if let Some(slider) = imp.sliders.borrow().get(&backlight.connector) {
+                    slider.set_value(f64::from(backlight.value));
+                }
+            }
+        }
+        imp.backlights.replace(Some(backlights));
+    }
+
+    /// The monitor's brightness row: through Mutter where it has a backlight,
+    /// else over DDC/CI where the monitor answered.
+    fn brightness_row(&self, connector: &str) -> Option<adw::ActionRow> {
+        let imp = self.imp();
+        let (low, high, value) = match imp
+            .backlights
+            .borrow()
+            .as_ref()
+            .and_then(|(_, list)| list.iter().find(|b| b.connector == connector).cloned())
+        {
+            // The kernel's level: Mutter's can be stale after the keys.
+            Some(b) => {
+                let level = display::kernel_backlight(connector).unwrap_or(b.value);
+                (f64::from(b.min), f64::from(b.max), f64::from(level))
+            }
+            None => {
+                let (current, max) = *imp.ddc.borrow().get(connector)?;
+                (0.0, f64::from(max), f64::from(current))
+            }
+        };
+        let slider = gtk::Scale::with_range(gtk::Orientation::Horizontal, low, high, 1.0);
+        slider.set_value(value);
+        slider.set_width_request(240);
+        slider.set_valign(gtk::Align::Center);
+        slider.update_property(&[gtk::accessible::Property::Label("Brightness")]);
+        let c = connector.to_owned();
+        // Only the user's moves are sent; updates from elsewhere aren't.
+        slider.connect_change_value(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[upgrade_or]
+            glib::Propagation::Proceed,
+            move |_, _, value| {
+                page.imp().pending.borrow_mut().insert(c.clone(), value);
+                if !page.imp().writing.get() {
+                    page.flush_brightness();
+                }
+                glib::Propagation::Proceed
+            }
+        ));
+        imp.sliders
+            .borrow_mut()
+            .insert(connector.to_owned(), slider.clone());
+        let row = adw::ActionRow::builder().title("Brightness").build();
+        row.add_suffix(&slider);
+        Some(row)
+    }
+
+    /// Sends the newest brightness for each monitor, then waits 200 ms
+    /// before sending again, so a dragged slider doesn't flood the bus.
+    fn flush_brightness(&self) {
+        let imp = self.imp();
+        let pending = imp.pending.take();
+        if pending.is_empty() {
+            imp.writing.set(false);
+            return;
+        }
+        imp.writing.set(true);
+        let mutter = imp.backlights.borrow().clone();
+        let bus = imp.bus.borrow().clone();
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            async move {
+                for (connector, value) in pending {
+                    let through_mutter = mutter
+                        .as_ref()
+                        .filter(|(_, list)| list.iter().any(|b| b.connector == connector));
+                    match (through_mutter, &bus) {
+                        (Some((serial, _)), Some(bus)) => {
+                            let _ = display::set_backlight(
+                                bus,
+                                *serial,
+                                &connector,
+                                value.round() as i32,
+                            )
+                            .await;
+                        }
+                        _ => {
+                            let level = value.round().clamp(0.0, f64::from(u16::MAX)) as u16;
+                            let _ = gio::spawn_blocking(move || {
+                                let bus = ddc::bus_for(&connector)?;
+                                ddc::Monitor::open(&bus)
+                                    .ok()?
+                                    .set(ddc::BRIGHTNESS, level)
+                                    .ok()
+                            })
+                            .await;
+                        }
+                    }
+                }
+                glib::timeout_future(std::time::Duration::from_millis(200)).await;
+                page.flush_brightness();
+            }
+        ));
+    }
+
+    /// Night Light, through the same GNOME settings Quick Settings uses.
+    /// Shown only where that schema is installed.
+    fn night_light_group(&self) -> Option<adw::PreferencesGroup> {
+        const SCHEMA: &str = "org.gnome.settings-daemon.plugins.color";
+        gio::SettingsSchemaSource::default()?.lookup(SCHEMA, true)?;
+        let settings = gio::Settings::new(SCHEMA);
+        let group = adw::PreferencesGroup::builder()
+            .title("Night Light")
+            .build();
+        let enabled = adw::SwitchRow::builder()
+            .title("Night Light")
+            .subtitle("Makes the screen warmer, which can help you sleep")
+            .build();
+        settings
+            .bind("night-light-enabled", &enabled, "active")
+            .build();
+        group.add(&enabled);
+
+        let automatic = settings.boolean("night-light-schedule-automatic");
+        let schedule = adw::ComboRow::builder()
+            .title("Schedule")
+            .model(&gtk::StringList::new(&[
+                "Sunset to Sunrise",
+                "Manual Schedule",
+            ]))
+            .selected(u32::from(!automatic))
+            .build();
+        group.add(&schedule);
+        let from = time_row("From", &settings, "night-light-schedule-from");
+        let to = time_row("To", &settings, "night-light-schedule-to");
+        for row in [&from, &to] {
+            row.set_visible(!automatic);
+            group.add(row);
+        }
+        schedule.connect_selected_notify(glib::clone!(
+            #[strong]
+            settings,
+            #[weak]
+            from,
+            #[weak]
+            to,
+            move |row| {
+                let manual = row.selected() == 1;
+                let _ = settings.set_boolean("night-light-schedule-automatic", !manual);
+                from.set_visible(manual);
+                to.set_visible(manual);
+            }
+        ));
+
+        // GNOME Settings' range: warmest on the left.
+        let temperature =
+            gtk::Scale::with_range(gtk::Orientation::Horizontal, 1700.0, 4700.0, 100.0);
+        temperature.set_value(f64::from(settings.uint("night-light-temperature")));
+        temperature.set_width_request(240);
+        temperature.set_valign(gtk::Align::Center);
+        temperature.update_property(&[gtk::accessible::Property::Label("Color Temperature")]);
+        temperature.connect_change_value(glib::clone!(
+            #[strong]
+            settings,
+            move |_, _, value| {
+                let kelvin = value.round().clamp(1700.0, 4700.0) as u32;
+                let _ = settings.set_uint("night-light-temperature", kelvin);
+                glib::Propagation::Proceed
+            }
+        ));
+        let row = adw::ActionRow::builder()
+            .title("Color Temperature")
+            .subtitle("Warmer to the left")
+            .build();
+        row.add_suffix(&temperature);
+        group.add(&row);
+        // The schedule and temperature do nothing while Night Light is off.
+        for widget in [
+            schedule.upcast_ref::<gtk::Widget>(),
+            from.upcast_ref(),
+            to.upcast_ref(),
+            row.upcast_ref(),
+        ] {
+            enabled
+                .bind_property("active", widget, "sensitive")
+                .sync_create()
+                .build();
+        }
+        Some(group)
     }
 
     /// Join, Mirror or a single display, and which one is primary or shown.
@@ -574,6 +892,9 @@ impl DisplayPage {
                 page.edit(|d| d.set_scale(&c, scale));
             }
         }));
+        if let Some(row) = self.brightness_row(&connector) {
+            group.add(&row);
+        }
         group
     }
 
@@ -684,6 +1005,51 @@ fn identify_displays(widget: &impl IsA<gtk::Widget>, numbers: &[(String, usize)]
         window.present();
         glib::timeout_add_seconds_local_once(2, move || window.close());
     }
+}
+
+/// A time of day for Night Light's manual schedule: hours and minutes,
+/// stored as fractional hours (20.5 is 20:30), as GNOME does.
+fn time_row(title: &str, settings: &gio::Settings, key: &'static str) -> adw::ActionRow {
+    let value = settings.double(key);
+    let hours = gtk::SpinButton::with_range(0.0, 23.0, 1.0);
+    let minutes = gtk::SpinButton::with_range(0.0, 59.0, 1.0);
+    hours.set_value(value.trunc());
+    minutes.set_value(((value.fract() * 60.0).round()).min(59.0));
+    for (spin, label) in [(&hours, "Hours"), (&minutes, "Minutes")] {
+        spin.set_valign(gtk::Align::Center);
+        spin.set_orientation(gtk::Orientation::Vertical);
+        spin.update_property(&[gtk::accessible::Property::Label(&format!(
+            "{title} {label}"
+        ))]);
+    }
+    let save = glib::clone!(
+        #[strong]
+        settings,
+        #[weak]
+        hours,
+        #[weak]
+        minutes,
+        move || {
+            let _ = settings.set_double(key, hours.value() + minutes.value() / 60.0);
+        }
+    );
+    hours.connect_value_changed(glib::clone!(
+        #[strong]
+        save,
+        move |_| save()
+    ));
+    minutes.connect_value_changed(move |_| save());
+    let row = adw::ActionRow::builder().title(title).build();
+    let colon = gtk::Label::new(Some(":"));
+    let time = gtk::Box::builder()
+        .spacing(6)
+        .valign(gtk::Align::Center)
+        .build();
+    time.append(&hours);
+    time.append(&colon);
+    time.append(&minutes);
+    row.add_suffix(&time);
+    row
 }
 
 /// The mode with `base`'s size and rate, with variable refresh on or off.

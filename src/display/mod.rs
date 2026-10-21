@@ -2,6 +2,7 @@
 //! Settings and `gdctl` use) reports, and the monitors in sysfs as a
 //! fallback where Mutter isn't running.
 
+pub mod color;
 pub mod config;
 pub mod edid;
 pub mod state;

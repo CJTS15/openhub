@@ -52,6 +52,9 @@ pub struct Draft {
     /// to give back when it's turned on again or leaves a mirror. Mirrored
     /// monitors have none: their mode was the shared one.
     own: HashMap<String, (String, f64, u32)>,
+    /// Each monitor's colour mode, for monitors that offer more than one:
+    /// 0 default, 2 BT.2100 (HDR).
+    color_modes: HashMap<String, u32>,
 }
 
 impl Draft {
@@ -91,6 +94,13 @@ impl Draft {
                 .map(|m| (m.connector.clone(), m.modes.clone()))
                 .collect(),
             own: HashMap::new(),
+            // Only monitors that offer a choice get one sent back.
+            color_modes: state
+                .monitors
+                .iter()
+                .filter(|m| m.color_modes.len() > 1)
+                .map(|m| (m.connector.clone(), m.color_mode))
+                .collect(),
         };
         draft.own = draft
             .groups
@@ -204,6 +214,16 @@ impl Draft {
         if let Some(index) = self.group_of(connector) {
             self.groups[index].scale = scale;
             self.repack();
+        }
+    }
+
+    pub fn color_mode(&self, connector: &str) -> Option<u32> {
+        self.color_modes.get(connector).copied()
+    }
+
+    pub fn set_color_mode(&mut self, connector: &str, mode: u32) {
+        if let Some(current) = self.color_modes.get_mut(connector) {
+            *current = mode;
         }
     }
 
@@ -490,7 +510,13 @@ impl Draft {
                 let monitors = g
                     .monitors
                     .iter()
-                    .map(|(c, id)| (c.clone(), id.clone(), HashMap::new()))
+                    .map(|(c, id)| {
+                        let mut properties = HashMap::new();
+                        if let Some(mode) = self.color_modes.get(c) {
+                            properties.insert("color-mode".to_owned(), mode.to_variant());
+                        }
+                        (c.clone(), id.clone(), properties)
+                    })
                     .collect();
                 (g.x, g.y, g.scale, g.transform, g.primary, monitors)
             })
@@ -552,9 +578,19 @@ mod tests {
         let draft = Draft::new(&cjs_state());
         assert_eq!(
             draft.payload(VERIFY).print(true).as_str(),
-            "(uint32 1, uint32 0, [(0, 0, 1.0, uint32 0, true, [('DP-2', '1920x1080@144.001', @a{sv} {})]), \
-             (1920, 0, 1.0, 0, false, [('eDP-1', '1920x1200@60.002', {})])], {'layout-mode': <uint32 1>})"
+            "(uint32 1, uint32 0, [(0, 0, 1.0, uint32 0, true, [('DP-2', '1920x1080@144.001', {'color-mode': <uint32 0>})]), \
+             (1920, 0, 1.0, 0, false, [('eDP-1', '1920x1200@60.002', {'color-mode': <uint32 0>})])], {'layout-mode': <uint32 1>})"
         );
+    }
+
+    #[test]
+    fn hdr_is_sent_for_that_monitor() {
+        let mut draft = Draft::new(&cjs_state());
+        draft.set_color_mode("DP-2", 2);
+        assert_eq!(draft.color_mode("DP-2"), Some(2));
+        let payload = draft.payload(VERIFY).print(true);
+        assert!(payload.contains("('DP-2', '1920x1080@144.001', {'color-mode': <uint32 2>})"));
+        assert!(payload.contains("('eDP-1', '1920x1200@60.002', {'color-mode': <uint32 0>})"));
     }
 
     #[test]

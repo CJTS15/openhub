@@ -35,6 +35,8 @@ pub struct Monitor {
     pub min_refresh: Option<i32>,
     /// 0 is the default colour mode, 2 is BT.2100 (HDR).
     pub color_modes: Vec<u32>,
+    /// The colour mode in use: 0 default, 2 BT.2100 (HDR).
+    pub color_mode: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -131,6 +133,7 @@ fn monitor(value: &glib::Variant) -> Option<Monitor> {
             .collect(),
         min_refresh: lookup(&properties, "min-refresh-rate"),
         color_modes: lookup(&properties, "supported-color-modes").unwrap_or_default(),
+        color_mode: lookup(&properties, "color-mode").unwrap_or(0),
     })
 }
 

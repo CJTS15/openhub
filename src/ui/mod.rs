@@ -6,10 +6,11 @@ pub mod power;
 pub mod usb;
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-use gtk::glib;
 use gtk::prelude::*;
+use gtk::{gio, glib};
 
 /// Runs `rescan` when `widget` is shown and every 2 seconds while it stays
 /// shown. sysfs has no change signal Openhub can watch from the sandbox,
@@ -37,4 +38,50 @@ pub fn rescan_while_mapped(widget: &impl IsA<gtk::Widget>, rescan: impl Fn() + '
             source.remove();
         }
     });
+}
+
+/// Opens a GNOME Settings panel, such as `keyboard` or `color`.
+pub fn open_settings_panel(widget: &impl IsA<gtk::Widget>, panel: &'static str) {
+    // Wayland only lets GNOME Settings come to the front with a token from
+    // the app that asked.
+    let token = widget
+        .display()
+        .app_launch_context()
+        .startup_notify_id(None::<&gio::AppInfo>, &[]);
+    glib::spawn_future_local(async move {
+        if let Err(error) = launch_panel(panel, token.as_deref()).await {
+            glib::g_warning!("openhub", "Can't open GNOME Settings: {error}");
+        }
+    });
+}
+
+/// GNOME Settings' `launch-panel` action.
+async fn launch_panel(panel: &str, token: Option<&str>) -> Result<(), glib::Error> {
+    let bus = gio::bus_get_future(gio::BusType::Session).await?;
+    let panel = (panel, Vec::<glib::Variant>::new()).to_variant();
+    let args = (
+        "launch-panel",
+        vec![panel],
+        token
+            .map(|token| {
+                HashMap::from([
+                    ("activation-token".to_owned(), token.to_variant()),
+                    ("desktop-startup-id".to_owned(), token.to_variant()),
+                ])
+            })
+            .unwrap_or_default(),
+    )
+        .to_variant();
+    bus.call_future(
+        Some("org.gnome.Settings"),
+        "/org/gnome/Settings",
+        "org.gtk.Actions",
+        "Activate",
+        Some(&args),
+        None,
+        gio::DBusCallFlags::NONE,
+        5000,
+    )
+    .await
+    .map(drop)
 }

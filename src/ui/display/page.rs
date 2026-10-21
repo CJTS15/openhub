@@ -9,7 +9,7 @@ use super::canvas::{Canvas, Item};
 use super::details_dialog;
 use crate::ddc;
 use crate::display::config::{Draft, Kind, ORIENTATIONS};
-use crate::display::{self, Mode, Monitor, State, edid};
+use crate::display::{self, Mode, Monitor, State, color, edid};
 
 mod imp {
     use super::*;
@@ -40,6 +40,8 @@ mod imp {
         /// monitor every 200 ms while a slider moves.
         pub pending: RefCell<HashMap<String, f64>>,
         pub writing: Cell<bool>,
+        /// Each monitor's colord device and profiles.
+        pub colors: RefCell<HashMap<String, color::Device>>,
         pub bar: gtk::Revealer,
         pub bar_label: gtk::Label,
         pub apply: gtk::Button,
@@ -219,6 +221,13 @@ impl DisplayPage {
             state,
             async move { page.load_brightness(&state).await }
         ));
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[strong]
+            state,
+            async move { page.load_colors(&state).await }
+        ));
         let imp = self.imp();
         imp.draft.replace(Some(Draft::new(&state)));
         imp.state.replace(Some(state));
@@ -373,6 +382,149 @@ impl DisplayPage {
         .unwrap_or_default();
         self.imp().ddc.replace(read);
         self.render();
+    }
+
+    /// Every monitor's colour profiles from colord, then redraws. Without
+    /// colord the Color Profile rows simply aren't shown.
+    async fn load_colors(&self, state: &State) {
+        let Ok(bus) = color::bus().await else {
+            return;
+        };
+        let mut colors = HashMap::new();
+        for monitor in &state.monitors {
+            if let Some(device) = color::device(&bus, &monitor.connector).await {
+                colors.insert(monitor.connector.clone(), device);
+            }
+        }
+        self.imp().colors.replace(colors);
+        self.render();
+    }
+
+    /// Runs a colord change, then shows the result, or why it failed.
+    fn change_color(
+        &self,
+        change: impl std::future::Future<Output = Result<(), glib::Error>> + 'static,
+    ) {
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            async move {
+                if let Err(error) = change.await {
+                    let alert = adw::AlertDialog::new(
+                        Some("Couldn't Change the Color Profile"),
+                        Some(error.message()),
+                    );
+                    alert.add_response("ok", "OK");
+                    alert.present(Some(&page));
+                }
+                let state = page.imp().state.borrow().clone();
+                if let Some(state) = state {
+                    page.load_colors(&state).await;
+                }
+            }
+        ));
+    }
+
+    /// The monitor's colour profile, Import and Remove, and a way into GNOME
+    /// Settings › Color for calibrating.
+    fn color_rows(&self, connector: &str) -> Vec<gtk::Widget> {
+        let Some(device) = self.imp().colors.borrow().get(connector).cloned() else {
+            return Vec::new();
+        };
+        let labels: Vec<&str> = device.profiles.iter().map(|p| p.title.as_str()).collect();
+        let row = if labels.is_empty() {
+            adw::ComboRow::builder()
+                .title("Color Profile")
+                .model(&gtk::StringList::new(&["None"]))
+                .sensitive(false)
+                .build()
+        } else {
+            let (path, profiles) = (device.path.clone(), device.profiles.clone());
+            self.combo("Color Profile", &labels, 0, move |page, index| {
+                if let Some(profile) = profiles.get(index).filter(|_| index > 0) {
+                    let (path, profile) = (path.clone(), profile.path.clone());
+                    page.change_color(async move {
+                        let bus = color::bus().await?;
+                        color::make_default(&bus, &path, &profile).await
+                    });
+                }
+            })
+        };
+        if let Some(current) = device.profiles.first().filter(|p| !p.from_edid) {
+            let remove = gtk::Button::builder()
+                .icon_name("user-trash-symbolic")
+                .tooltip_text("Remove Profile")
+                .valign(gtk::Align::Center)
+                .css_classes(["flat"])
+                .build();
+            let (path, profile) = (device.path.clone(), current.path.clone());
+            remove.connect_clicked(glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move |_| {
+                    let (path, profile) = (path.clone(), profile.clone());
+                    page.change_color(async move {
+                        let bus = color::bus().await?;
+                        color::remove(&bus, &path, &profile).await
+                    });
+                }
+            ));
+            row.add_suffix(&remove);
+        }
+        let import = gtk::Button::builder()
+            .icon_name("document-open-symbolic")
+            .tooltip_text("Import ICC Profile…")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        let path = device.path.clone();
+        import.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.import_profile(path.clone())
+        ));
+        row.add_suffix(&import);
+
+        let calibrate = adw::ActionRow::builder()
+            .title("Calibrate")
+            .subtitle("Opens GNOME Settings")
+            .activatable(true)
+            .build();
+        calibrate.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
+        calibrate.connect_activated(|row| crate::ui::open_settings_panel(row, "color"));
+        vec![row.upcast(), calibrate.upcast()]
+    }
+
+    fn import_profile(&self, device: String) {
+        let filter = gtk::FileFilter::new();
+        filter.set_name(Some("ICC Profiles"));
+        filter.add_suffix("icc");
+        filter.add_suffix("icm");
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        let chooser = gtk::FileDialog::builder()
+            .title("Import ICC Profile")
+            .filters(&filters)
+            .build();
+        let parent = self.root().and_downcast::<gtk::Window>();
+        chooser.open(
+            parent.as_ref(),
+            gio::Cancellable::NONE,
+            glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move |file| {
+                    let Some(source) = file.ok().and_then(|file| file.path()) else {
+                        return; // Cancelled.
+                    };
+                    let device = device.clone();
+                    page.change_color(async move {
+                        let bus = color::bus().await?;
+                        color::import(&bus, &device, source).await
+                    });
+                }
+            ),
+        );
     }
 
     /// Moves Mutter-controlled sliders to the kernel's real level, which the
@@ -893,6 +1045,23 @@ impl DisplayPage {
             }
         }));
         if let Some(row) = self.brightness_row(&connector) {
+            group.add(&row);
+        }
+        if let (true, Some(mode)) = (monitor.hdr_supported(), draft.color_mode(&connector)) {
+            let row = adw::SwitchRow::builder()
+                .title("HDR")
+                .subtitle("High dynamic range, for content made for it")
+                .active(mode == 2)
+                .build();
+            let c = connector.clone();
+            row.connect_active_notify(glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move |row| page.edit(|d| d.set_color_mode(&c, if row.is_active() { 2 } else { 0 }))
+            ));
+            group.add(&row);
+        }
+        for row in self.color_rows(&connector) {
             group.add(&row);
         }
         group

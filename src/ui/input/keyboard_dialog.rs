@@ -648,50 +648,7 @@ fn shortcuts_group() -> adw::PreferencesGroup {
         .activatable(true)
         .build();
     row.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
-    row.connect_activated(|row| {
-        // Wayland only lets GNOME Settings come to the front with a token
-        // from the app that asked.
-        let token = row
-            .display()
-            .app_launch_context()
-            .startup_notify_id(None::<&gio::AppInfo>, &[]);
-        glib::spawn_future_local(async move {
-            if let Err(error) = open_keyboard_settings(token.as_deref()).await {
-                glib::g_warning!("openhub", "Can't open GNOME Settings: {error}");
-            }
-        });
-    });
+    row.connect_activated(|row| super::super::open_settings_panel(row, "keyboard"));
     group.add(&row);
     group
-}
-
-/// GNOME Settings' Keyboard panel, through its `launch-panel` action.
-async fn open_keyboard_settings(token: Option<&str>) -> Result<(), glib::Error> {
-    let bus = gio::bus_get_future(gio::BusType::Session).await?;
-    let panel = ("keyboard", Vec::<glib::Variant>::new()).to_variant();
-    let args = (
-        "launch-panel",
-        vec![panel],
-        token
-            .map(|token| {
-                HashMap::from([
-                    ("activation-token".to_owned(), token.to_variant()),
-                    ("desktop-startup-id".to_owned(), token.to_variant()),
-                ])
-            })
-            .unwrap_or_default(),
-    )
-        .to_variant();
-    bus.call_future(
-        Some("org.gnome.Settings"),
-        "/org/gnome/Settings",
-        "org.gtk.Actions",
-        "Activate",
-        Some(&args),
-        None,
-        gio::DBusCallFlags::NONE,
-        5000,
-    )
-    .await
-    .map(drop)
 }

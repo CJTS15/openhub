@@ -34,7 +34,13 @@ install_data(
 install_data(
   'udev/70-openhub-razer.rules',
   'udev/70-openhub-via.rules',
+  'udev/70-openhub-ddc.rules',
   install_dir: get_option('prefix') / 'lib/udev/rules.d',
+)
+# DDC/CI to external monitors goes through /dev/i2c-*, which needs i2c-dev.
+install_data(
+  'modules-load.d/openhub-i2c.conf',
+  install_dir: get_option('prefix') / 'lib/modules-load.d',
 )
 install_data(
   'systemd/openhub-mouse@.service',

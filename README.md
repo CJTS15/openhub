@@ -42,6 +42,7 @@ The VIA and Razer rules list the devices tested so far, each limited to the one 
 ### What the access means
 
 - A udev rule lets **every program you run** open that device's raw HID interface, not only Openhub. On a keyboard's own interface that would let a program read keystrokes, so the VIA and Razer rules grant only the configuration interface. The Logitech rule is the same as [Solaar's](https://github.com/pwr-Solaar/Solaar): over Bluetooth, HID++ shares one interface with the device's input, so it covers Logitech keyboards' input too. Skip it if you don't use a Logitech mouse.
+- The DDC rule lets every program you run open the I2C buses of display adapters only (the same match as ddcutil's rule), so Openhub can set an external monitor's brightness over DDC/CI. The laptop's other I2C buses, such as the touchpad's, stay root-only.
 - The Flatpak asks for `--device=all`, because Flatpak has no narrower permission for `/dev/hidraw*`. Openhub only opens the HID devices it recognises.
 - The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it.
 - Openhub's Bluetooth pairing agent asks before confirming a pairing code, and refuses requests to authorize a device or service that it didn't start.

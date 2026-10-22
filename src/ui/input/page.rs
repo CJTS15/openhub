@@ -5,7 +5,7 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::{keyboard_dialog, logitech_dialog, mouse_dialog, razer_dialog};
-use crate::input::{InputManager, Kind};
+use crate::input::InputManager;
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
 use crate::{hidpp, razer};
@@ -19,7 +19,7 @@ mod imp {
         /// "mouse" or "keyboard", set in window.ui.
         #[property(get, set, construct_only)]
         pub kind: std::cell::RefCell<String>,
-        pub manager: OnceCell<InputManager>,
+        pub manager: OnceCell<std::rc::Rc<InputManager>>,
     }
 
     #[glib::object_subclass]
@@ -34,16 +34,19 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-            let (kinds, title, empty): (&'static [Kind], _, _) = match self.kind.borrow().as_str() {
-                "keyboard" => (&[Kind::Keyboard], "Keyboards", "No keyboard connected"),
-                _ => (
-                    &[Kind::Mouse, Kind::Touchpad, Kind::PointingStick],
-                    "Mice and Touchpads",
-                    "No mouse or touchpad connected",
-                ),
+            let mice = self.kind.borrow().as_str() != "keyboard";
+            let (title, empty) = if mice {
+                ("Mice and Touchpads", "No mouse or touchpad connected")
+            } else {
+                ("Keyboards", "No keyboard connected")
             };
-            let manager = self.manager.get_or_init(|| InputManager::new(kinds));
-            let mice = !kinds.contains(&Kind::Keyboard);
+            let manager = self.manager.get_or_init(|| {
+                if mice {
+                    InputManager::mice()
+                } else {
+                    InputManager::keyboards()
+                }
+            });
 
             let list = gtk::ListBox::builder()
                 .selection_mode(gtk::SelectionMode::None)

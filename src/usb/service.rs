@@ -30,6 +30,14 @@ impl Default for UsbManager {
 }
 
 impl UsbManager {
+    /// The one manager every page uses.
+    pub fn shared() -> std::rc::Rc<Self> {
+        thread_local! {
+            static SHARED: std::rc::Rc<UsbManager> = std::rc::Rc::default();
+        }
+        SHARED.with(Clone::clone)
+    }
+
     /// `UsbDevice` items on root ports; hubs hold the rest as children.
     pub fn devices(&self) -> gio::ListStore {
         self.devices.clone()

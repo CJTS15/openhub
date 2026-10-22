@@ -31,3 +31,16 @@ window.openhub-identify {
   background-color: alpha(@window_bg_color, 0.92);
   color: @window_fg_color;
 }
+
+/* System › Connected Devices: one card per page, as tall as its text. */
+button.openhub-device-card {
+  padding: 12px;
+  font-weight: normal;
+}
+
+/* The card itself shows hover and focus; its grid cell shows nothing. */
+flowbox.openhub-device-grid > flowboxchild {
+  padding: 0;
+  background: none;
+  outline: none;
+}

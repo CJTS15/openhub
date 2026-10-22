@@ -52,7 +52,7 @@ mod imp {
     #[gtk::template_callbacks]
     impl OpenhubWindow {
         #[template_callback]
-        fn on_category_activated(&self, row: &gtk::ListBoxRow) {
+        pub(super) fn on_category_activated(&self, row: &gtk::ListBoxRow) {
             // Each sidebar row's widget name is its stack page's name.
             let stack = &self.category_stack;
             stack.set_visible_child_name(&row.widget_name());
@@ -91,5 +91,19 @@ impl OpenhubWindow {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    /// Shows a page as if its sidebar row was clicked, such as `bluetooth`.
+    pub fn show_category(&self, name: &str) {
+        let imp = self.imp();
+        let mut index = 0;
+        while let Some(row) = imp.categories.row_at_index(index) {
+            if row.widget_name() == name {
+                imp.categories.select_row(Some(&row));
+                imp.on_category_activated(&row);
+                return;
+            }
+            index += 1;
+        }
     }
 }

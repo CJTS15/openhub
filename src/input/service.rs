@@ -20,6 +20,25 @@ pub struct InputManager {
 }
 
 impl InputManager {
+    /// The mice, touchpads and pointing sticks every page shares.
+    pub fn mice() -> std::rc::Rc<Self> {
+        thread_local! {
+            static SHARED: std::rc::Rc<InputManager> = std::rc::Rc::new(InputManager::new(
+                &[Kind::Mouse, Kind::Touchpad, Kind::PointingStick],
+            ));
+        }
+        SHARED.with(Clone::clone)
+    }
+
+    /// The keyboards every page shares.
+    pub fn keyboards() -> std::rc::Rc<Self> {
+        thread_local! {
+            static SHARED: std::rc::Rc<InputManager> =
+                std::rc::Rc::new(InputManager::new(&[Kind::Keyboard]));
+        }
+        SHARED.with(Clone::clone)
+    }
+
     pub fn new(kinds: &'static [Kind]) -> Self {
         Self {
             kinds,

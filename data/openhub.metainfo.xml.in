@@ -6,7 +6,7 @@
   <name>Openhub</name>
   <summary>Manage your connected devices</summary>
   <description>
-    <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB, power, mice, keyboards and audio.</p>
+    <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB, power, mice, keyboards, audio and displays.</p>
     <ul>
       <li>Turn Bluetooth on and off</li>
       <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
@@ -22,6 +22,9 @@
       <li>Change the lighting and keys of VIA keyboards, stored on the keyboard</li>
       <li>Choose your audio output and input, set their volume, and see each microphone's level</li>
       <li>Shape each output's sound with a 10-band equalizer or an AutoEQ profile</li>
+      <li>Arrange your displays and set their resolution, refresh rate, scale and orientation, as GNOME Settings does</li>
+      <li>Set the brightness of the built-in screen and of external monitors that support DDC/CI</li>
+      <li>Turn on Night Light, choose each display's color profile, and turn on HDR where supported</li>
     </ul>
   </description>
   <developer id="io.github.cjts15">
@@ -32,6 +35,10 @@
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/bluetooth.png</image>
       <caption>Bluetooth devices, connected ones first, with their batteries</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/displays.png</image>
+      <caption>Displays, with their arrangement, settings, brightness and color profile</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/audio.png</image>
@@ -66,6 +73,20 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.5.0" date="2026-10-21">
+      <description>
+        <p>Adds a Displays page:</p>
+        <ul>
+          <li>Arrange displays by dragging them, and choose Join, Mirror or a single display, with an Identify button</li>
+          <li>Resolution, refresh rate, variable refresh rate, scale and orientation for each display, applied with GNOME's "Keep these display settings?" check</li>
+          <li>Brightness of the built-in screen, following the brightness keys, and of external monitors over DDC/CI</li>
+          <li>Night Light: on and off, sunset to sunrise or set times, and the color temperature</li>
+          <li>Color profiles through colord: choose, import and remove, with a link to GNOME Settings to calibrate</li>
+          <li>HDR on displays that support it</li>
+          <li>A details dialog for each display, read from its EDID</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.2" date="2026-10-19">
       <description>
         <p>A new app icon, and clearer setup for the Flatpak:</p>

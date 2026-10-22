@@ -43,8 +43,12 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
         .collect();
     groups.insert(1, (Some("Battery"), batteries));
     let page = adw::PreferencesPage::new();
+    let mut identity = None;
     for (title, rows) in groups {
         let group = adw::PreferencesGroup::new();
+        if title.is_none() {
+            identity = Some(group.clone());
+        }
         if let Some(title) = title {
             group.set_title(title);
         }
@@ -60,6 +64,26 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
         }
     }
     dialog.add(&page);
+    // The firmware version, where fwupd knows this device.
+    if let Some(identity) = identity {
+        let id = device.id();
+        glib::spawn_future_local(glib::clone!(
+            #[weak]
+            dialog,
+            async move {
+                let Ok(bus) = crate::fwupd::bus().await else {
+                    return;
+                };
+                let devices = crate::fwupd::devices(&bus).await.unwrap_or_default();
+                if let Some(found) = devices
+                    .iter()
+                    .find(|d| d.matches_usb(&id) && !d.version.is_empty())
+                {
+                    identity.add(&property_row(&dialog, "Firmware", &found.version, false));
+                }
+            }
+        ));
+    }
     dialog
 }
 

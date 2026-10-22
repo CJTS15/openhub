@@ -133,6 +133,14 @@ impl Default for AudioManager {
 }
 
 impl AudioManager {
+    /// The one manager every page uses: one libpulse connection.
+    pub fn shared() -> Self {
+        thread_local! {
+            static SHARED: AudioManager = glib::Object::new();
+        }
+        SHARED.with(Clone::clone)
+    }
+
     pub fn outputs(&self) -> gio::ListStore {
         self.imp().outputs.clone()
     }

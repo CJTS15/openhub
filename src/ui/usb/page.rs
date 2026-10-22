@@ -23,7 +23,12 @@ mod imp {
         pub show_internal: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub device_list: TemplateChild<gtk::ListBox>,
-        pub manager: UsbManager,
+    }
+
+    impl UsbPage {
+        pub fn manager(&self) -> std::rc::Rc<UsbManager> {
+            UsbManager::shared()
+        }
     }
 
     #[glib::object_subclass]
@@ -54,7 +59,7 @@ mod imp {
                 move |item| obj.shows(item.downcast_ref().unwrap())
             ));
             let model =
-                gtk::FilterListModel::new(Some(self.manager.devices()), Some(filter.clone()));
+                gtk::FilterListModel::new(Some(self.manager().devices()), Some(filter.clone()));
             self.device_list.bind_model(
                 Some(&model),
                 glib::clone!(
@@ -101,7 +106,7 @@ glib::wrapper! {
 
 impl UsbPage {
     fn rescan(&self) {
-        self.imp().manager.refresh();
+        self.imp().manager().refresh();
         self.update_batteries();
     }
 
@@ -124,7 +129,7 @@ impl UsbPage {
                 ));
             }
         }
-        let mut pending: Vec<UsbDevice> = self.imp().manager.devices().iter().flatten().collect();
+        let mut pending: Vec<UsbDevice> = self.imp().manager().devices().iter().flatten().collect();
         while let Some(device) = pending.pop() {
             pending.extend(device.children().iter::<UsbDevice>().flatten());
             let batteries = by_usb.remove(&device.name()).unwrap_or_default();
@@ -173,7 +178,7 @@ impl UsbPage {
                     button,
                     async move {
                         let name = device.title();
-                        let manager = &page.imp().manager;
+                        let manager = &page.imp().manager();
                         match manager.eject(&device).await {
                             Ok(()) => {
                                 // Powering off removes it from sysfs; drop the row now.
@@ -214,7 +219,7 @@ impl UsbPage {
             #[weak]
             device,
             move || {
-                let devices = page.imp().manager.devices();
+                let devices = page.imp().manager().devices();
                 if let Some(position) = devices.find(&device) {
                     devices.splice(position, 1, std::slice::from_ref(&device));
                 }

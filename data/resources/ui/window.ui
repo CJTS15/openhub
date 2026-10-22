@@ -4,7 +4,7 @@
   <requires lib="Adw" version="1.5"/>
   <template class="OpenhubWindow" parent="AdwApplicationWindow">
     <property name="title">Openhub</property>
-    <property name="default-width">900</property>
+    <property name="default-width">820</property>
     <property name="default-height">640</property>
     <property name="width-request">360</property>
     <property name="height-request">294</property>
@@ -14,8 +14,18 @@
         <setter object="split_view" property="collapsed">True</setter>
       </object>
     </child>
+    <!-- Only one breakpoint applies at a time, so this repeats the one above. -->
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 450sp</condition>
+        <setter object="split_view" property="collapsed">True</setter>
+        <setter object="audio_page" property="compact">True</setter>
+      </object>
+    </child>
     <property name="content">
       <object class="AdwNavigationSplitView" id="split_view">
+        <!-- On a narrow window, open on the page itself; Back shows the sidebar. -->
+        <property name="show-content">True</property>
         <property name="sidebar">
           <object class="AdwNavigationPage">
             <property name="title">Openhub</property>
@@ -56,6 +66,27 @@
                                 <child>
                                   <object class="GtkLabel">
                                     <property name="label" translatable="yes">System</property>
+                                    <property name="xalign">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow">
+                            <property name="name">power</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon-name">battery-full-symbolic</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">Power</property>
                                     <property name="xalign">0</property>
                                   </object>
                                 </child>
@@ -107,39 +138,18 @@
                         </child>
                         <child>
                           <object class="GtkListBoxRow">
-                            <property name="name">power</property>
+                            <property name="name">displays</property>
                             <property name="child">
                               <object class="GtkBox">
                                 <property name="spacing">12</property>
                                 <child>
                                   <object class="GtkImage">
-                                    <property name="icon-name">battery-full-symbolic</property>
+                                    <property name="icon-name">video-display-symbolic</property>
                                   </object>
                                 </child>
                                 <child>
                                   <object class="GtkLabel">
-                                    <property name="label" translatable="yes">Power</property>
-                                    <property name="xalign">0</property>
-                                  </object>
-                                </child>
-                              </object>
-                            </property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkListBoxRow">
-                            <property name="name">mouse</property>
-                            <property name="child">
-                              <object class="GtkBox">
-                                <property name="spacing">12</property>
-                                <child>
-                                  <object class="GtkImage">
-                                    <property name="icon-name">input-mouse-symbolic</property>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkLabel">
-                                    <property name="label" translatable="yes">Mouse</property>
+                                    <property name="label" translatable="yes">Displays</property>
                                     <property name="xalign">0</property>
                                   </object>
                                 </child>
@@ -170,6 +180,27 @@
                         </child>
                         <child>
                           <object class="GtkListBoxRow">
+                            <property name="name">mouse</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon-name">input-mouse-symbolic</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">Mouse</property>
+                                    <property name="xalign">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow">
                             <property name="name">audio</property>
                             <property name="child">
                               <object class="GtkBox">
@@ -182,27 +213,6 @@
                                 <child>
                                   <object class="GtkLabel">
                                     <property name="label" translatable="yes">Audio</property>
-                                    <property name="xalign">0</property>
-                                  </object>
-                                </child>
-                              </object>
-                            </property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkListBoxRow">
-                            <property name="name">displays</property>
-                            <property name="child">
-                              <object class="GtkBox">
-                                <property name="spacing">12</property>
-                                <child>
-                                  <object class="GtkImage">
-                                    <property name="icon-name">video-display-symbolic</property>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkLabel">
-                                    <property name="label" translatable="yes">Displays</property>
                                     <property name="xalign">0</property>
                                   </object>
                                 </child>
@@ -291,7 +301,7 @@
                         <property name="name">audio</property>
                         <property name="title" translatable="yes">Audio</property>
                         <property name="child">
-                          <object class="OpenhubAudioPage"/>
+                          <object class="OpenhubAudioPage" id="audio_page"/>
                         </property>
                       </object>
                     </child>

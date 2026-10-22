@@ -1139,7 +1139,7 @@ impl DisplayPage {
 
 /// The monitor's name: "Built-in Display", else the EDID's model name, else
 /// what Mutter calls it.
-fn title(monitor: &Monitor, edid: Option<&edid::Edid>) -> String {
+pub fn title(monitor: &Monitor, edid: Option<&edid::Edid>) -> String {
     if monitor.builtin {
         return "Built-in Display".to_owned();
     }

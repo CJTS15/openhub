@@ -28,9 +28,14 @@ mod imp {
         pub scan_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub nearby_list: TemplateChild<gtk::ListBox>,
-        pub manager: BluetoothManager,
         /// The open pairing dialog, closed when pairing ends or BlueZ cancels.
         pub pairing_dialog: RefCell<Option<adw::AlertDialog>>,
+    }
+
+    impl BluetoothPage {
+        pub fn manager(&self) -> BluetoothManager {
+            BluetoothManager::shared()
+        }
     }
 
     #[glib::object_subclass]
@@ -53,7 +58,7 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            self.manager
+            self.manager()
                 .bind_property("state", &*self.stack, "visible-child-name")
                 .transform_to(|_, state: State| {
                     Some(match state {
@@ -67,7 +72,7 @@ mod imp {
                 .build();
 
             self.adapter_list.bind_model(
-                Some(&self.manager.adapters()),
+                Some(&self.manager().adapters()),
                 glib::clone!(
                     #[weak]
                     obj,
@@ -76,7 +81,7 @@ mod imp {
                 ),
             );
             self.paired_list.bind_model(
-                Some(&self.manager.paired_devices()),
+                Some(&self.manager().paired_devices()),
                 glib::clone!(
                     #[weak]
                     obj,
@@ -93,7 +98,8 @@ mod imp {
                             #[weak]
                             device,
                             move |_| {
-                                device_dialog::new(&obj.imp().manager, &device).present(Some(&obj));
+                                device_dialog::new(&obj.imp().manager(), &device)
+                                    .present(Some(&obj));
                             }
                         ));
                         row.upcast()
@@ -101,7 +107,7 @@ mod imp {
                 ),
             );
             self.nearby_list.bind_model(
-                Some(&self.manager.nearby_devices()),
+                Some(&self.manager().nearby_devices()),
                 glib::clone!(
                     #[weak]
                     obj,
@@ -122,7 +128,7 @@ mod imp {
                     }
                 ),
             );
-            self.manager.connect_pairing_request(glib::clone!(
+            self.manager().connect_pairing_request(glib::clone!(
                 #[weak]
                 obj,
                 move |request| obj.on_pairing_request(request)
@@ -144,18 +150,18 @@ mod imp {
                 }
             ));
 
-            self.manager
+            self.manager()
                 .bind_property("discovering", &*self.scan_button, "label")
                 .transform_to(|_, discovering: bool| {
                     Some(if discovering { "Stop" } else { "Scan" })
                 })
                 .sync_create()
                 .build();
-            self.manager
+            self.manager()
                 .bind_property("discovering", &*self.scan_spinner, "spinning")
                 .sync_create()
                 .build();
-            self.manager
+            self.manager()
                 .bind_property("discovering", &*self.scan_spinner, "visible")
                 .sync_create()
                 .build();
@@ -208,7 +214,7 @@ impl BluetoothPage {
             #[weak]
             device,
             async move {
-                let manager = &page.imp().manager;
+                let manager = &page.imp().manager();
                 // Scanning shares the radio with pairing and connecting, slowing
                 // both; pause it and resume afterwards for the next device.
                 let was_scanning = manager.discovering();
@@ -274,7 +280,7 @@ impl BluetoothPage {
                     move |_, _| {
                         let device = device.clone();
                         glib::spawn_future_local(async move {
-                            let _ = page.imp().manager.cancel_pairing(&device).await;
+                            let _ = page.imp().manager().cancel_pairing(&device).await;
                         });
                     }
                 ),
@@ -329,7 +335,7 @@ impl BluetoothPage {
                     #[weak]
                     row,
                     async move {
-                        let result = page.imp().manager.set_powered(&adapter, powered).await;
+                        let result = page.imp().manager().set_powered(&adapter, powered).await;
                         if let Err(err) = result {
                             glib::g_warning!("openhub", "Can't set Powered={powered}: {err}");
                             page.toast(if powered {
@@ -376,7 +382,7 @@ impl BluetoothPage {
                     #[weak]
                     device,
                     async move {
-                        let manager = &page.imp().manager;
+                        let manager = &page.imp().manager();
                         let result = if connected {
                             manager.disconnect_device(&device).await
                         } else {
@@ -403,12 +409,12 @@ impl BluetoothPage {
     }
 
     fn toggle_discovery(&self) {
-        let discovering = !self.imp().manager.discovering();
+        let discovering = !self.imp().manager().discovering();
         glib::spawn_future_local(glib::clone!(
             #[weak(rename_to = page)]
             self,
             async move {
-                if let Err(err) = page.imp().manager.set_discovering(discovering).await {
+                if let Err(err) = page.imp().manager().set_discovering(discovering).await {
                     glib::g_warning!("openhub", "Can't set discovery to {discovering}: {err}");
                     page.toast(if discovering {
                         "Couldn't start scanning"

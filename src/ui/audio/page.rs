@@ -10,10 +10,30 @@ use crate::upower::{PowerManager, convert};
 mod imp {
     use super::*;
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, glib::Properties)]
+    #[properties(wrapper_type = super::AudioPage)]
     pub struct AudioPage {
-        pub manager: AudioManager,
         pub stack: gtk::Stack,
+        /// Phone width: each row puts its controls under the name. Set by
+        /// the window's breakpoint.
+        #[property(get, set = Self::set_compact)]
+        pub compact: std::cell::Cell<bool>,
+        /// The Output and Input lists, rebuilt when `compact` changes.
+        pub lists: std::cell::RefCell<Vec<(gtk::ListBox, gio::ListStore)>>,
+    }
+
+    impl AudioPage {
+        pub fn manager(&self) -> AudioManager {
+            AudioManager::shared()
+        }
+
+        fn set_compact(&self, compact: bool) {
+            if self.compact.replace(compact) != compact {
+                for (list, devices) in self.lists.borrow().iter() {
+                    bind(&self.manager(), list, devices, compact);
+                }
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -23,25 +43,22 @@ mod imp {
         type ParentType = adw::Bin;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for AudioPage {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-            let manager = &self.manager;
+            let manager = &self.manager();
 
             let page = adw::PreferencesPage::new();
-            page.add(&group(
-                manager,
-                "Output",
-                "No output devices",
-                &manager.outputs(),
-            ));
-            page.add(&group(
-                manager,
-                "Input",
-                "No input devices",
-                &manager.inputs(),
-            ));
+            for (title, empty, devices) in [
+                ("Output", "No output devices", manager.outputs()),
+                ("Input", "No input devices", manager.inputs()),
+            ] {
+                let (group, list) = group(manager, title, empty, &devices);
+                page.add(&group);
+                self.lists.borrow_mut().push((list, devices));
+            }
             self.stack.add_named(
                 &gtk::Spinner::builder()
                     .spinning(true)
@@ -65,8 +82,8 @@ mod imp {
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
             obj.set_child(Some(&self.stack));
             // Level meters run only while the page is on screen.
-            obj.connect_map(|page| page.imp().manager.set_metering(true));
-            obj.connect_unmap(|page| page.imp().manager.set_metering(false));
+            obj.connect_map(|page| page.imp().manager().set_metering(true));
+            obj.connect_unmap(|page| page.imp().manager().set_metering(false));
 
             manager
                 .bind_property("state", &self.stack, "visible-child-name")
@@ -113,7 +130,7 @@ glib::wrapper! {
 
 impl AudioPage {
     fn update_batteries(&self) {
-        let manager = &self.imp().manager;
+        let manager = &self.imp().manager();
         let batteries: Vec<PowerDevice> = PowerManager::shared()
             .peripherals()
             .iter()
@@ -143,7 +160,7 @@ fn group(
     title: &str,
     empty: &str,
     devices: &gio::ListStore,
-) -> adw::PreferencesGroup {
+) -> (adw::PreferencesGroup, gtk::ListBox) {
     let list = gtk::ListBox::builder()
         .selection_mode(gtk::SelectionMode::None)
         .css_classes(["boxed-list"])
@@ -156,24 +173,54 @@ fn group(
             .css_classes(["dim-label"])
             .build(),
     ));
+    bind(manager, &list, devices, false);
+    // Clicking a row opens its details and equalizer; the default carries
+    // a check mark and is set from there.
+    list.connect_row_activated(glib::clone!(
+        #[strong]
+        manager,
+        #[strong]
+        devices,
+        move |list, row| {
+            let device = u32::try_from(row.index())
+                .ok()
+                .and_then(|i| devices.item(i))
+                .and_downcast::<AudioDevice>();
+            if let Some(device) = device {
+                device_dialog::new(&manager, &device).present(Some(list));
+            }
+        }
+    ));
+    let group = adw::PreferencesGroup::builder().title(title).build();
+    group.add(&list);
+    (group, list)
+}
+
+fn bind(manager: &AudioManager, list: &gtk::ListBox, devices: &gio::ListStore, compact: bool) {
     list.bind_model(
         Some(devices),
         glib::clone!(
             #[strong]
             manager,
-            move |item| row(&manager, item.downcast_ref().unwrap()).upcast()
+            move |item| row(&manager, item.downcast_ref().unwrap(), compact)
         ),
     );
-    let group = adw::PreferencesGroup::builder().title(title).build();
-    group.add(&list);
-    group
 }
 
-fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
-    let row = adw::ActionRow::builder().use_markup(false).build();
+fn row(manager: &AudioManager, device: &AudioDevice, compact: bool) -> gtk::Widget {
+    let title = gtk::Label::builder()
+        .xalign(0.0)
+        .wrap(true)
+        .wrap_mode(gtk::pango::WrapMode::WordChar)
+        .build();
     device
-        .bind_property("title", &row, "title")
+        .bind_property("title", &title, "label")
         .sync_create()
+        .build();
+    let subtitle = gtk::Label::builder()
+        .xalign(0.0)
+        .wrap(true)
+        .css_classes(["dim-label", "caption"])
         .build();
     let property = |name| {
         gtk::PropertyExpression::new(AudioDevice::static_type(), gtk::Expression::NONE, name)
@@ -193,29 +240,21 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
             parts.join(" · ")
         },
     )
-    .bind(&row, "subtitle", Some(device));
+    .bind(&subtitle, "label", Some(device));
 
     let icon = gtk::Image::new();
     device
         .bind_property("icon-name", &icon, "icon-name")
         .sync_create()
         .build();
-    row.add_prefix(&icon);
-    // Clicking a row opens its details and equalizer; the default carries
-    // a check mark and is set from there.
-    row.set_activatable(true);
-    row.connect_activated(glib::clone!(
-        #[strong]
-        manager,
-        #[weak]
-        device,
-        move |row| device_dialog::new(&manager, &device).present(Some(row))
-    ));
 
+    let controls = gtk::Box::builder().spacing(6).build();
     // Inputs show their live level here; outputs keep the same width
     // empty, so every row's mute button and slider line up.
     if device.output() {
-        row.add_suffix(&gtk::Box::builder().width_request(METER_WIDTH).build());
+        if !compact {
+            controls.append(&gtk::Box::builder().width_request(METER_WIDTH).build());
+        }
     } else {
         let meter = gtk::LevelBar::builder()
             .width_request(METER_WIDTH)
@@ -229,7 +268,7 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
             .bind_property("peak", &meter, "value")
             .sync_create()
             .build();
-        row.add_suffix(&meter);
+        controls.append(&meter);
     }
 
     let mute = gtk::Button::builder()
@@ -261,10 +300,11 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         device,
         move |_| manager.set_muted(&device, !device.muted())
     ));
-    row.add_suffix(&mute);
+    controls.append(&mute);
 
     let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.01);
     volume.set_width_request(160);
+    volume.set_hexpand(compact);
     volume.set_valign(gtk::Align::Center);
     volume.update_property(&[gtk::accessible::Property::Label("Volume")]);
     device
@@ -285,7 +325,7 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
             glib::Propagation::Proceed
         }
     ));
-    row.add_suffix(&volume);
+    controls.append(&volume);
     // A fixed slot keeps its space when the check mark is hidden, so rows
     // don't shift as the default changes.
     let check = gtk::Image::from_icon_name("object-select-symbolic");
@@ -300,8 +340,41 @@ fn row(manager: &AudioManager, device: &AudioDevice) -> adw::ActionRow {
         .halign(gtk::Align::End)
         .build();
     slot.append(&check);
-    row.add_suffix(&slot);
-    row
+    // Laid out like an AdwActionRow: icon, name over details, then the
+    // controls beside them, or under them at phone width.
+    let text = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(2)
+        .valign(gtk::Align::Center)
+        .hexpand(true)
+        .build();
+    text.append(&title);
+    text.append(&subtitle);
+    let header = gtk::Box::builder().spacing(12).build();
+    header.append(&icon);
+    header.append(&text);
+    let content = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(6)
+        .margin_top(8)
+        .margin_bottom(8)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+    content.append(&header);
+    if compact {
+        header.append(&slot);
+        content.append(&controls);
+    } else {
+        header.append(&controls);
+        header.append(&slot);
+    }
+    let row = gtk::ListBoxRow::builder()
+        .child(&content)
+        .activatable(true)
+        .build();
+    row.update_relation(&[gtk::accessible::Relation::LabelledBy(&[title.upcast_ref()])]);
+    row.upcast()
 }
 
 /// The input level meter is short, as in GNOME Settings.

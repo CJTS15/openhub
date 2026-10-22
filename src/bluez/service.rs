@@ -135,6 +135,14 @@ enum Event {
 }
 
 impl BluetoothManager {
+    /// The one manager every page uses, so BlueZ has one pairing agent.
+    pub fn shared() -> Self {
+        thread_local! {
+            static SHARED: BluetoothManager = glib::Object::new();
+        }
+        SHARED.with(Clone::clone)
+    }
+
     /// `Adapter` items, one per local adapter.
     pub fn adapters(&self) -> gio::ListStore {
         self.imp().adapters.clone()

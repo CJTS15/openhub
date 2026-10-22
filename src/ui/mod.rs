@@ -19,26 +19,35 @@ use gtk::{gio, glib};
 pub fn rescan_while_mapped(widget: &impl IsA<gtk::Widget>, rescan: impl Fn() + 'static) {
     let rescan = Rc::new(rescan);
     let timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
-    widget.connect_map(glib::clone!(
-        #[strong]
-        rescan,
+    let start = Rc::new(glib::clone!(
         #[strong]
         timer,
-        move |_| {
+        move || {
             rescan();
             let rescan = rescan.clone();
             let source = glib::timeout_add_seconds_local(2, move || {
                 rescan();
                 glib::ControlFlow::Continue
             });
-            timer.replace(Some(source));
+            if let Some(old) = timer.replace(Some(source)) {
+                old.remove();
+            }
         }
+    ));
+    widget.connect_map(glib::clone!(
+        #[strong]
+        start,
+        move |_| start()
     ));
     widget.connect_unmap(move |_| {
         if let Some(source) = timer.take() {
             source.remove();
         }
     });
+    // A widget added to a page already on screen never gets "map".
+    if widget.is_mapped() {
+        start();
+    }
 }
 
 /// Opens a GNOME Settings panel, such as `keyboard`, or a page inside one,

@@ -36,6 +36,18 @@ impl UsbIds {
         })
     }
 
+    /// `pci.ids`, which has the same layout, from the same places.
+    pub fn pci() -> &'static Self {
+        static IDS: OnceLock<UsbIds> = OnceLock::new();
+        IDS.get_or_init(|| {
+            PATHS
+                .iter()
+                .find_map(|path| fs::read(path.replace("usb.ids", "pci.ids")).ok())
+                .map(|bytes| Self::parse(&String::from_utf8_lossy(&bytes)))
+                .unwrap_or_default()
+        })
+    }
+
     /// Parses the vendor list: `vvvv  Vendor` lines, each followed by
     /// tab-indented `pppp  Product` lines. Later sections (`C 00  Class`) end it.
     pub fn parse(text: &str) -> Self {

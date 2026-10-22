@@ -11,6 +11,7 @@ mod input;
 mod model;
 mod ratbag;
 mod razer;
+mod sysinfo;
 mod ui;
 mod upower;
 mod usb;

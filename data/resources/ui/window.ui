@@ -44,6 +44,27 @@
                         </style>
                         <child>
                           <object class="GtkListBoxRow">
+                            <property name="name">system</property>
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon-name">computer-symbolic</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">System</property>
+                                    <property name="xalign">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow">
                             <property name="name">bluetooth</property>
                             <property name="child">
                               <object class="GtkBox">
@@ -199,7 +220,7 @@
         </property>
         <property name="content">
           <object class="AdwNavigationPage" id="content_page">
-            <property name="title" translatable="yes">Bluetooth</property>
+            <property name="title" translatable="yes">System</property>
             <property name="child">
               <object class="AdwToolbarView">
                 <child type="top">
@@ -207,6 +228,15 @@
                 </child>
                 <property name="content">
                   <object class="GtkStack" id="category_stack">
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">system</property>
+                        <property name="title" translatable="yes">System</property>
+                        <property name="child">
+                          <object class="OpenhubSystemPage"/>
+                        </property>
+                      </object>
+                    </child>
                     <child>
                       <object class="GtkStackPage">
                         <property name="name">bluetooth</property>

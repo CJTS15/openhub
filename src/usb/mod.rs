@@ -1,4 +1,4 @@
-mod ids;
+pub mod ids;
 mod service;
 mod sysfs;
 mod udisks;

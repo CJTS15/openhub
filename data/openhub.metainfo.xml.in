@@ -8,6 +8,9 @@
   <description>
     <p>Openhub lists and manages the devices connected to your computer: Bluetooth, USB, power, mice, keyboards, audio and displays.</p>
     <ul>
+      <li>See every connected device at a glance, with low batteries flagged</li>
+      <li>See your computer's processor, memory, graphics, disk and system versions, and copy them for a bug report</li>
+      <li>Check the firmware of your laptop and devices, and whether an update is available</li>
       <li>Turn Bluetooth on and off</li>
       <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
       <li>Scan for nearby devices and pair them</li>
@@ -33,6 +36,10 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
   <screenshots>
     <screenshot type="default">
+      <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/system.png</image>
+      <caption>The System page: every connected device, and this computer's details</caption>
+    </screenshot>
+    <screenshot>
       <image>https://raw.githubusercontent.com/CJTS15/openhub/main/data/screenshots/bluetooth.png</image>
       <caption>Bluetooth devices, connected ones first, with their batteries</caption>
     </screenshot>
@@ -73,6 +80,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="1.0.0" date="2026-10-22">
+      <description>
+        <p>Openhub 1.0 adds a System page, the first page Openhub opens on:</p>
+        <ul>
+          <li>Connected Devices: a card for each page with what's connected there, one count of every device, and a warning for low batteries</li>
+          <li>About this computer: model, processor, memory, graphics, disk, firmware, operating system, desktop and kernel, with Copy Details for bug reports</li>
+          <li>Device Firmware: the firmware of your laptop, drives and devices from fwupd, with update notes and a link to GNOME Software to install</li>
+          <li>Links to the GNOME Settings pages for device name, region, date and time, users and remote access</li>
+          <li>The sidebar is reordered, and every page now fits a phone-sized window</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-10-22">
       <description>
         <p>Adds a Displays page:</p>

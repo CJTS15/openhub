@@ -26,8 +26,13 @@
     "--talk-name=org.blueman.Applet",
     "--talk-name=org.gnome.Mutter.DisplayConfig",
     "--talk-name=org.gnome.Settings",
+    "--talk-name=org.gnome.Shell",
+    "--talk-name=org.gnome.Software",
     "--system-talk-name=org.bluez",
+    "--system-talk-name=net.hadess.SwitcherooControl",
     "--system-talk-name=org.freedesktop.ColorManager",
+    "--system-talk-name=org.freedesktop.fwupd",
+    "--system-talk-name=org.freedesktop.hostname1",
     "--system-talk-name=org.freedesktop.ratbag1",
     "--system-talk-name=org.freedesktop.UDisks2",
     "--system-talk-name=org.freedesktop.UPower"

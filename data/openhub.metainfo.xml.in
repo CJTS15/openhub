@@ -73,7 +73,7 @@
     <control>touch</control>
   </supports>
   <releases>
-    <release version="0.5.0" date="2026-10-21">
+    <release version="0.5.0" date="2026-10-22">
       <description>
         <p>Adds a Displays page:</p>
         <ul>

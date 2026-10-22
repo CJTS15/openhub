@@ -183,26 +183,6 @@ impl DisplayPage {
             ),
         );
         self.imp().shell_subscription.replace(Some(shell));
-        // Flatpak only passes GNOME Shell's signal to apps that may talk to
-        // all of GNOME Shell, so there the panel's level is read instead,
-        // every second while the page is on screen.
-        if std::path::Path::new("/.flatpak-info").exists() {
-            glib::timeout_add_seconds_local(
-                1,
-                glib::clone!(
-                    #[weak(rename_to = page)]
-                    self,
-                    #[upgrade_or]
-                    glib::ControlFlow::Break,
-                    move || {
-                        if page.is_mapped() {
-                            page.follow_kernel_brightness();
-                        }
-                        glib::ControlFlow::Continue
-                    }
-                ),
-            );
-        }
         self.imp().bus.replace(Some(bus.clone()));
         self.reload(&bus).await;
     }

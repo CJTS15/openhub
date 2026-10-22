@@ -6,6 +6,7 @@ mod config;
 mod ddc;
 mod display;
 mod eq;
+mod fwupd;
 mod hidpp;
 mod input;
 mod model;

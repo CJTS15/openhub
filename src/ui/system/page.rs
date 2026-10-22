@@ -8,12 +8,15 @@ use gtk::{gio, glib};
 use crate::audio::AudioManager;
 use crate::bluez::BluetoothManager;
 use crate::display;
+use crate::fwupd;
 use crate::input::InputManager;
 use crate::model::{AudioDevice, Device, InputDevice, PowerDevice, UsbDevice};
 use crate::sysinfo::{self, About};
 use crate::upower::{PowerManager, convert::kind};
 use crate::usb::UsbManager;
 use crate::window::OpenhubWindow;
+
+use super::firmware_dialog;
 
 /// The Connected Devices rows: (page name, title, icon).
 /// In the sidebar's order.
@@ -54,6 +57,10 @@ mod imp {
         /// Mutter's last layout, for the Displays row.
         pub displays: RefCell<Option<display::State>>,
         pub subscription: RefCell<Option<gio::SignalSubscription>>,
+        /// Device Firmware: hidden until fwupd answers with something.
+        pub firmware: adw::PreferencesGroup,
+        pub firmware_rows: RefCell<Vec<adw::ActionRow>>,
+        pub fwupd_subscription: RefCell<Option<gio::SignalSubscription>>,
     }
 
     #[glib::object_subclass]
@@ -113,6 +120,7 @@ impl SystemPage {
         hardware.set_header_suffix(Some(&copy));
         page.add(&hardware);
         page.add(&values_group("Software", &about.software(&windowing)));
+        page.add(&self.firmware_group());
 
         // GNOME Settings comes with GNOME; elsewhere these rows would lead
         // nowhere.
@@ -386,6 +394,104 @@ impl SystemPage {
         let external = monitors.iter().filter(|m| !m.builtin).count();
         imp.devices
             .set_description(Some(&headline(connected + usb + external)));
+    }
+
+    fn firmware_group(&self) -> adw::PreferencesGroup {
+        let group = &self.imp().firmware;
+        group.set_title("Device Firmware");
+        group.set_visible(false);
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            async move {
+                let Ok(bus) = fwupd::bus().await else {
+                    return;
+                };
+                page.load_firmware(&bus).await;
+                // Plugged-in devices and new metadata both change the list.
+                let subscription = fwupd::watch(
+                    &bus,
+                    glib::clone!(
+                        #[weak]
+                        page,
+                        #[strong]
+                        bus,
+                        move || {
+                            glib::spawn_future_local(glib::clone!(
+                                #[weak]
+                                page,
+                                #[strong]
+                                bus,
+                                async move { page.load_firmware(&bus).await }
+                            ));
+                        }
+                    ),
+                );
+                page.imp().fwupd_subscription.replace(Some(subscription));
+            }
+        ));
+        group.clone()
+    }
+
+    /// Reads fwupd's devices and their updates, then rebuilds the rows.
+    async fn load_firmware(&self, bus: &gio::DBusConnection) {
+        // Without fwupd the group stays hidden, with no error.
+        let Some(devices) = fwupd::devices(bus).await else {
+            return;
+        };
+        let mut updates = HashMap::new();
+        for device in devices.iter().filter(|d| d.updatable) {
+            if let Some(release) = fwupd::upgrade(bus, &device.id).await {
+                updates.insert(device.id.clone(), release);
+            }
+        }
+        let mut shown = fwupd::shown(&devices, |d| updates.contains_key(&d.id));
+        // Updates first, then by name.
+        shown.sort_by_key(|d| (!updates.contains_key(&d.id), d.name.to_lowercase()));
+
+        let imp = self.imp();
+        for row in imp.firmware_rows.take() {
+            imp.firmware.remove(&row);
+        }
+        let count = updates.len();
+        imp.firmware.set_description(Some(&match count {
+            0 => "Everything is up to date.".to_owned(),
+            1 => "1 update available".to_owned(),
+            n => format!("{n} updates available"),
+        }));
+        let mut rows = Vec::new();
+        for device in shown {
+            let update = updates.get(&device.id).cloned();
+            let subtitle = [device.vendor.as_str(), device.version.as_str()]
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join(" · ");
+            let row = adw::ActionRow::builder()
+                .title(&device.name)
+                .subtitle(subtitle)
+                .use_markup(false)
+                .activatable(true)
+                .build();
+            if update.is_some() {
+                row.add_suffix(
+                    &gtk::Label::builder()
+                        .label("Update Available")
+                        .valign(gtk::Align::Center)
+                        .css_classes(["accent", "caption-heading"])
+                        .build(),
+                );
+            }
+            row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+            let device = device.clone();
+            row.connect_activated(move |row| {
+                firmware_dialog::new(&device, update.as_ref()).present(Some(row));
+            });
+            imp.firmware.add(&row);
+            rows.push(row);
+        }
+        imp.firmware.set_visible(!rows.is_empty());
+        imp.firmware_rows.replace(rows);
     }
 
     /// The distro logo (or the computer's icon), its name and model.

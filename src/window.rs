@@ -7,6 +7,7 @@ use crate::ui::bluetooth::BluetoothPage;
 use crate::ui::display::DisplayPage;
 use crate::ui::input::InputPage;
 use crate::ui::power::PowerPage;
+use crate::ui::system::SystemPage;
 use crate::ui::usb::UsbPage;
 
 mod imp {
@@ -32,6 +33,7 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            SystemPage::ensure_type();
             BluetoothPage::ensure_type();
             UsbPage::ensure_type();
             PowerPage::ensure_type();

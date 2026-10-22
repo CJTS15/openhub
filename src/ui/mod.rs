@@ -3,6 +3,7 @@ pub mod bluetooth;
 pub mod display;
 pub mod input;
 pub mod power;
+pub mod system;
 pub mod usb;
 
 use std::cell::RefCell;
@@ -40,7 +41,8 @@ pub fn rescan_while_mapped(widget: &impl IsA<gtk::Widget>, rescan: impl Fn() + '
     });
 }
 
-/// Opens a GNOME Settings panel, such as `keyboard` or `color`.
+/// Opens a GNOME Settings panel, such as `keyboard`, or a page inside one,
+/// such as `system/about`.
 pub fn open_settings_panel(widget: &impl IsA<gtk::Widget>, panel: &'static str) {
     // Wayland only lets GNOME Settings come to the front with a token from
     // the app that asked.
@@ -58,7 +60,10 @@ pub fn open_settings_panel(widget: &impl IsA<gtk::Widget>, panel: &'static str) 
 /// GNOME Settings' `launch-panel` action.
 async fn launch_panel(panel: &str, token: Option<&str>) -> Result<(), glib::Error> {
     let bus = gio::bus_get_future(gio::BusType::Session).await?;
-    let panel = (panel, Vec::<glib::Variant>::new()).to_variant();
+    let mut parts = panel.split('/');
+    let name = parts.next().unwrap_or(panel);
+    let pages: Vec<glib::Variant> = parts.map(|page| page.to_variant()).collect();
+    let panel = (name, pages).to_variant();
     let args = (
         "launch-panel",
         vec![panel],

@@ -151,7 +151,13 @@ pub async fn import(
     device: &str,
     source: PathBuf,
 ) -> Result<(), glib::Error> {
-    let store = glib::user_data_dir().join("icc");
+    // ponytail: in Flatpak this assumes the host keeps the default
+    // XDG_DATA_HOME (~/.local/share), which is what xdg-data/icc maps to.
+    let store = if std::path::Path::new("/.flatpak-info").exists() {
+        glib::home_dir().join(".local/share/icc")
+    } else {
+        glib::user_data_dir().join("icc")
+    };
     let copied = gio::spawn_blocking(move || copy_profile(&source, &store))
         .await
         .map_err(|_| glib::Error::new(gio::IOErrorEnum::Failed, "The import stopped"))?

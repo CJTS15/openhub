@@ -2,40 +2,41 @@
 
 # Openhub
 
-A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth, USB, power, mice, keyboards and audio.
+A lightweight GTK app that manages all connected devices, built with GTK4 + libadwaita in Rust. It covers Bluetooth, USB, power, mice, keyboards, audio and displays.
 
-![The Audio page](data/screenshots/audio.png)
+![The Displays page](data/screenshots/displays.png)
 
 ## Status
 
-[v0.4.2](https://github.com/CJTS15/openhub/releases/tag/v0.4.2) is the latest release.
+[v0.5.0](https://github.com/CJTS15/openhub/releases/tag/v0.5.0) is the latest release.
 
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
 - **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 - **Power** (since v0.3.0): the laptop's battery and charging state, and every wireless device's battery, updated live; battery details with health and charge cycles; the "Preserve Battery Health" charge limit where supported; receiver batteries on the USB page.
-- **Mouse** (new in v0.4.0): Logitech mice (DPI, SmartShift, scroll direction, restored when the mouse reconnects), Razer mice (DPI and polling rate, stored on the mouse), and other brands through ratbagd (DPI steps, report rate, buttons).
-- **Keyboard** (new in v0.4.0): lighting and key remapping for VIA keyboards on their cable, from the keyboard's VIA definition; a Keyboard Shortcuts button for every keyboard.
-- **Audio** (new in v0.4.0): default output and input, volume, mute, Bluetooth codec and a live microphone level; a 10-band equalizer per output with presets and AutoEQ import, which keeps working when Openhub is closed (PipeWire 1.4 or later).
+- **Mouse** (since v0.4.0): Logitech mice (DPI, SmartShift, scroll direction, restored when the mouse reconnects), Razer mice (DPI and polling rate, stored on the mouse), and other brands through ratbagd (DPI steps, report rate, buttons).
+- **Keyboard** (since v0.4.0): lighting and key remapping for VIA keyboards on their cable, from the keyboard's VIA definition; a Keyboard Shortcuts button for every keyboard.
+- **Audio** (since v0.4.0): default output and input, volume, mute, Bluetooth codec and a live microphone level; a 10-band equalizer per output with presets and AutoEQ import, which keeps working when Openhub is closed (PipeWire 1.4 or later).
+- **Displays** (new in v0.5.0): arrange displays and choose Join, Mirror or a single display; resolution, refresh rate, variable refresh rate, scale and orientation, applied through GNOME's "Keep these display settings?" check; brightness of the built-in screen and of external monitors over DDC/CI; Night Light; each display's color profile and HDR. On desktops other than GNOME the page lists the displays read-only.
 
 ## Installing
 
-Download `openhub-0.4.2-x86_64.flatpak` from the [v0.4.2 release](https://github.com/CJTS15/openhub/releases/tag/v0.4.2). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-0.5.0-x86_64.flatpak` from the [v0.5.0 release](https://github.com/CJTS15/openhub/releases/tag/v0.5.0). It needs the GNOME 50 runtime from Flathub:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-0.4.2-x86_64.flatpak
+flatpak install --user openhub-0.5.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 
-### Mouse and keyboard access
+### Mouse, keyboard and monitor access
 
-Openhub talks to Logitech and Razer mice and to VIA keyboards directly, through `/dev/hidraw*`, which only root can open until a udev rule gives it to the logged-in user. A native install (`meson install` or a distribution package) puts the rules in place. The Flatpak carries them too, and they need copying once into the system, along with the user unit that restores Logitech mice's settings when they connect (they forget them when switched off). This works in any shell:
+Openhub talks to Logitech and Razer mice and to VIA keyboards directly, through `/dev/hidraw*`, and to external monitors through `/dev/i2c-*`, which only root can open until a udev rule gives them to the logged-in user. A native install (`meson install` or a distribution package) puts the rules in place. The Flatpak carries them too, and they need copying once into the system, along with the user unit that restores Logitech mice's settings when they connect (they forget them when switched off). This works in any shell:
 
 ```sh
-sh -c 'd="$(flatpak info --show-location io.github.cjts15.Openhub)/files/lib"; sudo cp "$d"/udev/rules.d/70-openhub-*.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger --action=add --subsystem-match=hidraw && mkdir -p ~/.config/systemd/user && cp "$d"/systemd/user/openhub-mouse@.service ~/.config/systemd/user/ && systemctl --user daemon-reload'
+sh -c 'd="$(flatpak info --show-location io.github.cjts15.Openhub)/files/lib"; sudo cp "$d"/udev/rules.d/70-openhub-*.rules /etc/udev/rules.d/ && sudo cp "$d"/modules-load.d/openhub-i2c.conf /etc/modules-load.d/ && sudo modprobe i2c-dev && sudo udevadm control --reload && sudo udevadm trigger --action=add --subsystem-match=hidraw --subsystem-match=i2c-dev && mkdir -p ~/.config/systemd/user && cp "$d"/systemd/user/openhub-mouse@.service ~/.config/systemd/user/ && systemctl --user daemon-reload'
 ```
 
-Run it again after updating Openhub, so the rules match the new version. From a source checkout, the same files are in `data/udev/` and `data/systemd/`.
+Run it again after updating Openhub, so the rules match the new version. From a source checkout, the same files are in `data/udev/`, `data/modules-load.d/` and `data/systemd/`.
 
 The VIA and Razer rules list the devices tested so far, each limited to the one interface Openhub talks to. For another VIA keyboard, its dialog in Openhub shows the one-line rule to add. Mice of other brands need ratbagd (Piper's backend) installed.
 
@@ -44,6 +45,8 @@ The VIA and Razer rules list the devices tested so far, each limited to the one 
 - A udev rule lets **every program you run** open that device's raw HID interface, not only Openhub. On a keyboard's own interface that would let a program read keystrokes, so the VIA and Razer rules grant only the configuration interface. The Logitech rule is the same as [Solaar's](https://github.com/pwr-Solaar/Solaar): over Bluetooth, HID++ shares one interface with the device's input, so it covers Logitech keyboards' input too. Skip it if you don't use a Logitech mouse.
 - The DDC rule lets every program you run open the I2C buses of display adapters only (the same match as ddcutil's rule), so Openhub can set an external monitor's brightness over DDC/CI. The laptop's other I2C buses, such as the touchpad's, stay root-only.
 - The Flatpak asks for `--device=all`, because Flatpak has no narrower permission for `/dev/hidraw*`. Openhub only opens the HID devices it recognises.
+- The Flatpak can change any GNOME setting through dconf. Openhub uses this only for the Night Light keys (`org.gnome.settings-daemon.plugins.color`).
+- Imported color profiles are copied into `~/.local/share/icc`, where GNOME registers them with colord.
 - The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it.
 - Openhub's Bluetooth pairing agent asks before confirming a pairing code, and refuses requests to authorize a device or service that it didn't start.
 
@@ -100,7 +103,11 @@ For quick iteration, `cargo run` also works.
 - `src/via/`: VIA keyboards: the raw HID protocol, definition files and keycode names
 - `src/battery.rs`: batteries the kernel or Razer report but UPower doesn't
 - `data/udev/`, `data/systemd/`: the hidraw access rules and the mouse restore unit
-- `src/ui/mod.rs`: `rescan_while_mapped`, the 2-second rescan the USB, Mouse and Keyboard pages share
+- `src/display/`: Mutter's display configuration (state, the draft layout Apply sends, backlights), EDID parsing, and colour profiles through colord
+- `src/ddc/`: external monitor brightness over DDC/CI
+- `src/ui/display/`: the Displays page, the arrangement canvas and the details dialog
+- `data/udev/70-openhub-ddc.rules`, `data/modules-load.d/`: I2C access for DDC/CI
+- `src/ui/mod.rs`: `rescan_while_mapped`, the 2-second rescan the USB, Mouse and Keyboard pages share, and the GNOME Settings panel launcher
 - `src/watch.rs`: keeps a GObject in step with a cached D-Bus proxy's properties (shared by the BlueZ and UPower services)
 - `tests/fixtures/sysfs-usb/`: a fake sysfs tree the USB parser tests run against
 - `build-aux/test-upower.sh`: runs the UPower test against python-dbusmock (CI runs it too)

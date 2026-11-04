@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Two switches, like macOS's Control Center: the top one off, outlined;
+       the bottom one on, filled, with its knob cut out. -->
+  <path fill="#222222" fill-rule="evenodd" d="M4.75 1h6.5a3.75 3.75 0 0 1 0 7.5h-6.5a3.75 3.75 0 0 1 0-7.5zm0 1.5a2.25 2.25 0 0 0 0 4.5h6.5a2.25 2.25 0 0 0 0-4.5zm0 0.75a1.5 1.5 0 1 1 0 3a1.5 1.5 0 0 1 0-3z"/>
+  <path fill="#222222" fill-rule="evenodd" d="M4.75 9.5h6.5a2.75 2.75 0 0 1 0 5.5h-6.5a2.75 2.75 0 0 1 0-5.5zm6.5 1.25a1.5 1.5 0 1 0 0 3a1.5 1.5 0 0 0 0-3z"/>
+</svg>

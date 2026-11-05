@@ -2,6 +2,11 @@
   font-weight: bold;
 }
 
+.openhub-heading {
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
 .openhub-percent {
   margin-left: 12px;
   font-feature-settings: "tnum";

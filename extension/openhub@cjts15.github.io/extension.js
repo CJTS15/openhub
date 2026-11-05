@@ -63,16 +63,16 @@ class OpenhubIndicator extends PanelMenu.Button {
         open.connect('activate', () => showPage(''));
         this.menu.addMenuItem(open);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Batteries'));
+        this.menu.addMenuItem(heading('Batteries'));
         this._batteries = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._batteries);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Bluetooth'));
+        this.menu.addMenuItem(heading('Bluetooth'));
         this._bluetooth = new PopupMenu.PopupMenuItem('');
         this._bluetooth.connect('activate', () => showPage('bluetooth'));
         this.menu.addMenuItem(this._bluetooth);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Sound Output'));
+        this.menu.addMenuItem(heading('Sound Output'));
         this._outputs = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._outputs);
         this._outputItems = new Map();
@@ -296,6 +296,20 @@ class OpenhubIndicator extends PanelMenu.Button {
         super.destroy();
     }
 });
+
+/**
+ * A section heading: a separator with a bold title. Separators are greyed
+ * out as non-clickable items, which leaves the title hard to read.
+ *
+ * @param {string} text the title
+ * @returns {PopupMenu.PopupSeparatorMenuItem} the item
+ */
+function heading(text) {
+    const item = new PopupMenu.PopupSeparatorMenuItem(text);
+    item.remove_style_pseudo_class('insensitive');
+    item.label.add_style_class_name('openhub-heading');
+    return item;
+}
 
 /**
  * A battery row: icon, then the name and percentage over a level bar the

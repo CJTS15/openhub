@@ -5,6 +5,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeBluetooth from 'gi://GnomeBluetooth?version=3.0';
 import GObject from 'gi://GObject';
+import Gvc from 'gi://Gvc';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
@@ -12,6 +13,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {getMixerControl} from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {batteries, bluetoothLabel} from './devices.js';
 
@@ -69,6 +71,37 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._bluetooth.connect('activate', () => showPage('bluetooth'));
         this.menu.addMenuItem(this._bluetooth);
 
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Sound Output'));
+        this._outputs = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._outputs);
+        this._outputItems = new Map();
+        // GNOME Shell's own mixer connection, shared with its volume slider.
+        this._mixer = getMixerControl();
+        this._mixer.connectObject(
+            'output-added', (c, id) => this._addOutput(id),
+            'output-removed', (c, id) => this._removeOutput(id),
+            'active-output-update', (c, id) => this._setActiveOutput(id),
+            'state-changed', () => this._listOutputs(),
+            this);
+        this._listOutputs();
+
+        // Batteries only Openhub reads (Razer, some 2.4 GHz dongles), while
+        // Openhub runs; asked again each time the menu opens.
+        // ponytail: no change signal, so the icon's low warning only counts
+        // these after the menu opens; add a Changed signal if that matters.
+        this._openhubBatteries = [];
+        this._openhubWatch = Gio.bus_watch_name(Gio.BusType.SESSION, APP_ID,
+            Gio.BusNameWatcherFlags.NONE,
+            () => this._readOpenhubBatteries(),
+            () => {
+                this._openhubBatteries = [];
+                this._queueSync();
+            });
+        this.menu.connectObject('open-state-changed', (menu, open) => {
+            if (open)
+                this._readOpenhubBatteries();
+        }, this);
+
         this._devices = new Map();
         this._cancellable = new Gio.Cancellable();
         this._upower = new UPowerProxy(Gio.DBus.system, 'org.freedesktop.UPower',
@@ -95,6 +128,70 @@ class OpenhubIndicator extends PanelMenu.Button {
             this._watchBluetooth(store.get_item(i));
 
         this._sync();
+    }
+
+    /**
+     * Lists the outputs the mixer already knows: it was opened at login, so
+     * their `output-added` signals came before this extension started.
+     */
+    _listOutputs() {
+        if (this._mixer.get_state() !== Gvc.MixerControlState.READY)
+            return;
+        // ponytail: one entry per sink, for its current port; a sink's other
+        // ports (such as speakers beside headphones) appear once they change.
+        for (const stream of this._mixer.get_sinks()) {
+            const device = this._mixer.lookup_device_from_stream(stream);
+            if (device)
+                this._addOutput(device.get_id());
+        }
+        const active = this._mixer.lookup_device_from_stream(this._mixer.get_default_sink());
+        if (active)
+            this._setActiveOutput(active.get_id());
+    }
+
+    _addOutput(id) {
+        if (this._outputItems.has(id))
+            return;
+        const device = this._mixer.lookup_output_id(id);
+        if (!device)
+            return;
+        const {description, origin} = device;
+        const item = new PopupMenu.PopupMenuItem(origin ? `${description} – ${origin}` : description);
+        item.connect('activate', () => {
+            const output = this._mixer.lookup_output_id(id);
+            if (output)
+                this._mixer.change_output(output);
+        });
+        this._outputs.addMenuItem(item);
+        this._outputItems.set(id, item);
+    }
+
+    _removeOutput(id) {
+        this._outputItems.get(id)?.destroy();
+        this._outputItems.delete(id);
+    }
+
+    _setActiveOutput(activeId) {
+        for (const [id, item] of this._outputItems)
+            item.setOrnament(id === activeId ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+    }
+
+    _readOpenhubBatteries() {
+        Gio.DBus.session.call(APP_ID, '/io/github/cjts15/Openhub',
+            'io.github.cjts15.Openhub.Devices', 'GetBatteries', null,
+            new GLib.VariantType('(a(sud))'), Gio.DBusCallFlags.NO_AUTO_START, 5000,
+            this._cancellable, (bus, result) => {
+                if (this._cancellable.is_cancelled())
+                    return;
+                try {
+                    const [list] = bus.call_finish(result).deepUnpack();
+                    this._openhubBatteries = list;
+                } catch {
+                    // An Openhub without this interface, or one that's quitting.
+                    this._openhubBatteries = [];
+                }
+                this._queueSync();
+            });
     }
 
     _addDevice(path) {
@@ -142,7 +239,10 @@ class OpenhubIndicator extends PanelMenu.Button {
                 percentage: d.Percentage ?? 0,
                 powerSupply: d.PowerSupply ?? true,
                 present: d.IsPresent ?? false,
-            })));
+            }))
+            .concat(this._openhubBatteries.map(([model, type, percentage]) => ({
+                type, model, serial: '', percentage, powerSupply: false, present: true,
+            }))));
 
         this._batteries.removeAll();
         if (rows.length === 0) {
@@ -174,6 +274,10 @@ class OpenhubIndicator extends PanelMenu.Button {
 
     destroy() {
         this._cancellable.cancel();
+        Gio.bus_unwatch_name(this._openhubWatch);
+        this._mixer.disconnectObject(this);
+        this._mixer = null;
+        this._outputItems.clear();
         if (this._syncId)
             GLib.source_remove(this._syncId);
         this._syncId = 0;

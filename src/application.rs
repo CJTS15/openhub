@@ -63,7 +63,19 @@ impl OpenhubApplication {
         let about = gio::ActionEntry::builder("about")
             .activate(|app: &Self, _, _| app.show_about())
             .build();
-        self.add_action_entries([quit, about]);
+        // `app.show-page('bluetooth')`: opens Openhub on that page. The GNOME
+        // Shell extension calls it over D-Bus (org.gtk.Actions).
+        let show_page = gio::ActionEntry::builder("show-page")
+            .parameter_type(Some(glib::VariantTy::STRING))
+            .activate(|app: &Self, _, page| {
+                app.activate();
+                let page = page.and_then(|p| p.get::<String>()).unwrap_or_default();
+                if let Some(window) = app.active_window().and_downcast::<OpenhubWindow>() {
+                    window.show_category(&page);
+                }
+            })
+            .build();
+        self.add_action_entries([quit, about, show_page]);
     }
 
     fn setup_accels(&self) {

@@ -8,9 +8,10 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-[v1.0.0](https://github.com/CJTS15/openhub/releases/tag/v1.0.0) is the latest release.
+[v1.1.0](https://github.com/CJTS15/openhub/releases/tag/v1.1.0) is the latest release.
 
-- **System** (new in v1.0.0): the page Openhub opens on. Connected Devices shows a card for each page with what's connected there, one count of every device, and low batteries; About lists the model, processor, memory, graphics, disk, firmware, OS, desktop and kernel, with Copy Details; Device Firmware lists firmware fwupd can update, with release notes and a link to GNOME Software; and rows open GNOME Settings' device name, region, date and time, users and remote access pages.
+- **System** (since v1.0.0): the page Openhub opens on. Connected Devices shows a card for each page with what's connected there, one count of every device, and low batteries; About lists the model, processor, memory, graphics, disk, firmware, OS, desktop and kernel, with Copy Details; Device Firmware lists firmware fwupd can update, with release notes and a link to GNOME Software; and rows open GNOME Settings' device name, region, date and time, users and remote access pages.
+- **GNOME Shell extension** (new in v1.1.0): an icon in the top bar with a menu of every peripheral's battery, the connected Bluetooth devices and the sound outputs; rows open Openhub on that page. It works without Openhub running, and is turned on and off from the System page. See [Top-bar extension](#top-bar-extension).
 - **Bluetooth** (since v0.1.0): turn the adapter on and off; connect and disconnect devices, with connected ones listed first; see battery levels; scan for and pair new devices through Openhub's own pairing agent; trust, block or forget devices.
 - **USB** (since v0.2.0): a live list of USB devices, grouped under the hubs they're connected through, with built-in devices hidden behind a toggle; a details dialog for each device; safe eject for USB drives.
 - **Power** (since v0.3.0): the laptop's battery and charging state, and every wireless device's battery, updated live; battery details with health and charge cycles; the "Preserve Battery Health" charge limit where supported; receiver batteries on the USB page.
@@ -21,13 +22,25 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download `openhub-1.0.0-x86_64.flatpak` from the [v1.0.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.0.0). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-1.1.0-x86_64.flatpak` from the [v1.1.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.1.0). It needs the GNOME 50 runtime from Flathub:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-1.0.0-x86_64.flatpak
+flatpak install --user openhub-1.1.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
+
+### Top-bar extension
+
+The extension isn't on extensions.gnome.org. Download `openhub@cjts15.github.io.shell-extension.zip` from the same release and install it from that folder:
+
+```sh
+gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip
+```
+
+Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 46 to 51. From a source checkout, see `extension/README.md`.
+
+![The extension's menu](data/screenshots/extension.png)
 
 ### Mouse, keyboard and monitor access
 
@@ -48,6 +61,8 @@ The VIA and Razer rules list the devices tested so far, each limited to the one 
 - The Flatpak asks for `--device=all`, because Flatpak has no narrower permission for `/dev/hidraw*`. Openhub only opens the HID devices it recognises.
 - The Flatpak can change any GNOME setting through dconf. Openhub uses this only for the Night Light keys (`org.gnome.settings-daemon.plugins.color`).
 - The Flatpak can talk to GNOME Shell, for its version on the System page and to follow the brightness keys. GNOME Shell's interface is broad; Openhub reads `ShellVersion` and listens for `BrightnessChanged` only.
+- The Flatpak can talk to GNOME Shell's extension service, to show the extension's state and turn it on and off. Openhub never installs or changes extension files.
+- While Openhub runs, it answers the extension's `GetBatteries` call on its own D-Bus name, with the names and levels of the batteries only Openhub reads (Razer mice, some 2.4 GHz dongles).
 - The System page reads systemd-hostnamed, switcheroo-control, UDisks2 and fwupd without changing anything, and copies nothing that identifies the machine (no serial numbers or UUIDs).
 - Imported color profiles are copied into `~/.local/share/icc`, where GNOME registers them with colord.
 - The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it.
@@ -109,6 +124,8 @@ For quick iteration, `cargo run` also works.
 - `src/sysinfo/`: About this computer, from hostnamed, switcheroo-control, UDisks2 and GNOME Shell, with `/sys` and `/proc` fallbacks
 - `src/fwupd/`: device firmware and updates from fwupd
 - `src/ui/system/`: the System page and the firmware dialog
+- `src/shell_extension.rs`: the extension's state and switch, through GNOME Shell's extension service
+- `extension/`: the GNOME Shell extension, self-contained, with its own README and tests
 - `src/display/`: Mutter's display configuration (state, the draft layout Apply sends, backlights), EDID parsing, and colour profiles through colord
 - `src/ddc/`: external monitor brightness over DDC/CI
 - `src/ui/display/`: the Displays page, the arrangement canvas and the details dialog

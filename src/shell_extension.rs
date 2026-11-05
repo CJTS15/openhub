@@ -7,9 +7,13 @@ use gtk::{gio, glib};
 
 pub const UUID: &str = "openhub@cjts15.github.io";
 
-/// Installs it from a checkout of the repository; GNOME Shell loads a newly
-/// installed extension at the next login.
-pub const INSTALL_COMMAND: &str = "gnome-extensions pack extension/openhub@cjts15.github.io --force --extra-source=devices.js --extra-source=icons && gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip";
+/// The extension's zip, attached to each Openhub release.
+pub const ZIP: &str = "openhub@cjts15.github.io.shell-extension.zip";
+
+/// Installs the downloaded zip; GNOME Shell loads a newly installed
+/// extension at the next login.
+pub const INSTALL_COMMAND: &str =
+    "gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip";
 
 const NAME: &str = "org.gnome.Shell.Extensions";
 const PATH: &str = "/org/gnome/Shell/Extensions";

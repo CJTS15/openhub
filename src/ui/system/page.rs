@@ -520,7 +520,10 @@ impl SystemPage {
         group.set_visible(true);
         let (subtitle, installed) = match &status {
             Status::Missing => (
-                "Not installed. Copy the command and run it in Openhub's source folder, then log out and back in.".to_owned(),
+                format!(
+                    "Not installed. Download {} from Openhub's release, run the copied command in that folder, then log out and back in.",
+                    shell_extension::ZIP
+                ),
                 false,
             ),
             Status::Installed { .. } => (
@@ -529,7 +532,8 @@ impl SystemPage {
             ),
             Status::Failed(error) => (format!("The extension couldn't start: {error}"), true),
             Status::ExtensionsOff => (
-                "Extensions are turned off in GNOME. Turn them on in the Extensions app.".to_owned(),
+                "Extensions are turned off in GNOME. Turn them on in the Extensions app."
+                    .to_owned(),
                 true,
             ),
         };

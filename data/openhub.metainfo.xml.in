@@ -11,6 +11,7 @@
       <li>See every connected device at a glance, with low batteries flagged</li>
       <li>See your computer's processor, memory, graphics, disk and system versions, and copy them for a bug report</li>
       <li>Check the firmware of your laptop and devices, and whether an update is available</li>
+      <li>See your devices' batteries, Bluetooth connections and sound output from the top bar, with the optional GNOME Shell extension</li>
       <li>Turn Bluetooth on and off</li>
       <li>See your Bluetooth devices, whether they're connected, and their battery level</li>
       <li>Scan for nearby devices and pair them</li>
@@ -80,6 +81,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="1.1.0" date="2026-11-05">
+      <description>
+        <p>Adds an optional GNOME Shell extension, with Openhub's icon in the top bar:</p>
+        <ul>
+          <li>The battery of every mouse, keyboard and headset, lowest first, with a level bar in the shell theme's colours and a warning below 20%</li>
+          <li>The number of connected Bluetooth devices, and a list of sound outputs to switch between</li>
+          <li>Each row opens Openhub on that page; it works without Openhub running</li>
+          <li>The System page shows whether it's installed, and turns it on and off</li>
+          <li>The Power page's level bars now use the accent colour</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-22">
       <description>
         <p>Openhub 1.0 adds a System page, the first page Openhub opens on:</p>

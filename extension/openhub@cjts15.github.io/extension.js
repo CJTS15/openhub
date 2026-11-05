@@ -10,6 +10,7 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {BarLevel} from 'resource:///org/gnome/shell/ui/barLevel.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -62,16 +63,16 @@ class OpenhubIndicator extends PanelMenu.Button {
         open.connect('activate', () => showPage(''));
         this.menu.addMenuItem(open);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Batteries'));
+        this.menu.addMenuItem(heading('Batteries'));
         this._batteries = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._batteries);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Bluetooth'));
+        this.menu.addMenuItem(heading('Bluetooth'));
         this._bluetooth = new PopupMenu.PopupMenuItem('');
         this._bluetooth.connect('activate', () => showPage('bluetooth'));
         this.menu.addMenuItem(this._bluetooth);
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Sound Output'));
+        this.menu.addMenuItem(heading('Sound Output'));
         this._outputs = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._outputs);
         this._outputItems = new Map();
@@ -297,6 +298,20 @@ class OpenhubIndicator extends PanelMenu.Button {
 });
 
 /**
+ * A section heading: a separator with a title. Separators are greyed
+ * out as non-clickable items, which leaves the title hard to read.
+ *
+ * @param {string} text the title
+ * @returns {PopupMenu.PopupSeparatorMenuItem} the item
+ */
+function heading(text) {
+    const item = new PopupMenu.PopupSeparatorMenuItem(text);
+    item.remove_style_pseudo_class('insensitive');
+    item.label.add_style_class_name('openhub-heading');
+    return item;
+}
+
+/**
  * A battery row: icon, then the name and percentage over a level bar the
  * width of the row. It opens Openhub's Power page, which has the details.
  *
@@ -313,16 +328,13 @@ function batteryItem(row) {
     const percent = new St.Label({text: `${row.percentage}%`, style_class: 'openhub-percent'});
     text.add_child(percent);
 
-    // A box packs the fill from the left; St.Bin would centre it.
-    const bar = new St.BoxLayout({style_class: 'openhub-bar', x_expand: true});
-    const fill = new St.Widget({style_class: 'openhub-bar-fill'});
-    bar.add_child(fill);
-    // The bar's width is only known once it's laid out.
-    const fraction = Math.min(row.percentage, 100) / 100;
-    bar.connect('notify::width', () => fill.set_width(Math.round(bar.width * fraction)));
+    // GNOME Shell's own level bar, styled like its sliders, so it takes the
+    // shell theme's colours (the accent colour, or a custom theme's).
+    const bar = new BarLevel({style_class: 'slider openhub-level', x_expand: true});
+    bar.value = Math.min(row.percentage, 100) / 100;
     if (row.low) {
         percent.add_style_class_name('openhub-low');
-        fill.add_style_class_name('openhub-low');
+        bar.add_style_class_name('openhub-low');
     }
 
     // A Clutter layout rather than St.BoxLayout's `vertical`, which GNOME 48 renamed.

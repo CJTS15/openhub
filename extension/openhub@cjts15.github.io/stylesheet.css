@@ -2,24 +2,21 @@
   font-weight: bold;
 }
 
+.openhub-heading {
+  font-size: 0.9em;
+}
+
 .openhub-percent {
   margin-left: 12px;
   font-feature-settings: "tnum";
 }
 
-/* The level bar under a device's name, like Openhub's Power page. */
-.openhub-bar {
+/* The level bar under a device's name; its colours come from the shell
+   theme's slider style. */
+.openhub-level {
   min-width: 160px;
   height: 6px;
-  border-radius: 3px;
-  background-color: rgba(127, 127, 127, 0.3);
-}
-
-.openhub-bar-fill {
-  height: 6px;
-  border-radius: 3px;
-  /* The accent colour chosen in Settings › Appearance (GNOME 47 and later). */
-  background-color: -st-accent-color;
+  -barlevel-height: 6px;
 }
 
 /* GNOME's warning yellow, for a device below 20%. */
@@ -27,6 +24,6 @@
   color: #f6d32d;
 }
 
-.openhub-bar-fill.openhub-low {
-  background-color: #f6d32d;
+.openhub-level.openhub-low {
+  -barlevel-active-background-color: #f6d32d;
 }

@@ -12,6 +12,7 @@ mod input;
 mod model;
 mod ratbag;
 mod razer;
+mod shell_extension;
 mod sysinfo;
 mod ui;
 mod upower;

@@ -11,6 +11,7 @@ use crate::display;
 use crate::fwupd;
 use crate::input::InputManager;
 use crate::model::{AudioDevice, Device, InputDevice, PowerDevice, UsbDevice};
+use crate::shell_extension;
 use crate::sysinfo::{self, About};
 use crate::upower::{PowerManager, convert::kind};
 use crate::usb::UsbManager;
@@ -61,6 +62,9 @@ mod imp {
         pub firmware: adw::PreferencesGroup,
         pub firmware_rows: RefCell<Vec<adw::ActionRow>>,
         pub fwupd_subscription: RefCell<Option<gio::SignalSubscription>>,
+        pub extension_subscriptions: RefCell<Vec<gio::SignalSubscription>>,
+        /// Set while the switch follows GNOME Shell, so that isn't sent back.
+        pub extension_updating: std::cell::Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -121,6 +125,7 @@ impl SystemPage {
         page.add(&hardware);
         page.add(&values_group("Software", &about.software(&windowing)));
         page.add(&self.firmware_group());
+        page.add(&self.extension_group());
 
         // GNOME Settings comes with GNOME; elsewhere these rows would lead
         // nowhere.
@@ -394,6 +399,151 @@ impl SystemPage {
         let external = monitors.iter().filter(|m| !m.builtin).count();
         imp.devices
             .set_description(Some(&headline(connected + usb + external)));
+    }
+
+    /// The GNOME Shell extension: the install command while it's missing,
+    /// then a switch. Hidden where GNOME Shell's extension service isn't
+    /// running.
+    fn extension_group(&self) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::builder()
+            .title("GNOME Shell Extension")
+            .visible(false)
+            .build();
+        let row = adw::ActionRow::builder()
+            .title("Openhub in the Top Bar")
+            .build();
+        let switch = gtk::Switch::builder().valign(gtk::Align::Center).build();
+        let copy = gtk::Button::builder()
+            .label("Copy Command")
+            .valign(gtk::Align::Center)
+            .build();
+        copy.connect_clicked(|button| {
+            button
+                .clipboard()
+                .set_text(shell_extension::INSTALL_COMMAND);
+            button.set_label("Copied");
+        });
+        row.add_suffix(&copy);
+        row.add_suffix(&switch);
+        row.set_activatable_widget(Some(&switch));
+        group.add(&row);
+
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[weak]
+            group,
+            #[weak]
+            row,
+            #[weak]
+            switch,
+            #[weak]
+            copy,
+            async move {
+                let Ok(bus) = gio::bus_get_future(gio::BusType::Session).await else {
+                    return;
+                };
+                let show = glib::clone!(
+                    #[weak]
+                    page,
+                    #[weak]
+                    group,
+                    #[weak]
+                    row,
+                    #[weak]
+                    switch,
+                    #[weak]
+                    copy,
+                    #[strong]
+                    bus,
+                    move || {
+                        glib::spawn_future_local(glib::clone!(
+                            #[weak]
+                            page,
+                            #[strong]
+                            bus,
+                            async move {
+                                let status = shell_extension::read(&bus).await;
+                                page.show_extension(&group, &row, &switch, &copy, status);
+                            }
+                        ));
+                    }
+                );
+                show();
+                let subscriptions = shell_extension::watch(&bus, show);
+                page.imp()
+                    .extension_subscriptions
+                    .replace(subscriptions.into());
+                switch.connect_active_notify(glib::clone!(
+                    #[weak]
+                    page,
+                    #[strong]
+                    bus,
+                    move |switch| {
+                        if page.imp().extension_updating.get() {
+                            return;
+                        }
+                        let on = switch.is_active();
+                        glib::spawn_future_local(glib::clone!(
+                            #[strong]
+                            bus,
+                            async move {
+                                if let Err(error) = shell_extension::set_enabled(&bus, on).await {
+                                    glib::g_warning!(
+                                        "openhub",
+                                        "Can't change the extension: {error}"
+                                    );
+                                }
+                            }
+                        ));
+                    }
+                ));
+            }
+        ));
+        group
+    }
+
+    fn show_extension(
+        &self,
+        group: &adw::PreferencesGroup,
+        row: &adw::ActionRow,
+        switch: &gtk::Switch,
+        copy: &gtk::Button,
+        status: Result<shell_extension::Status, glib::Error>,
+    ) {
+        use shell_extension::Status;
+        // Without GNOME Shell's extension service there's nothing to show.
+        let Ok(status) = status else {
+            group.set_visible(false);
+            return;
+        };
+        group.set_visible(true);
+        let (subtitle, installed) = match &status {
+            Status::Missing => (
+                "Not installed. Copy the command and run it in Openhub's source folder, then log out and back in.".to_owned(),
+                false,
+            ),
+            Status::Installed { .. } => (
+                "Batteries, Bluetooth and sound output, one click away".to_owned(),
+                true,
+            ),
+            Status::Failed(error) => (format!("The extension couldn't start: {error}"), true),
+            Status::ExtensionsOff => (
+                "Extensions are turned off in GNOME. Turn them on in the Extensions app.".to_owned(),
+                true,
+            ),
+        };
+        row.set_subtitle(&glib::markup_escape_text(&subtitle));
+        copy.set_visible(!installed);
+        switch.set_visible(installed);
+        switch.set_sensitive(status != Status::ExtensionsOff);
+        let enabled = matches!(
+            status,
+            Status::Installed { enabled: true } | Status::Failed(_)
+        );
+        self.imp().extension_updating.set(true);
+        switch.set_active(enabled);
+        self.imp().extension_updating.set(false);
     }
 
     fn firmware_group(&self) -> adw::PreferencesGroup {

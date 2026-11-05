@@ -11,7 +11,7 @@ The icon turns into a low-battery icon while any device is below 20%.
 
 It works on its own, without Openhub running. It reads UPower, BlueZ and the sound server the same way GNOME Shell does, and only opens Openhub when you click a row. While Openhub runs, the menu also lists the batteries only Openhub reads (Razer mice, some 2.4 GHz dongles), from Openhub's `GetBatteries` D-Bus call.
 
-Supported: GNOME 47 to 51, the versions with an accent colour, which the level bars use.
+Supported: GNOME 46 to 51. The level bars use the shell theme's colours, so they follow the accent colour and custom shell themes.
 
 ## Install
 

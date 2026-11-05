@@ -27,6 +27,7 @@
     "--talk-name=org.gnome.Mutter.DisplayConfig",
     "--talk-name=org.gnome.Settings",
     "--talk-name=org.gnome.Shell",
+    "--talk-name=org.gnome.Shell.Extensions",
     "--talk-name=org.gnome.Software",
     "--system-talk-name=org.bluez",
     "--system-talk-name=net.hadess.SwitcherooControl",

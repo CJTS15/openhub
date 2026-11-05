@@ -2,6 +2,6 @@
   "uuid": "openhub@cjts15.github.io",
   "name": "Openhub",
   "description": "Your devices' batteries, Bluetooth connections and sound output in the top bar, with a shortcut into Openhub.",
-  "shell-version": ["47", "48", "49", "50", "51"],
+  "shell-version": ["46", "47", "48", "49", "50", "51"],
   "url": "https://github.com/CJTS15/openhub"
 }

@@ -3,13 +3,28 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
 use crate::config;
+use crate::model::PowerDevice;
+use crate::upower::PowerManager;
 use crate::window::OpenhubWindow;
+
+/// What the GNOME Shell extension reads while Openhub runs: the batteries
+/// UPower doesn't list, as (name, UPower device kind, percentage).
+const DEVICES_XML: &str = r#"
+<node>
+  <interface name="io.github.cjts15.Openhub.Devices">
+    <method name="GetBatteries">
+      <arg type="a(sud)" direction="out"/>
+    </method>
+  </interface>
+</node>"#;
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct OpenhubApplication;
+    pub struct OpenhubApplication {
+        pub devices: std::cell::RefCell<Option<gio::RegistrationId>>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for OpenhubApplication {
@@ -28,6 +43,40 @@ mod imp {
                 .active_window()
                 .unwrap_or_else(|| OpenhubWindow::new(&*app).upcast());
             window.present();
+        }
+
+        fn dbus_register(
+            &self,
+            connection: &gio::DBusConnection,
+            object_path: &str,
+        ) -> Result<(), glib::Error> {
+            self.parent_dbus_register(connection, object_path)?;
+            let interface = gio::DBusNodeInfo::for_xml(DEVICES_XML)?
+                .lookup_interface("io.github.cjts15.Openhub.Devices")
+                .expect("the interface above");
+            let id = connection
+                .register_object(object_path, &interface)
+                .method_call(|_, _, _, _, method, _, invocation| match method {
+                    "GetBatteries" => {
+                        let batteries: Vec<(String, u32, f64)> = PowerManager::shared()
+                            .extra_batteries()
+                            .iter()
+                            .map(|d: &PowerDevice| (d.title(), d.kind(), d.level()))
+                            .collect();
+                        invocation.return_value(Some(&(batteries,).to_variant()));
+                    }
+                    _ => invocation.return_error(gio::IOErrorEnum::NotSupported, method),
+                })
+                .build()?;
+            self.devices.replace(Some(id));
+            Ok(())
+        }
+
+        fn dbus_unregister(&self, connection: &gio::DBusConnection, object_path: &str) {
+            if let Some(id) = self.devices.take() {
+                let _ = connection.unregister_object(id);
+            }
+            self.parent_dbus_unregister(connection, object_path);
         }
 
         fn startup(&self) {

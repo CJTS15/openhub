@@ -157,6 +157,12 @@ impl PowerManager {
         proxy.enable_charge_threshold(enabled).await
     }
 
+    /// The batteries only Openhub reads (`crate::battery`), which UPower
+    /// doesn't list.
+    pub fn extra_batteries(&self) -> Vec<PowerDevice> {
+        self.imp().extra.borrow().values().cloned().collect()
+    }
+
     pub fn peripherals(&self) -> gio::ListStore {
         self.imp().peripherals.clone()
     }

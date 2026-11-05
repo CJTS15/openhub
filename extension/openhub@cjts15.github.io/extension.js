@@ -298,7 +298,7 @@ class OpenhubIndicator extends PanelMenu.Button {
 });
 
 /**
- * A section heading: a separator with a bold title. Separators are greyed
+ * A section heading: a separator with a title. Separators are greyed
  * out as non-clickable items, which leaves the title hard to read.
  *
  * @param {string} text the title

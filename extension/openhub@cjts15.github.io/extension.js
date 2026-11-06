@@ -366,7 +366,7 @@ function card({icon, gicon, title, subtitle = '', chevron = false, style = 'open
         style_class: 'openhub-tile',
         y_align: Clutter.ActorAlign.CENTER,
         // Only one of gicon and icon_name: setting icon_name clears gicon.
-        child: new St.Icon({...(gicon ? {gicon} : {icon_name: icon}), icon_size: 20}),
+        child: new St.Icon({...(gicon ? {gicon} : {icon_name: icon}), icon_size: 16}),
     });
     item.add_child(tile);
     const titleLabel = new St.Label({text: title, style_class: 'openhub-card-title'});
@@ -401,7 +401,7 @@ function headerItem(appIcon, openSettings) {
     });
     // Non-clickable items are greyed out, which isn't wanted for a title.
     item.remove_style_pseudo_class('insensitive');
-    item.add_child(new St.Icon({gicon: appIcon, icon_size: 32, y_align: Clutter.ActorAlign.CENTER}));
+    item.add_child(new St.Icon({gicon: appIcon, icon_size: 24, y_align: Clutter.ActorAlign.CENTER}));
     item.add_child(column([
         new St.Label({text: 'Openhub', style_class: 'openhub-title'}),
         new St.Label({text: 'Connected Devices & Settings', style_class: 'openhub-card-subtitle'}),

@@ -5,6 +5,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeBluetooth from 'gi://GnomeBluetooth?version=3.0';
 import GObject from 'gi://GObject';
+import Graphene from 'gi://Graphene';
 import Gvc from 'gi://Gvc';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -443,16 +444,44 @@ function headerItem(appIcon, openSettings) {
 function sectionHeader(icon, title, subtitle, section) {
     const header = card({icon, title, subtitle});
     header.item.add_style_class_name('openhub-section');
+    // Pointing up while open: a down arrow turned half way, so it can turn.
     const chevron = new St.Icon({
-        icon_name: 'pan-up-symbolic',
+        icon_name: 'pan-down-symbolic',
         style_class: 'popup-menu-icon',
         y_align: Clutter.ActorAlign.CENTER,
+        pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
+        rotation_angle_z: 180,
     });
     header.item.add_child(chevron);
+    const actor = section.actor;
+    actor.clip_to_allocation = true;
+    let open = true;
     // Toggles in place instead of activating, which would close the menu.
+    // The same motion as GNOME Shell's submenus: the height and the arrow
+    // ease over 250 ms; ease() follows the shell's animation setting.
     header.item.activate = () => {
-        section.actor.visible = !section.actor.visible;
-        chevron.icon_name = section.actor.visible ? 'pan-up-symbolic' : 'pan-down-symbolic';
+        open = !open;
+        const from = actor.visible ? actor.height : 0;
+        actor.remove_all_transitions();
+        actor.set_height(-1);
+        actor.show();
+        const [, natural] = actor.get_preferred_height(-1);
+        actor.height = from;
+        actor.ease({
+            height: open ? natural : 0,
+            duration: 250,
+            mode: Clutter.AnimationMode.EASE_OUT_EXPO,
+            onComplete: () => {
+                if (!open)
+                    actor.hide();
+                actor.set_height(-1);
+            },
+        });
+        chevron.ease({
+            rotation_angle_z: open ? 180 : 0,
+            duration: 250,
+            mode: Clutter.AnimationMode.EASE_OUT_EXPO,
+        });
     };
     return header.item;
 }

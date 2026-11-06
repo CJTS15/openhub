@@ -38,7 +38,7 @@ The extension isn't on extensions.gnome.org. Download `openhub@cjts15.github.io.
 gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip
 ```
 
-Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 47 to 51. From a source checkout, see `extension/README.md`.
+Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 46 to 51. From a source checkout, see `extension/README.md`.
 
 ![The extension's menu](data/screenshots/extension.png)
 

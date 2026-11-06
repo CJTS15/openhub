@@ -53,15 +53,23 @@ class OpenhubIndicator extends PanelMenu.Button {
         this.add_child(this._icon);
 
         this.menu.box.add_style_class_name('openhub-menu');
-        this.menu.addMenuItem(headerItem(
-            Gio.icon_new_for_string(extension.dir.get_child('icons').get_child('openhub.svg').get_path()),
-            () => {
+        this.menu.addMenuItem(headerItem(this._appIcon, () => {
                 this.menu.close();
                 showPage('system');
             }));
 
         const bluetooth = card({icon: 'bluetooth-active-symbolic', title: 'Bluetooth', chevron: true});
         bluetooth.icon.add_style_class_name('openhub-circle');
+        this._circle = bluetooth.icon;
+
+        // The shell theme's accent, read from its slider style: the accent
+        // colour with GNOME's theme, or a custom theme's (such as one
+        // Recoolor generates). -st-accent-color only follows GNOME's own
+        // accent setting. Read again whenever the theme changes.
+        this._accent = null;
+        this._accentProbe = new St.Widget({style_class: 'slider', opacity: 0, width: 0, height: 0});
+        this._accentProbe.connectObject('style-changed', () => this._applyAccent(), this);
+        this.menu.box.add_child(this._accentProbe);
         bluetooth.item.connect('activate', () => showPage('bluetooth'));
         this._bluetooth = bluetooth.subtitle;
         this.menu.addMenuItem(bluetooth.item);
@@ -160,6 +168,7 @@ class OpenhubIndicator extends PanelMenu.Button {
         // menu uses their symbolic versions, with speakers as the fallback.
         const name = device.get_icon_name();
         const output = card({
+            style: 'openhub-item',
             gicon: Gio.ThemedIcon.new_from_names(
                 [name ? `${name}-symbolic` : '', 'audio-speakers-symbolic'].filter(Boolean)),
             title: device.description,
@@ -182,6 +191,7 @@ class OpenhubIndicator extends PanelMenu.Button {
     }
 
     _setActiveOutput(activeId) {
+        this._activeOutput = activeId;
         for (const [id, output] of this._outputItems) {
             const active = id === activeId;
             output.radio.icon_name = active ? 'radio-checked-symbolic' : 'radio-symbolic';
@@ -189,7 +199,18 @@ class OpenhubIndicator extends PanelMenu.Button {
                 output.item.add_style_class_name('openhub-selected');
             else
                 output.item.remove_style_class_name('openhub-selected');
+            output.item.set_style(active && this._accent ? `border-color: ${this._accent.color};` : null);
+            output.radio.set_style(active && this._accent ? `color: ${this._accent.color};` : null);
         }
+    }
+
+    _applyAccent() {
+        const color = this._accentProbe.get_theme_node().get_color('-barlevel-active-background-color');
+        this._accent = accentStyle(color);
+        this._circle.set_style(this._accent
+            ? `background-color: ${this._accent.color}; color: ${this._accent.foreground};`
+            : null);
+        this._setActiveOutput(this._activeOutput);
     }
 
     _readOpenhubBatteries() {
@@ -262,7 +283,7 @@ class OpenhubIndicator extends PanelMenu.Button {
 
         this._batteries.removeAll();
         if (rows.length === 0) {
-            const empty = card({icon: 'battery-missing-symbolic', title: 'No devices with a battery'});
+            const empty = card({style: 'openhub-item', icon: 'battery-missing-symbolic', title: 'No devices with a battery'});
             empty.item.reactive = false;
             this._batteries.addMenuItem(empty.item);
         }
@@ -293,6 +314,7 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._cancellable.cancel();
         Gio.bus_unwatch_name(this._openhubWatch);
         this._mixer.disconnectObject(this);
+        this._accentProbe.disconnectObject(this);
         this._mixer = null;
         this._outputItems.clear();
         if (this._syncId)
@@ -337,12 +359,14 @@ function column(children, params = {}, spacing = 0) {
  * optional chevron.
  *
  * @param {{icon: string, gicon?: Gio.Icon, title: string, subtitle?: string,
- *   chevron?: boolean}} params the contents
+ *   chevron?: boolean, style?: string}} params the contents: `style` is
+ *   'openhub-card' for a row with a background, 'openhub-item' for one
+ *   inside a section
  * @returns {{item: PopupMenu.PopupBaseMenuItem, icon: St.Bin, title: St.Label,
  *   subtitle: St.Label, text: St.Widget}} the row and its parts
  */
-function card({icon, gicon, title, subtitle = '', chevron = false}) {
-    const item = new PopupMenu.PopupBaseMenuItem({style_class: 'openhub-card'});
+function card({icon, gicon, title, subtitle = '', chevron = false, style = 'openhub-card'}) {
+    const item = new PopupMenu.PopupBaseMenuItem({style_class: style});
     const tile = new St.Bin({
         style_class: 'openhub-tile',
         y_align: Clutter.ActorAlign.CENTER,
@@ -370,7 +394,7 @@ function card({icon, gicon, title, subtitle = '', chevron = false}) {
  * The menu's first row: Openhub's icon and name, and a settings button
  * that opens Openhub.
  *
- * @param {Gio.Icon} appIcon Openhub's full-colour icon
+ * @param {Gio.Icon} appIcon Openhub's symbolic icon, as in the top bar
  * @param {Function} openSettings called by the settings button
  * @returns {PopupMenu.PopupBaseMenuItem} the item
  */
@@ -382,7 +406,7 @@ function headerItem(appIcon, openSettings) {
     });
     // Non-clickable items are greyed out, which isn't wanted for a title.
     item.remove_style_pseudo_class('insensitive');
-    item.add_child(new St.Icon({gicon: appIcon, icon_size: 40, y_align: Clutter.ActorAlign.CENTER}));
+    item.add_child(new St.Icon({gicon: appIcon, icon_size: 32, y_align: Clutter.ActorAlign.CENTER}));
     item.add_child(column([
         new St.Label({text: 'Openhub', style_class: 'openhub-title'}),
         new St.Label({text: 'Connected Devices & Settings', style_class: 'openhub-card-subtitle'}),
@@ -434,7 +458,7 @@ function sectionHeader(icon, title, subtitle, section) {
  * @returns {PopupMenu.PopupBaseMenuItem} the item
  */
 function batteryItem(row) {
-    const {item, text} = card({icon: row.icon, title: row.name});
+    const {item, text} = card({style: 'openhub-item', icon: row.icon, title: row.name});
     item.connect('activate', () => showPage('power'));
 
     const status = new St.BoxLayout({style_class: 'openhub-status'});
@@ -457,6 +481,22 @@ function batteryItem(row) {
     }
     item.add_child(column([percent, bar], {}, 6));
     return item;
+}
+
+/**
+ * The accent as inline CSS, with a readable colour for an icon on it.
+ *
+ * @param {Clutter.Color|Cogl.Color|null} color the theme's accent
+ * @returns {{color: string, foreground: string}|null} CSS colours, or null
+ *   when the theme has none
+ */
+function accentStyle(color) {
+    if (!color || color.alpha === 0)
+        return null;
+    const {red, green, blue} = color;
+    // Relative luminance, roughly: light accents get a dark icon.
+    const light = (0.299 * red + 0.587 * green + 0.114 * blue) / 255 > 0.6;
+    return {color: `rgb(${red}, ${green}, ${blue})`, foreground: light ? '#1e1e2e' : '#ffffff'};
 }
 
 /**

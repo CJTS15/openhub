@@ -1,5 +1,6 @@
 /* Rows are cards on the menu's background, in neutral greys that work in
-   light and dark themes; the accent comes from -st-accent-color. */
+   light and dark themes. The accent (the Bluetooth circle, the selected
+   output) is set from the shell theme by extension.js. */
 
 .openhub-menu {
   min-width: 380px;
@@ -33,9 +34,29 @@
   background-color: rgba(127, 127, 127, 0.08);
 }
 
+.openhub-card:hover,
+.openhub-card:selected,
+.openhub-card:active {
+  background-color: rgba(127, 127, 127, 0.18);
+}
+
+/* A section's header is a card; its devices and outputs sit under it,
+   indented, without a background of their own. */
 .openhub-section {
-  margin-top: 10px;
-  background-color: transparent;
+  margin-top: 8px;
+}
+
+.openhub-item {
+  spacing: 12px;
+  padding: 6px 12px;
+  margin: 2px 0 2px 16px;
+  border-radius: 12px;
+}
+
+.openhub-item:hover,
+.openhub-item:selected,
+.openhub-item:active {
+  background-color: rgba(127, 127, 127, 0.12);
 }
 
 .openhub-card-title {
@@ -57,22 +78,16 @@
 
 .openhub-circle {
   border-radius: 99px;
-  color: -st-accent-fg-color;
-  background-color: -st-accent-color;
 }
 
 .openhub-section .openhub-tile {
   background-color: transparent;
 }
 
-/* The selected output: an accent outline. */
+/* The selected output: an outline, in the accent colour. */
 .openhub-selected {
-  border: 2px solid -st-accent-color;
-  padding: 6px 10px;
-}
-
-.openhub-selected .openhub-radio {
-  color: -st-accent-color;
+  border: 2px solid rgba(127, 127, 127, 0.5);
+  padding: 4px 10px;
 }
 
 .openhub-status {

@@ -52,28 +52,28 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._icon = new St.Icon({gicon: this._appIcon, style_class: 'system-status-icon'});
         this.add_child(this._icon);
 
-        const open = new PopupMenu.PopupMenuItem('Openhub');
-        open.label.add_style_class_name('openhub-title');
-        open.add_child(new St.Icon({
-            icon_name: 'go-next-symbolic',
-            style_class: 'popup-menu-icon',
-            x_expand: true,
-            x_align: Clutter.ActorAlign.END,
-        }));
-        open.connect('activate', () => showPage(''));
-        this.menu.addMenuItem(open);
+        this.menu.box.add_style_class_name('openhub-menu');
+        this.menu.addMenuItem(headerItem(
+            Gio.icon_new_for_string(extension.dir.get_child('icons').get_child('openhub.svg').get_path()),
+            () => {
+                this.menu.close();
+                showPage('system');
+            }));
 
-        this.menu.addMenuItem(heading('Batteries'));
+        const bluetooth = card({icon: 'bluetooth-active-symbolic', title: 'Bluetooth', chevron: true});
+        bluetooth.icon.add_style_class_name('openhub-circle');
+        bluetooth.item.connect('activate', () => showPage('bluetooth'));
+        this._bluetooth = bluetooth.subtitle;
+        this.menu.addMenuItem(bluetooth.item);
+
         this._batteries = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(sectionHeader('battery-symbolic', 'Batteries',
+            'Check battery levels of your devices', this._batteries));
         this.menu.addMenuItem(this._batteries);
 
-        this.menu.addMenuItem(heading('Bluetooth'));
-        this._bluetooth = new PopupMenu.PopupMenuItem('');
-        this._bluetooth.connect('activate', () => showPage('bluetooth'));
-        this.menu.addMenuItem(this._bluetooth);
-
-        this.menu.addMenuItem(heading('Sound Output'));
         this._outputs = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(sectionHeader('audio-speakers-symbolic', 'Sound Output',
+            'Select your audio output device', this._outputs));
         this.menu.addMenuItem(this._outputs);
         this._outputItems = new Map();
         // GNOME Shell's own mixer connection, shared with its volume slider.
@@ -156,25 +156,40 @@ class OpenhubIndicator extends PanelMenu.Button {
         const device = this._mixer.lookup_output_id(id);
         if (!device)
             return;
-        const {description, origin} = device;
-        const item = new PopupMenu.PopupMenuItem(origin ? `${description} – ${origin}` : description);
-        item.connect('activate', () => {
-            const output = this._mixer.lookup_output_id(id);
-            if (output)
-                this._mixer.change_output(output);
+        // Gvc names full-colour icons (video-display, audio-speakers); the
+        // menu uses their symbolic versions, with speakers as the fallback.
+        const name = device.get_icon_name();
+        const output = card({
+            gicon: Gio.ThemedIcon.new_from_names(
+                [name ? `${name}-symbolic` : '', 'audio-speakers-symbolic'].filter(Boolean)),
+            title: device.description,
+            subtitle: device.origin,
         });
-        this._outputs.addMenuItem(item);
-        this._outputItems.set(id, item);
+        output.radio = new St.Icon({icon_name: 'radio-symbolic', style_class: 'popup-menu-icon openhub-radio'});
+        output.item.add_child(output.radio);
+        output.item.connect('activate', () => {
+            const current = this._mixer.lookup_output_id(id);
+            if (current)
+                this._mixer.change_output(current);
+        });
+        this._outputs.addMenuItem(output.item);
+        this._outputItems.set(id, output);
     }
 
     _removeOutput(id) {
-        this._outputItems.get(id)?.destroy();
+        this._outputItems.get(id)?.item.destroy();
         this._outputItems.delete(id);
     }
 
     _setActiveOutput(activeId) {
-        for (const [id, item] of this._outputItems)
-            item.setOrnament(id === activeId ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+        for (const [id, output] of this._outputItems) {
+            const active = id === activeId;
+            output.radio.icon_name = active ? 'radio-checked-symbolic' : 'radio-symbolic';
+            if (active)
+                output.item.add_style_class_name('openhub-selected');
+            else
+                output.item.remove_style_class_name('openhub-selected');
+        }
     }
 
     _readOpenhubBatteries() {
@@ -247,8 +262,9 @@ class OpenhubIndicator extends PanelMenu.Button {
 
         this._batteries.removeAll();
         if (rows.length === 0) {
-            const empty = new PopupMenu.PopupMenuItem('No devices with a battery', {reactive: false});
-            this._batteries.addMenuItem(empty);
+            const empty = card({icon: 'battery-missing-symbolic', title: 'No devices with a battery'});
+            empty.item.reactive = false;
+            this._batteries.addMenuItem(empty.item);
         }
         for (const row of rows)
             this._batteries.addMenuItem(batteryItem(row));
@@ -270,7 +286,7 @@ class OpenhubIndicator extends PanelMenu.Button {
             if (store.get_item(i).connected)
                 connected++;
         }
-        this._bluetooth.label.text = bluetoothLabel(connected);
+        this._bluetooth.text = bluetoothLabel(connected);
     }
 
     destroy() {
@@ -298,53 +314,148 @@ class OpenhubIndicator extends PanelMenu.Button {
 });
 
 /**
- * A section heading: a separator with a title. Separators are greyed
- * out as non-clickable items, which leaves the title hard to read.
+ * A box of children stacked vertically. A Clutter layout rather than
+ * St.BoxLayout's `vertical`, which GNOME 48 renamed.
  *
- * @param {string} text the title
- * @returns {PopupMenu.PopupSeparatorMenuItem} the item
+ * @param {Clutter.Actor[]} children the contents
+ * @param {object} params more St.Widget properties
+ * @param {number} spacing the gap between children, in pixels
+ * @returns {St.Widget} the box
  */
-function heading(text) {
-    const item = new PopupMenu.PopupSeparatorMenuItem(text);
+function column(children, params = {}, spacing = 0) {
+    const box = new St.Widget({
+        layout_manager: new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL, spacing}),
+        y_align: Clutter.ActorAlign.CENTER,
+        ...params,
+    });
+    children.forEach(child => box.add_child(child));
+    return box;
+}
+
+/**
+ * A rounded row: an icon in a tile, a title over a subtitle, and an
+ * optional chevron.
+ *
+ * @param {{icon: string, gicon?: Gio.Icon, title: string, subtitle?: string,
+ *   chevron?: boolean}} params the contents
+ * @returns {{item: PopupMenu.PopupBaseMenuItem, icon: St.Bin, title: St.Label,
+ *   subtitle: St.Label, text: St.Widget}} the row and its parts
+ */
+function card({icon, gicon, title, subtitle = '', chevron = false}) {
+    const item = new PopupMenu.PopupBaseMenuItem({style_class: 'openhub-card'});
+    const tile = new St.Bin({
+        style_class: 'openhub-tile',
+        y_align: Clutter.ActorAlign.CENTER,
+        // Only one of gicon and icon_name: setting icon_name clears gicon.
+        child: new St.Icon({...(gicon ? {gicon} : {icon_name: icon}), icon_size: 20}),
+    });
+    item.add_child(tile);
+    const titleLabel = new St.Label({text: title, style_class: 'openhub-card-title'});
+    const subtitleLabel = new St.Label({text: subtitle, style_class: 'openhub-card-subtitle'});
+    subtitleLabel.visible = subtitle !== '';
+    subtitleLabel.connect('notify::text', () => (subtitleLabel.visible = subtitleLabel.text !== ''));
+    const text = column([titleLabel, subtitleLabel], {x_expand: true});
+    item.add_child(text);
+    if (chevron) {
+        item.add_child(new St.Icon({
+            icon_name: 'go-next-symbolic',
+            style_class: 'popup-menu-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+    }
+    return {item, icon: tile, title: titleLabel, subtitle: subtitleLabel, text};
+}
+
+/**
+ * The menu's first row: Openhub's icon and name, and a settings button
+ * that opens Openhub.
+ *
+ * @param {Gio.Icon} appIcon Openhub's full-colour icon
+ * @param {Function} openSettings called by the settings button
+ * @returns {PopupMenu.PopupBaseMenuItem} the item
+ */
+function headerItem(appIcon, openSettings) {
+    const item = new PopupMenu.PopupBaseMenuItem({
+        reactive: false,
+        can_focus: false,
+        style_class: 'openhub-header',
+    });
+    // Non-clickable items are greyed out, which isn't wanted for a title.
     item.remove_style_pseudo_class('insensitive');
-    item.label.add_style_class_name('openhub-heading');
+    item.add_child(new St.Icon({gicon: appIcon, icon_size: 40, y_align: Clutter.ActorAlign.CENTER}));
+    item.add_child(column([
+        new St.Label({text: 'Openhub', style_class: 'openhub-title'}),
+        new St.Label({text: 'Connected Devices & Settings', style_class: 'openhub-card-subtitle'}),
+    ], {x_expand: true}));
+    const settings = new St.Button({
+        style_class: 'icon-button openhub-settings',
+        can_focus: true,
+        accessible_name: 'Open Openhub',
+        y_align: Clutter.ActorAlign.CENTER,
+        child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
+    });
+    settings.connect('clicked', openSettings);
+    item.add_child(settings);
     return item;
 }
 
 /**
- * A battery row: icon, then the name and percentage over a level bar the
- * width of the row. It opens Openhub's Power page, which has the details.
+ * A section's header: an icon, title and subtitle, and a chevron that
+ * hides or shows the section below.
+ *
+ * @param {string} icon the icon name
+ * @param {string} title the title
+ * @param {string} subtitle what the section is for
+ * @param {PopupMenu.PopupMenuSection} section the rows it collapses
+ * @returns {PopupMenu.PopupBaseMenuItem} the item
+ */
+function sectionHeader(icon, title, subtitle, section) {
+    const header = card({icon, title, subtitle});
+    header.item.add_style_class_name('openhub-section');
+    const chevron = new St.Icon({
+        icon_name: 'pan-up-symbolic',
+        style_class: 'popup-menu-icon',
+        y_align: Clutter.ActorAlign.CENTER,
+    });
+    header.item.add_child(chevron);
+    // Toggles in place instead of activating, which would close the menu.
+    header.item.activate = () => {
+        section.actor.visible = !section.actor.visible;
+        chevron.icon_name = section.actor.visible ? 'pan-up-symbolic' : 'pan-down-symbolic';
+    };
+    return header.item;
+}
+
+/**
+ * A battery row: the device's icon, its name over "Connected", and its
+ * percentage over a level bar. It opens Openhub's Power page.
  *
  * @param {{name: string, icon: string, percentage: number, low: boolean}} row the device
  * @returns {PopupMenu.PopupBaseMenuItem} the item
  */
 function batteryItem(row) {
-    const item = new PopupMenu.PopupBaseMenuItem();
+    const {item, text} = card({icon: row.icon, title: row.name});
     item.connect('activate', () => showPage('power'));
-    item.add_child(new St.Icon({icon_name: row.icon, style_class: 'popup-menu-icon'}));
 
-    const text = new St.BoxLayout({x_expand: true});
-    text.add_child(new St.Label({text: row.name, x_expand: true}));
-    const percent = new St.Label({text: `${row.percentage}%`, style_class: 'openhub-percent'});
-    text.add_child(percent);
+    const status = new St.BoxLayout({style_class: 'openhub-status'});
+    status.add_child(new St.Widget({style_class: 'openhub-dot', y_align: Clutter.ActorAlign.CENTER}));
+    status.add_child(new St.Label({text: 'Connected', style_class: 'openhub-card-subtitle'}));
+    text.add_child(status);
 
+    const percent = new St.Label({
+        text: `${row.percentage}%`,
+        style_class: 'openhub-percent',
+        x_align: Clutter.ActorAlign.END,
+    });
     // GNOME Shell's own level bar, styled like its sliders, so it takes the
     // shell theme's colours (the accent colour, or a custom theme's).
-    const bar = new BarLevel({style_class: 'slider openhub-level', x_expand: true});
+    const bar = new BarLevel({style_class: 'slider openhub-level'});
     bar.value = Math.min(row.percentage, 100) / 100;
     if (row.low) {
         percent.add_style_class_name('openhub-low');
         bar.add_style_class_name('openhub-low');
     }
-
-    // A Clutter layout rather than St.BoxLayout's `vertical`, which GNOME 48 renamed.
-    const column = new St.Widget({
-        layout_manager: new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL, spacing: 4}),
-        x_expand: true,
-    });
-    column.add_child(text);
-    column.add_child(bar);
-    item.add_child(column);
+    item.add_child(column([percent, bar], {}, 6));
     return item;
 }
 

@@ -1,20 +1,100 @@
+/* Rows are cards on the menu's background, in neutral greys that work in
+   light and dark themes; the accent comes from -st-accent-color. */
+
+.openhub-menu {
+  min-width: 380px;
+}
+
+.openhub-header {
+  spacing: 12px;
+  padding: 8px 12px 12px;
+}
+
 .openhub-title {
+  font-size: 1.3em;
   font-weight: bold;
 }
 
-.openhub-heading {
+.openhub-settings {
+  padding: 8px;
+  border-radius: 99px;
+  background-color: rgba(127, 127, 127, 0.15);
+}
+
+.openhub-settings:hover {
+  background-color: rgba(127, 127, 127, 0.25);
+}
+
+.openhub-card {
+  spacing: 12px;
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 12px;
+  background-color: rgba(127, 127, 127, 0.08);
+}
+
+.openhub-section {
+  margin-top: 10px;
+  background-color: transparent;
+}
+
+.openhub-card-title {
+  font-weight: bold;
+}
+
+.openhub-card-subtitle {
   font-size: 0.9em;
+  color: rgba(127, 127, 127, 1);
+}
+
+/* The icon's rounded tile. */
+.openhub-tile {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: rgba(127, 127, 127, 0.15);
+}
+
+.openhub-circle {
+  border-radius: 99px;
+  color: -st-accent-fg-color;
+  background-color: -st-accent-color;
+}
+
+.openhub-section .openhub-tile {
+  background-color: transparent;
+}
+
+/* The selected output: an accent outline. */
+.openhub-selected {
+  border: 2px solid -st-accent-color;
+  padding: 6px 10px;
+}
+
+.openhub-selected .openhub-radio {
+  color: -st-accent-color;
+}
+
+.openhub-status {
+  spacing: 6px;
+}
+
+.openhub-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: #33d17a;
 }
 
 .openhub-percent {
-  margin-left: 12px;
+  font-weight: bold;
   font-feature-settings: "tnum";
 }
 
-/* The level bar under a device's name; its colours come from the shell
-   theme's slider style. */
+/* The level bar beside a device; its colours come from the shell theme's
+   slider style. */
 .openhub-level {
-  min-width: 160px;
+  width: 140px;
   height: 6px;
   -barlevel-height: 6px;
 }

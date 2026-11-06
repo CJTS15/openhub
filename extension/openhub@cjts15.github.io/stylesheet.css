@@ -1,6 +1,6 @@
 /* Rows are cards on the menu's background, in neutral greys that work in
    light and dark themes. The accent (the Bluetooth circle, the selected
-   output) is set from the shell theme by extension.js. */
+   output's radio mark) is set from the shell theme by extension.js. */
 
 .openhub-menu {
   min-width: 380px;
@@ -48,7 +48,7 @@
 
 .openhub-item {
   spacing: 12px;
-  padding: 6px 12px;
+  padding: 10px 12px;
   margin: 2px 0 2px 16px;
   border-radius: 12px;
 }
@@ -82,12 +82,6 @@
 
 .openhub-section .openhub-tile {
   background-color: transparent;
-}
-
-/* The selected output: an outline, in the accent colour. */
-.openhub-selected {
-  border: 2px solid rgba(127, 127, 127, 0.5);
-  padding: 4px 10px;
 }
 
 .openhub-status {

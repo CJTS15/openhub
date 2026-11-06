@@ -195,11 +195,6 @@ class OpenhubIndicator extends PanelMenu.Button {
         for (const [id, output] of this._outputItems) {
             const active = id === activeId;
             output.radio.icon_name = active ? 'radio-checked-symbolic' : 'radio-symbolic';
-            if (active)
-                output.item.add_style_class_name('openhub-selected');
-            else
-                output.item.remove_style_class_name('openhub-selected');
-            output.item.set_style(active && this._accent ? `border-color: ${this._accent.color};` : null);
             output.radio.set_style(active && this._accent ? `color: ${this._accent.color};` : null);
         }
     }

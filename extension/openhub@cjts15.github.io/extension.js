@@ -350,6 +350,18 @@ function column(children, params = {}, spacing = 0) {
 }
 
 /**
+ * A subtitle: the menu's own text colour, slightly see-through, so it keeps
+ * the theme's contrast in light and dark mode and over a blurred menu
+ * (Blur my Shell), where a fixed grey disappears. St's CSS has no opacity.
+ *
+ * @param {string} text the text
+ * @returns {St.Label} the label
+ */
+function subtitleText(text) {
+    return new St.Label({text, style_class: 'openhub-card-subtitle', opacity: 180});
+}
+
+/**
  * A rounded row: an icon in a tile, a title over a subtitle, and an
  * optional chevron.
  *
@@ -370,7 +382,7 @@ function card({icon, gicon, title, subtitle = '', chevron = false, style = 'open
     });
     item.add_child(tile);
     const titleLabel = new St.Label({text: title, style_class: 'openhub-card-title'});
-    const subtitleLabel = new St.Label({text: subtitle, style_class: 'openhub-card-subtitle'});
+    const subtitleLabel = subtitleText(subtitle);
     subtitleLabel.visible = subtitle !== '';
     subtitleLabel.connect('notify::text', () => (subtitleLabel.visible = subtitleLabel.text !== ''));
     const text = column([titleLabel, subtitleLabel], {x_expand: true});
@@ -404,7 +416,7 @@ function headerItem(appIcon, openSettings) {
     item.add_child(new St.Icon({gicon: appIcon, icon_size: 24, y_align: Clutter.ActorAlign.CENTER}));
     item.add_child(column([
         new St.Label({text: 'Openhub', style_class: 'openhub-title'}),
-        new St.Label({text: 'Connected Devices & Settings', style_class: 'openhub-card-subtitle'}),
+        subtitleText('Connected Devices & Settings'),
     ], {x_expand: true}));
     const settings = new St.Button({
         style_class: 'icon-button openhub-settings',
@@ -458,7 +470,7 @@ function batteryItem(row) {
 
     const status = new St.BoxLayout({style_class: 'openhub-status'});
     status.add_child(new St.Widget({style_class: 'openhub-dot', y_align: Clutter.ActorAlign.CENTER}));
-    status.add_child(new St.Label({text: 'Connected', style_class: 'openhub-card-subtitle'}));
+    status.add_child(subtitleText('Connected'));
     text.add_child(status);
 
     const percent = new St.Label({

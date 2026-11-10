@@ -6,6 +6,7 @@ mod proxies;
 
 use zbus::zvariant::{OwnedObjectPath, Value};
 
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 use proxies::{ButtonProxy, DeviceProxy, ManagerProxy, ProfileProxy, ResolutionProxy};
 
 /// The ratbagd API this client speaks; it has no compatibility guarantees.
@@ -19,19 +20,19 @@ pub const ACTION_SPECIAL: u32 = 2;
 const SPECIAL: u32 = 1 << 30;
 /// The special functions the button picker offers, by offset from 1 << 30.
 pub const SPECIALS: [(u32, &str); 13] = [
-    (1, "Double-Click"),
-    (2, "Scroll Left"),
-    (3, "Scroll Right"),
-    (4, "Scroll Up"),
-    (5, "Scroll Down"),
-    (6, "Wheel Mode Switch"),
-    (7, "DPI Cycle Up"),
-    (8, "DPI Cycle Down"),
-    (9, "DPI Up"),
-    (10, "DPI Down"),
-    (11, "DPI Shift"),
-    (13, "Profile Cycle Up"),
-    (14, "Profile Cycle Down"),
+    (1, gettext_noop("Double-Click")),
+    (2, gettext_noop("Scroll Left")),
+    (3, gettext_noop("Scroll Right")),
+    (4, gettext_noop("Scroll Up")),
+    (5, gettext_noop("Scroll Down")),
+    (6, gettext_noop("Wheel Mode Switch")),
+    (7, gettext_noop("DPI Cycle Up")),
+    (8, gettext_noop("DPI Cycle Down")),
+    (9, gettext_noop("DPI Up")),
+    (10, gettext_noop("DPI Down")),
+    (11, gettext_noop("DPI Shift")),
+    (13, gettext_noop("Profile Cycle Up")),
+    (14, gettext_noop("Profile Cycle Down")),
 ];
 
 /// What a mouse button does.
@@ -79,13 +80,13 @@ impl Action {
 
     pub fn label(self) -> String {
         match self {
-            Action::None => "Disabled".to_owned(),
+            Action::None => gettext("Disabled"),
             Action::Button(n) => button_name(n),
             Action::Special(n) => SPECIALS
                 .iter()
                 .find(|(offset, _)| SPECIAL + offset == n)
-                .map_or_else(|| "Special".to_owned(), |(_, name)| (*name).to_owned()),
-            Action::Other => "Key or Macro".to_owned(),
+                .map_or_else(|| gettext("Special"), |(_, name)| gettext(*name)),
+            Action::Other => gettext("Key or Macro"),
         }
     }
 
@@ -96,12 +97,13 @@ impl Action {
 
 pub fn button_name(n: u32) -> String {
     match n {
-        1 => "Left Click".to_owned(),
-        2 => "Right Click".to_owned(),
-        3 => "Middle Click".to_owned(),
-        4 => "Back".to_owned(),
-        5 => "Forward".to_owned(),
-        n => format!("Button {n}"),
+        1 => gettext("Left Click"),
+        2 => gettext("Right Click"),
+        3 => gettext("Middle Click"),
+        4 => gettext("Back"),
+        5 => gettext("Forward"),
+        // Translators: a mouse button without a name, such as "Button 8".
+        n => gettext_f("Button {}", &[&n.to_string()]),
     }
 }
 

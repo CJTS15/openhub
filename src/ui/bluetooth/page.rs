@@ -6,7 +6,9 @@ use std::cell::RefCell;
 
 use super::{device_dialog, device_row, pairing_dialog};
 use crate::bluez::{BluetoothManager, PairingRequest, State, blueman};
+use crate::i18n::{gettext, gettext_f};
 use crate::model::{Adapter, Device};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -73,7 +75,7 @@ mod imp {
 
             self.adapter_list.bind_model(
                 Some(&self.manager().adapters()),
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     #[upgrade_or_panic]
@@ -82,7 +84,7 @@ mod imp {
             );
             self.paired_list.bind_model(
                 Some(&self.manager().paired_devices()),
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     #[upgrade_or_panic]
@@ -92,7 +94,7 @@ mod imp {
                         row.add_suffix(&busy_spinner(device));
                         row.add_suffix(&obj.connect_button(device));
                         row.set_activatable(true);
-                        row.connect_activated(glib::clone!(
+                        row.connect_activated(clone!(
                             #[weak]
                             obj,
                             #[weak]
@@ -108,7 +110,7 @@ mod imp {
             );
             self.nearby_list.bind_model(
                 Some(&self.manager().nearby_devices()),
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     #[upgrade_or_panic]
@@ -117,7 +119,7 @@ mod imp {
                         let row = device_row::new(device);
                         row.add_suffix(&busy_spinner(device));
                         row.set_activatable(true);
-                        row.connect_activated(glib::clone!(
+                        row.connect_activated(clone!(
                             #[weak]
                             obj,
                             #[weak]
@@ -128,19 +130,19 @@ mod imp {
                     }
                 ),
             );
-            self.manager().connect_pairing_request(glib::clone!(
+            self.manager().connect_pairing_request(clone!(
                 #[weak]
                 obj,
                 move |request| obj.on_pairing_request(request)
             ));
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 obj,
                 async move {
                     match blueman::disable_connection_notifier().await {
-                        Ok(true) => obj.toast(
+                        Ok(true) => obj.toast(&gettext(
                             "Turned off blueman's connection notifications, which can freeze GNOME Shell",
-                        ),
+                        )),
                         Ok(false) => {}
                         Err(err) => glib::g_warning!(
                             "openhub",
@@ -153,7 +155,11 @@ mod imp {
             self.manager()
                 .bind_property("discovering", &*self.scan_button, "label")
                 .transform_to(|_, discovering: bool| {
-                    Some(if discovering { "Stop" } else { "Scan" })
+                    Some(if discovering {
+                        gettext("Stop")
+                    } else {
+                        gettext("Scan")
+                    })
                 })
                 .sync_create()
                 .build();
@@ -165,7 +171,7 @@ mod imp {
                 .bind_property("discovering", &*self.scan_spinner, "visible")
                 .sync_create()
                 .build();
-            self.scan_button.connect_clicked(glib::clone!(
+            self.scan_button.connect_clicked(clone!(
                 #[weak]
                 obj,
                 move |_| obj.toggle_discovery()
@@ -208,7 +214,7 @@ impl BluetoothPage {
             return;
         }
         device.set_busy(true);
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -231,16 +237,16 @@ impl BluetoothPage {
                     Ok(()) => {
                         if let Err(err) = manager.connect_device(&device).await {
                             glib::g_warning!("openhub", "Can't connect {}: {err}", device.path());
-                            page.toast(&format!(
+                            page.toast(&gettext_f(
                                 "Paired with {}, but couldn't connect",
-                                device.name()
+                                &[&device.name()],
                             ));
                         }
                     }
                     Err(err) if declined(&err) => {}
                     Err(err) => {
                         glib::g_warning!("openhub", "Can't pair {}: {err}", device.path());
-                        page.toast(&format!("Couldn't pair with {}", device.name()));
+                        page.toast(&gettext_f("Couldn't pair with {}", &[&device.name()]));
                     }
                 }
                 if was_scanning {
@@ -274,7 +280,7 @@ impl BluetoothPage {
         if let Some(device) = display_device {
             dialog.connect_response(
                 Some("cancel"),
-                glib::clone!(
+                clone!(
                     #[weak(rename_to = page)]
                     self,
                     move |_, _| {
@@ -286,7 +292,7 @@ impl BluetoothPage {
                 ),
             );
         }
-        dialog.connect_closed(glib::clone!(
+        dialog.connect_closed(clone!(
             #[weak(rename_to = page)]
             self,
             move |dialog| {
@@ -316,7 +322,7 @@ impl BluetoothPage {
             .bind_property("powered", &row, "active")
             .sync_create()
             .build();
-        row.connect_active_notify(glib::clone!(
+        row.connect_active_notify(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -327,7 +333,7 @@ impl BluetoothPage {
                 if powered == adapter.powered() {
                     return;
                 }
-                glib::spawn_future_local(glib::clone!(
+                glib::spawn_future_local(clone!(
                     #[weak]
                     page,
                     #[weak]
@@ -338,10 +344,10 @@ impl BluetoothPage {
                         let result = page.imp().manager().set_powered(&adapter, powered).await;
                         if let Err(err) = result {
                             glib::g_warning!("openhub", "Can't set Powered={powered}: {err}");
-                            page.toast(if powered {
-                                "Couldn't turn Bluetooth on"
+                            page.toast(&if powered {
+                                gettext("Couldn't turn Bluetooth on")
                             } else {
-                                "Couldn't turn Bluetooth off"
+                                gettext("Couldn't turn Bluetooth off")
                             });
                             row.set_active(adapter.powered());
                         }
@@ -357,7 +363,11 @@ impl BluetoothPage {
         device
             .bind_property("connected", &button, "label")
             .transform_to(|_, connected: bool| {
-                Some(if connected { "Disconnect" } else { "Connect" })
+                Some(if connected {
+                    gettext("Disconnect")
+                } else {
+                    gettext("Connect")
+                })
             })
             .sync_create()
             .build();
@@ -368,7 +378,7 @@ impl BluetoothPage {
             .invert_boolean()
             .sync_create()
             .build();
-        button.connect_clicked(glib::clone!(
+        button.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -376,7 +386,7 @@ impl BluetoothPage {
             move |_| {
                 device.set_busy(true);
                 let connected = device.connected();
-                glib::spawn_future_local(glib::clone!(
+                glib::spawn_future_local(clone!(
                     #[weak]
                     page,
                     #[weak]
@@ -395,9 +405,9 @@ impl BluetoothPage {
                                 device.path()
                             );
                             page.toast(&if connected {
-                                format!("Couldn't disconnect {}", device.name())
+                                gettext_f("Couldn't disconnect {}", &[&device.name()])
                             } else {
-                                format!("Couldn't connect to {}", device.name())
+                                gettext_f("Couldn't connect to {}", &[&device.name()])
                             });
                         }
                         device.set_busy(false);
@@ -410,16 +420,16 @@ impl BluetoothPage {
 
     fn toggle_discovery(&self) {
         let discovering = !self.imp().manager().discovering();
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
                 if let Err(err) = page.imp().manager().set_discovering(discovering).await {
                     glib::g_warning!("openhub", "Can't set discovery to {discovering}: {err}");
-                    page.toast(if discovering {
-                        "Couldn't start scanning"
+                    page.toast(&if discovering {
+                        gettext("Couldn't start scanning")
                     } else {
-                        "Couldn't stop scanning"
+                        gettext("Couldn't stop scanning")
                     });
                 }
             }

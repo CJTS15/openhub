@@ -3,7 +3,9 @@ use gtk::{gio, glib};
 
 use super::mouse_dialog::{self, message};
 use crate::hidpp::{self, Node, Settings, State, Wheel};
+use crate::i18n::{gettext, gettext_f};
 use crate::model::InputDevice;
+use gtk::glib::clone;
 
 /// A Logitech mouse's HID++ settings: DPI, scroll wheel and direction.
 /// Changes wait for Apply, then go to the mouse in one write and are saved,
@@ -11,7 +13,7 @@ use crate::model::InputDevice;
 pub fn new(device: &InputDevice, node: Node) -> adw::PreferencesDialog {
     let (dialog, page, loading) = mouse_dialog::loading(device);
 
-    glib::spawn_future_local(glib::clone!(
+    glib::spawn_future_local(clone!(
         #[weak]
         dialog,
         #[weak]
@@ -24,7 +26,7 @@ pub fn new(device: &InputDevice, node: Node) -> adw::PreferencesDialog {
             match state {
                 Ok(Ok(state)) => fill(&dialog, &page, node, state, owner),
                 Ok(Err(error)) => page.add(&message(&error.to_string())),
-                Err(_) => page.add(&message("Reading the mouse failed")),
+                Err(_) => page.add(&message(&gettext("Reading the mouse failed"))),
             }
         }
     ));
@@ -40,8 +42,9 @@ fn fill(
 ) {
     let group = adw::PreferencesGroup::new();
     if let Some(owner) = owner {
-        group.set_description(Some(&format!(
-            "{owner} is managing this mouse. Close {owner} to change its settings here."
+        group.set_description(Some(&gettext_f(
+            "{} is managing this mouse. Close it to change its settings here.",
+            &[owner],
         )));
     }
     let settings = state.settings;
@@ -51,9 +54,9 @@ fn fill(
         .zip(settings.dpi)
         .map(|((low, high, step), dpi)| {
             let row = adw::SpinRow::with_range(low.into(), high.into(), step.into());
-            row.set_title("Pointer Speed");
+            row.set_title(&gettext("Pointer Speed"));
             if let Some(default) = state.dpi_default {
-                row.set_subtitle(&format!("DPI · default {default}"));
+                row.set_subtitle(&gettext_f("DPI · default {}", &[&default.to_string()]));
             }
             row.set_value(dpi.into());
             group.add(&row);
@@ -62,11 +65,11 @@ fn fill(
 
     let wheel = settings.wheel.map(|wheel| {
         let mode = adw::ComboRow::builder()
-            .title("Scroll Wheel")
+            .title(gettext("Scroll Wheel"))
             .model(&gtk::StringList::new(&[
                 "SmartShift",
-                "Ratchet",
-                "Free Spin",
+                &gettext("Ratchet"),
+                &gettext("Free Spin"),
             ]))
             .build();
         mode.set_selected(match wheel {
@@ -80,8 +83,8 @@ fn fill(
         };
         // Solaar's range; a mouse may report more, so it stays reachable.
         let sensitivity = adw::SpinRow::with_range(1.0, f64::from(threshold.max(50)), 1.0);
-        sensitivity.set_title("SmartShift Threshold");
-        sensitivity.set_subtitle("How fast a flick lets the wheel spin free");
+        sensitivity.set_title(&gettext("SmartShift Threshold"));
+        sensitivity.set_subtitle(&gettext("How fast a flick lets the wheel spin free"));
         sensitivity.set_value(threshold.into());
         mode.bind_property("selected", &sensitivity, "visible")
             .transform_to(|_, selected: u32| Some(selected == 0))
@@ -94,7 +97,7 @@ fn fill(
 
     let inverted = settings.inverted.map(|inverted| {
         let row = adw::SwitchRow::builder()
-            .title("Reverse Scroll Direction")
+            .title(gettext("Reverse Scroll Direction"))
             .active(inverted)
             .build();
         group.add(&row);
@@ -103,13 +106,13 @@ fn fill(
     page.add(&group);
 
     let apply = gtk::Button::builder()
-        .label("Apply")
+        .label(gettext("Apply"))
         .halign(gtk::Align::Center)
         .css_classes(["pill", "suggested-action"])
         .sensitive(owner.is_none())
         .build();
     group.set_sensitive(owner.is_none());
-    apply.connect_clicked(glib::clone!(
+    apply.connect_clicked(clone!(
         #[weak]
         dialog,
         move |button| {
@@ -126,7 +129,7 @@ fn fill(
             };
             button.set_sensitive(false);
             let node = node.clone();
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 dialog,
                 #[weak]
@@ -138,9 +141,9 @@ fn fill(
                     let result = match written {
                         Ok(Ok(())) => hidpp::save(&node.uniq, wanted),
                         Ok(Err(error)) => Err(error.to_string()),
-                        Err(_) => Err("Writing to the mouse failed".to_owned()),
+                        Err(_) => Err(gettext("Writing to the mouse failed")),
                     };
-                    let title = result.err().unwrap_or_else(|| "Applied".to_owned());
+                    let title = result.err().unwrap_or_else(|| gettext("Applied"));
                     dialog.add_toast(
                         adw::Toast::builder()
                             .title(&title)

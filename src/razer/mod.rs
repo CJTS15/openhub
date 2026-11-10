@@ -10,6 +10,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use crate::i18n::{gettext, gettext_f};
 use gtk::{gio, glib};
 use rustix::ioctl::{Updater, ioctl, opcode};
 
@@ -132,7 +133,7 @@ impl Device {
                 return Ok(device);
             }
         }
-        Err(io::Error::other("This Razer mouse doesn't answer"))
+        Err(io::Error::other(gettext("This Razer mouse doesn't answer")))
     }
 
     /// Sends a command and returns the reply's argument bytes.
@@ -153,17 +154,18 @@ impl Device {
                     out.copy_from_slice(&reply[8..88]);
                     return Ok(out);
                 }
-                0x05 => return Err(io::Error::other("Not supported by this mouse")),
+                0x05 => return Err(io::Error::other(gettext("Not supported by this mouse"))),
                 status => {
-                    return Err(io::Error::other(format!(
-                        "The mouse refused the command ({status:#04x})"
+                    return Err(io::Error::other(gettext_f(
+                        "The mouse refused the command ({})",
+                        &[&format!("{status:#04x}")],
                     )));
                 }
             }
         }
         Err(io::Error::new(
             io::ErrorKind::TimedOut,
-            "The mouse didn't answer. Move it to wake it up.",
+            gettext("The mouse didn't answer. Move it to wake it up."),
         ))
     }
 }

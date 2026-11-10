@@ -86,7 +86,7 @@ The manifest currently lets the build fetch crates over the network. Offline ven
 
 ### Native (Meson)
 
-Needs GTK >= 4.14, libadwaita >= 1.5 (Ubuntu 24.04, Fedora 40, Debian 13 or newer), libpulse and libpipewire headers, libclang (for the PipeWire bindings), Meson, and a Rust toolchain. On Fedora: `gtk4-devel libadwaita-devel pulseaudio-libs-devel pipewire-devel clang-devel meson`; on Debian and Ubuntu: `libgtk-4-dev libadwaita-1-dev libpulse-dev libpipewire-0.3-dev libclang-dev meson`.
+Needs GTK >= 4.14, libadwaita >= 1.5 (Ubuntu 24.04, Fedora 40, Debian 13 or newer), libpulse and libpipewire headers, libclang (for the PipeWire bindings), gettext, Meson, and a Rust toolchain. On Fedora: `gtk4-devel libadwaita-devel pulseaudio-libs-devel pipewire-devel clang-devel gettext meson`; on Debian and Ubuntu: `libgtk-4-dev libadwaita-1-dev libpulse-dev libpipewire-0.3-dev libclang-dev gettext meson`.
 
 ```sh
 meson setup _build
@@ -95,7 +95,17 @@ meson test -C _build
 ./_build/src/openhub
 ```
 
-For quick iteration, `cargo run` also works.
+For quick iteration, `cargo run` also works. It runs in English and doesn't save the window size, since the translations and settings schema are only found once installed.
+
+## Translations
+
+Openhub is translatable, but has no translations yet. To start one:
+
+1. Refresh the template, `po/openhub.pot`, with `meson compile -C _build openhub-pot`. This needs gettext 0.24 or newer, which reads Rust.
+2. Copy it to `po/<language>.po` (such as `po/de.po`) and translate it, for example with GNOME's Translation Editor.
+3. Add the language code to `po/LINGUAS`.
+
+In the code, text goes through `gettext()`, or `gettext_f()` and `ngettext_f()` for messages with values, which use `{}` placeholders filled in order (`src/i18n.rs`). Call `clone!` unqualified: xgettext doesn't look inside `glib::clone!(…)`.
 
 ## Architecture
 
@@ -130,6 +140,7 @@ For quick iteration, `cargo run` also works.
 - `src/ddc/`: external monitor brightness over DDC/CI
 - `src/ui/display/`: the Displays page, the arrangement canvas and the details dialog
 - `data/udev/70-openhub-ddc.rules`, `data/modules-load.d/`: I2C access for DDC/CI
+- `src/i18n.rs` and `po/`: translation helpers, and the template translators work from
 - `src/ui/mod.rs`: `rescan_while_mapped`, the 2-second rescan the USB, Mouse and Keyboard pages share, and the GNOME Settings panel launcher
 - `src/watch.rs`: keeps a GObject in step with a cached D-Bus proxy's properties (shared by the BlueZ and UPower services)
 - `tests/fixtures/sysfs-usb/`: a fake sysfs tree the USB parser tests run against

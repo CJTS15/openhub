@@ -9,6 +9,7 @@ use gtk::glib;
 use gtk::glib::prelude::*;
 
 use super::{Mode, Monitor, State};
+use crate::i18n::gettext_noop;
 
 /// `ApplyMonitorsConfig` methods.
 pub const VERIFY: u32 = 0;
@@ -16,10 +17,10 @@ pub const PERSISTENT: u32 = 2;
 
 /// Orientations, as Mutter numbers them, with GNOME Settings' names.
 pub const ORIENTATIONS: [(u32, &str); 4] = [
-    (0, "Landscape"),
-    (1, "Portrait Right"),
-    (3, "Portrait Left"),
-    (2, "Landscape (Flipped)"),
+    (0, gettext_noop("Landscape")),
+    (1, gettext_noop("Portrait Right")),
+    (3, gettext_noop("Portrait Left")),
+    (2, gettext_noop("Landscape (Flipped)")),
 ];
 
 /// `(ssa{sv})`: connector, mode ID, properties.

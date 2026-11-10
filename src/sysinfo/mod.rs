@@ -9,6 +9,7 @@ use std::path::Path;
 use gtk::glib::prelude::*;
 use gtk::{gio, glib};
 
+use crate::i18n::gettext_noop;
 use crate::usb::ids::UsbIds;
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -33,14 +34,26 @@ pub struct About {
 impl About {
     /// (title, value) rows for the Hardware group.
     pub fn hardware(&self) -> Vec<(&'static str, String)> {
-        let mut rows = vec![("Model", self.model.clone())];
-        rows.extend(self.processor.clone().map(|v| ("Processor", v)));
-        rows.extend(self.memory.clone().map(|v| ("Memory", v)));
+        let mut rows = vec![(gettext_noop("Model"), self.model.clone())];
+        rows.extend(
+            self.processor
+                .clone()
+                .map(|v| (gettext_noop("Processor"), v)),
+        );
+        rows.extend(self.memory.clone().map(|v| (gettext_noop("Memory"), v)));
         if !self.graphics.is_empty() {
-            rows.push(("Graphics", self.graphics.join(" / ")));
+            rows.push((gettext_noop("Graphics"), self.graphics.join(" / ")));
         }
-        rows.extend(self.disk.clone().map(|v| ("Disk Capacity", v)));
-        rows.extend(self.firmware.clone().map(|v| ("Firmware Version", v)));
+        rows.extend(
+            self.disk
+                .clone()
+                .map(|v| (gettext_noop("Disk Capacity"), v)),
+        );
+        rows.extend(
+            self.firmware
+                .clone()
+                .map(|v| (gettext_noop("Firmware Version"), v)),
+        );
         rows.retain(|(_, value)| !value.is_empty());
         rows
     }
@@ -49,12 +62,12 @@ impl About {
     /// GTK.
     pub fn software(&self, windowing: &str) -> Vec<(&'static str, String)> {
         let mut rows = vec![
-            ("OS Name", self.os.clone()),
-            ("OS Type", self.os_type.clone()),
+            (gettext_noop("OS Name"), self.os.clone()),
+            (gettext_noop("OS Type"), self.os_type.clone()),
         ];
-        rows.extend(self.desktop.clone().map(|v| ("Desktop", v)));
-        rows.push(("Windowing System", windowing.to_owned()));
-        rows.push(("Kernel Version", self.kernel.clone()));
+        rows.extend(self.desktop.clone().map(|v| (gettext_noop("Desktop"), v)));
+        rows.push((gettext_noop("Windowing System"), windowing.to_owned()));
+        rows.push((gettext_noop("Kernel Version"), self.kernel.clone()));
         rows.retain(|(_, value)| !value.is_empty());
         rows
     }

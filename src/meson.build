@@ -16,6 +16,7 @@ cargo_env = [
   'CARGO_HOME=' + meson.project_build_root() / 'cargo-home',
   'OPENHUB_APP_ID=' + app_id,
   'OPENHUB_VERSION=' + meson.project_version(),
+  'OPENHUB_LOCALEDIR=' + prefix / get_option('localedir'),
 ]
 
 custom_target(

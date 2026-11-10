@@ -6,7 +6,7 @@ project(
   meson_version: '>= 1.0.0',
 )
 
-# Placeholder until the final app ID is decided; change it here only.
+# The final app ID (decided 2026-11-10); it can't change after a Flathub release.
 app_id = 'io.github.cjts15.Openhub'
 
 dependency('gtk4', version: '>= 4.14')
@@ -16,8 +16,11 @@ prefix = get_option('prefix')
 bindir = prefix / get_option('bindir')
 datadir = prefix / get_option('datadir')
 
+i18n = import('i18n')
+
 subdir('data')
 subdir('src')
+subdir('po')
 
 gnome = import('gnome')
 gnome.post_install(

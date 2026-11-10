@@ -5,9 +5,11 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::battery_dialog;
+use crate::i18n::{gettext, gettext_f};
 use crate::model::PowerDevice;
 use crate::upower::convert::{percent, warning};
 use crate::upower::{PowerManager, State};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -92,7 +94,7 @@ mod imp {
                 .bind_model(Some(&manager.peripherals()), |item| {
                     device_row(item.downcast_ref().unwrap())
                 });
-            self.device_list.connect_row_activated(glib::clone!(
+            self.device_list.connect_row_activated(clone!(
                 #[weak]
                 obj,
                 move |_, row| {
@@ -104,7 +106,7 @@ mod imp {
                     }
                 }
             ));
-            self.battery_list.connect_row_activated(glib::clone!(
+            self.battery_list.connect_row_activated(clone!(
                 #[weak]
                 obj,
                 move |_, _| {
@@ -114,33 +116,34 @@ mod imp {
                 }
             ));
 
-            self.maximize_row
-                .set_subtitle("Uses all battery capacity. Degrades batteries more quickly.");
-            manager.connect_battery_notify(glib::clone!(
+            self.maximize_row.set_subtitle(&gettext(
+                "Uses all battery capacity. Degrades batteries more quickly.",
+            ));
+            manager.connect_battery_notify(clone!(
                 #[weak]
                 obj,
                 move |_| obj.follow_battery()
             ));
             obj.follow_battery();
             // In a group, choosing Maximize Charge also unchecks this one.
-            self.preserve_check.connect_toggled(glib::clone!(
+            self.preserve_check.connect_toggled(clone!(
                 #[weak]
                 obj,
                 move |check| obj.choose_charge_limit(check.is_active())
             ));
 
-            let update = glib::clone!(
+            let update = clone!(
                 #[weak]
                 obj,
                 move || obj.update_stack()
             );
-            manager.connect_state_notify(glib::clone!(
+            manager.connect_state_notify(clone!(
                 #[strong]
                 update,
                 move |_| update()
             ));
             for store in [manager.computer(), manager.peripherals()] {
-                store.connect_items_changed(glib::clone!(
+                store.connect_items_changed(clone!(
                     #[strong]
                     update,
                     move |_, _, _, _| update()
@@ -170,7 +173,7 @@ impl PowerPage {
         if let Some(battery) = PowerManager::shared().battery() {
             let handler = battery.connect_notify_local(
                 None,
-                glib::clone!(
+                clone!(
                     #[weak(rename_to = page)]
                     self,
                     move |_, _| page.sync_charging()
@@ -192,9 +195,9 @@ impl PowerPage {
         let Some(battery) = battery.filter(|_| supported) else {
             return;
         };
-        imp.preserve_row.set_subtitle(&format!(
+        imp.preserve_row.set_subtitle(&gettext_f(
             "Increases battery longevity by stopping charging at {}",
-            percent(battery.charge_end_threshold().into())
+            &[&percent(battery.charge_end_threshold().into())],
         ));
         imp.syncing.set(true);
         let enabled = battery.charge_limit_enabled();
@@ -211,13 +214,13 @@ impl PowerPage {
         if self.imp().syncing.get() || battery.charge_limit_enabled() == enabled {
             return;
         }
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
                 if let Err(err) = manager.set_charge_limit(&battery, enabled).await {
                     glib::g_warning!("openhub", "Can't set the charge limit to {enabled}: {err}");
-                    let toast = adw::Toast::new("Couldn't change battery charging");
+                    let toast = adw::Toast::new(&gettext("Couldn't change battery charging"));
                     page.imp().toast_overlay.add_toast(toast);
                     // Put the rows back to what UPower still reports.
                     page.sync_charging();
@@ -276,7 +279,7 @@ fn device_row(device: &PowerDevice) -> gtk::Widget {
         .sync_create()
         .build();
     // Dim normally; the warning or error colour when UPower says it's low.
-    let colour = glib::clone!(
+    let colour = clone!(
         #[weak]
         level,
         move |device: &PowerDevice| {

@@ -1,6 +1,8 @@
 //! QMK keycodes as VIA protocol 12 sends them (QMK 0.20 and later): names
 //! for the keys on the layout, and the keys the picker offers.
 
+use crate::i18n::{gettext, gettext_f, gettext_noop};
+
 /// Keys the picker offers, by group: (code, label).
 pub fn groups() -> Vec<(&'static str, Vec<(u16, String)>)> {
     let named = |codes: std::ops::RangeInclusive<u16>| {
@@ -10,36 +12,42 @@ pub fn groups() -> Vec<(&'static str, Vec<(u16, String)>)> {
     };
     let mut layers = Vec::new();
     for layer in 1..4u16 {
-        layers.push((0x5220 | layer, format!("Hold for Layer {layer}")));
-        layers.push((0x5260 | layer, format!("Toggle Layer {layer}")));
+        layers.push((
+            0x5220 | layer,
+            gettext_f("Hold for Layer {}", &[&layer.to_string()]),
+        ));
+        layers.push((
+            0x5260 | layer,
+            gettext_f("Toggle Layer {}", &[&layer.to_string()]),
+        ));
     }
     vec![
-        ("Letters and Numbers", named(0x04..=0x27)),
-        ("Symbols", named(0x2D..=0x38)),
+        (gettext_noop("Letters and Numbers"), named(0x04..=0x27)),
+        (gettext_noop("Symbols"), named(0x2D..=0x38)),
         (
-            "Editing",
+            gettext_noop("Editing"),
             named(0x28..=0x2C)
                 .into_iter()
-                .chain([(0x00, "None".to_owned())])
+                .chain([(0x00, gettext("None"))])
                 .collect(),
         ),
         (
-            "Function Keys",
+            gettext_noop("Function Keys"),
             named(0x3A..=0x45)
                 .into_iter()
                 .chain(named(0x68..=0x73))
                 .collect(),
         ),
-        ("Navigation", named(0x46..=0x52)),
+        (gettext_noop("Navigation"), named(0x46..=0x52)),
         (
-            "Modifiers",
+            gettext_noop("Modifiers"),
             named(0x39..=0x39)
                 .into_iter()
                 .chain(named(0xE0..=0xE7))
                 .collect(),
         ),
-        ("Media", named(0xA5..=0xBE)),
-        ("Layers", layers),
+        (gettext_noop("Media"), named(0xA5..=0xBE)),
+        (gettext_noop("Layers"), layers),
     ]
 }
 

@@ -1,7 +1,13 @@
-desktop_file = configure_file(
-  input: 'openhub.desktop.in',
+# The app ID goes in first; i18n.merge_file then adds the translations.
+desktop_file = i18n.merge_file(
+  input: configure_file(
+    input: 'openhub.desktop.in',
+    output: app_id + '.desktop.in',
+    configuration: {'APP_ID': app_id},
+  ),
   output: app_id + '.desktop',
-  configuration: {'APP_ID': app_id},
+  type: 'desktop',
+  po_dir: meson.project_source_root() / 'po',
   install: true,
   install_dir: datadir / 'applications',
 )
@@ -15,10 +21,14 @@ configure_file(
   install_dir: datadir / 'glib-2.0/schemas',
 )
 
-metainfo_file = configure_file(
-  input: 'openhub.metainfo.xml.in',
+metainfo_file = i18n.merge_file(
+  input: configure_file(
+    input: 'openhub.metainfo.xml.in',
+    output: app_id + '.metainfo.xml.in',
+    configuration: {'APP_ID': app_id},
+  ),
   output: app_id + '.metainfo.xml',
-  configuration: {'APP_ID': app_id},
+  po_dir: meson.project_source_root() / 'po',
   install: true,
   install_dir: datadir / 'metainfo',
 )

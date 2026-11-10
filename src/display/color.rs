@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use crate::i18n::gettext;
 use gtk::glib::prelude::*;
 use gtk::{gio, glib};
 
@@ -160,7 +161,7 @@ pub async fn import(
     };
     let copied = gio::spawn_blocking(move || copy_profile(&source, &store))
         .await
-        .map_err(|_| glib::Error::new(gio::IOErrorEnum::Failed, "The import stopped"))?
+        .map_err(|_| glib::Error::new(gio::IOErrorEnum::Failed, &gettext("The import stopped")))?
         .map_err(|message| glib::Error::new(gio::IOErrorEnum::InvalidData, &message))?;
     let filename = copied.to_string_lossy().into_owned();
     // Registration happens in the background, within a second here.
@@ -191,7 +192,7 @@ pub async fn import(
     }
     Err(glib::Error::new(
         gio::IOErrorEnum::TimedOut,
-        "The color service didn't pick up the profile",
+        &gettext("The color service didn't pick up the profile"),
     ))
 }
 
@@ -221,21 +222,21 @@ fn copy_profile(source: &Path, store: &Path) -> Result<PathBuf, String> {
             }
         }
     }
-    Err("Too many profiles with this name".into())
+    Err(gettext("Too many profiles with this name"))
 }
 
 /// An ICC header: its size first, `acsp` at byte 36, and the display
 /// class (`mntr`) at byte 12.
 fn check_display_profile(bytes: &[u8]) -> Result<(), String> {
     if bytes.len() < 128 || &bytes[36..40] != b"acsp" {
-        return Err("This isn't an ICC profile".into());
+        return Err(gettext("This isn't an ICC profile"));
     }
     let size = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
     if size != bytes.len() {
-        return Err("This ICC profile is damaged".into());
+        return Err(gettext("This ICC profile is damaged"));
     }
     if &bytes[12..16] != b"mntr" {
-        return Err("This ICC profile isn't for a display".into());
+        return Err(gettext("This ICC profile isn't for a display"));
     }
     Ok(())
 }

@@ -7,9 +7,11 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::device_dialog;
+use crate::i18n::gettext_f;
 use crate::model::{PowerDevice, UsbDevice};
 use crate::upower::{PowerManager, convert};
 use crate::usb::{self, UsbManager};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -51,7 +53,7 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            let filter = gtk::CustomFilter::new(glib::clone!(
+            let filter = gtk::CustomFilter::new(clone!(
                 #[weak]
                 obj,
                 #[upgrade_or]
@@ -62,7 +64,7 @@ mod imp {
                 gtk::FilterListModel::new(Some(self.manager().devices()), Some(filter.clone()));
             self.device_list.bind_model(
                 Some(&model),
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     #[upgrade_or_panic]
@@ -77,7 +79,7 @@ mod imp {
             // and whenever UPower's device list changes.
             PowerManager::shared()
                 .peripherals()
-                .connect_items_changed(glib::clone!(
+                .connect_items_changed(clone!(
                     #[weak]
                     obj,
                     move |_, _, _, _| obj.update_batteries()
@@ -85,7 +87,7 @@ mod imp {
 
             crate::ui::rescan_while_mapped(
                 &*obj,
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     move || obj.rescan()
@@ -160,7 +162,7 @@ impl UsbPage {
     /// to unplug. The row goes away on the next rescan once it powers off.
     fn eject_button(&self, device: &UsbDevice) -> gtk::Button {
         let button = icon_button("media-eject-symbolic", "Eject");
-        button.connect_clicked(glib::clone!(
+        button.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -169,7 +171,7 @@ impl UsbPage {
                 // Flushing and spinning down a hard drive takes seconds; show it's working.
                 button.set_sensitive(false);
                 button.set_child(Some(&gtk::Spinner::builder().spinning(true).build()));
-                glib::spawn_future_local(glib::clone!(
+                glib::spawn_future_local(clone!(
                     #[weak]
                     page,
                     #[weak]
@@ -183,14 +185,15 @@ impl UsbPage {
                             Ok(()) => {
                                 // Powering off removes it from sysfs; drop the row now.
                                 manager.refresh();
-                                page.toast(&format!("{name} can be removed"));
+                                page.toast(&gettext_f("{} can be removed", &[&name]));
                             }
-                            Err(err) if usb::is_busy(&err) => page.toast(&format!(
-                                "{name} is in use. Close any open files on it and try again."
+                            Err(err) if usb::is_busy(&err) => page.toast(&gettext_f(
+                                "{} is in use. Close any open files on it and try again.",
+                                &[&name],
                             )),
                             Err(err) => {
                                 glib::g_warning!("openhub", "Can't eject {}: {err}", device.name());
-                                page.toast(&format!("Couldn't eject {name}"));
+                                page.toast(&gettext_f("Couldn't eject {}", &[&name]));
                             }
                         }
                         button.set_icon_name("media-eject-symbolic");
@@ -213,7 +216,7 @@ impl UsbPage {
 
     /// A row for a device on a root port; replacing its store item rebuilds it.
     fn top_level_row(&self, device: &UsbDevice) -> gtk::Widget {
-        let reshape: Rc<dyn Fn()> = Rc::new(glib::clone!(
+        let reshape: Rc<dyn Fn()> = Rc::new(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -252,7 +255,7 @@ impl UsbPage {
         }
 
         // Follow what's plugged in and the internal-devices switch.
-        let update: Rc<dyn Fn()> = Rc::new(glib::clone!(
+        let update: Rc<dyn Fn()> = Rc::new(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -265,7 +268,7 @@ impl UsbPage {
                 }
             }
         ));
-        let on_items = device.children().connect_items_changed(glib::clone!(
+        let on_items = device.children().connect_items_changed(clone!(
             #[strong]
             update,
             move |_, _, _, _| update()
@@ -276,7 +279,7 @@ impl UsbPage {
             .connect_active_notify(move |_| update());
         // Disconnect both when the row goes away, or they'd outlive it.
         let handlers = RefCell::new(Some((on_items, on_switch)));
-        row.connect_destroy(glib::clone!(
+        row.connect_destroy(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -307,7 +310,7 @@ impl UsbPage {
             .sync_create()
             .build();
         row.add_suffix(&eject);
-        row.connect_activated(glib::clone!(
+        row.connect_activated(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -324,7 +327,7 @@ impl UsbPage {
         let row = adw::ExpanderRow::builder().use_markup(false).build();
         row.add_prefix(&device_icon(device));
         let details = icon_button("help-about-symbolic", "Details");
-        details.connect_clicked(glib::clone!(
+        details.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -335,7 +338,7 @@ impl UsbPage {
 
         let shown: Rc<RefCell<Vec<gtk::Widget>>> = Rc::default();
         self.fill_hub(&row, device, &shown);
-        let rebuild: Rc<dyn Fn()> = Rc::new(glib::clone!(
+        let rebuild: Rc<dyn Fn()> = Rc::new(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -361,7 +364,7 @@ impl UsbPage {
         for child in shown.take() {
             row.remove(&child);
         }
-        let reshape: Rc<dyn Fn()> = Rc::new(glib::clone!(
+        let reshape: Rc<dyn Fn()> = Rc::new(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -425,7 +428,7 @@ fn bind_text(device: &UsbDevice, row: &adw::PreferencesRow, through: Option<&Usb
 /// "Vendor · Connected through USB2.1 Hub · 80% Battery", without the
 /// parts a device doesn't have.
 fn subtitle(vendor: &str, battery: &str, hub: Option<&str>) -> String {
-    let through = hub.map(|hub| format!("Connected through {hub}"));
+    let through = hub.map(|hub| gettext_f("Connected through {}", &[hub]));
     [vendor, through.as_deref().unwrap_or_default(), battery]
         .into_iter()
         .filter(|part| !part.is_empty())

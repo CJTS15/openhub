@@ -6,7 +6,9 @@ use gtk::{gio, glib};
 
 use crate::audio::AudioManager;
 use crate::eq::{self, Settings};
+use crate::i18n::{gettext, gettext_noop, ngettext_f};
 use crate::model::AudioDevice;
+use gtk::glib::clone;
 
 /// An output's or input's details, with the equalizer below for outputs.
 /// Details show the values at the time it opens; EQ changes apply at once
@@ -29,18 +31,18 @@ fn details(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesGrou
     let group = adw::PreferencesGroup::new();
     let default = adw::ActionRow::builder()
         .title(if device.output() {
-            "Default Output"
+            gettext("Default Output")
         } else {
-            "Default Input"
+            gettext("Default Input")
         })
         .build();
     let check = gtk::Image::from_icon_name("object-select-symbolic");
-    check.update_property(&[gtk::accessible::Property::Label("Default")]);
+    check.update_property(&[gtk::accessible::Property::Label(&gettext("Default"))]);
     let set = gtk::Button::builder()
-        .label("Set as Default")
+        .label(gettext("Set as Default"))
         .valign(gtk::Align::Center)
         .build();
-    set.connect_clicked(glib::clone!(
+    set.connect_clicked(clone!(
         #[strong]
         manager,
         #[weak]
@@ -62,21 +64,21 @@ fn details(manager: &AudioManager, device: &AudioDevice) -> adw::PreferencesGrou
 
     let channels = match device.channels() {
         0 => String::new(),
-        1 => "Mono".to_owned(),
-        2 => "Stereo".to_owned(),
-        n => format!("{n} channels"),
+        1 => gettext("Mono"),
+        2 => gettext("Stereo"),
+        n => ngettext_f("{} channel", "{} channels", n, &[&n.to_string()]),
     };
     for (label, value) in [
-        ("Connection", device.connection()),
-        ("Codec", device.codec()),
-        ("Battery", device.battery()),
-        ("Channels", channels),
-        ("Device Name", device.name()),
+        (gettext_noop("Connection"), device.connection()),
+        (gettext_noop("Codec"), device.codec()),
+        (gettext_noop("Battery"), device.battery()),
+        (gettext_noop("Channels"), channels),
+        (gettext_noop("Device Name"), device.name()),
     ] {
         if !value.is_empty() {
             group.add(
                 &adw::ActionRow::builder()
-                    .title(label)
+                    .title(gettext(label))
                     .subtitle(&value)
                     .subtitle_selectable(true)
                     .use_markup(false)
@@ -102,19 +104,23 @@ fn equalizer(
         settings: RefCell::new(manager.eq(device)),
         save_queued: Cell::new(false),
         syncing: Cell::new(false),
-        preset: adw::ComboRow::builder().title("Preset").build(),
+        preset: adw::ComboRow::builder().title(gettext("Preset")).build(),
         preamp: band_scale(),
         bands: std::array::from_fn(|_| band_scale()),
-        graphic: adw::PreferencesGroup::builder().title("Bands").build(),
+        graphic: adw::PreferencesGroup::builder()
+            .title(gettext("Bands"))
+            .build(),
         imported: adw::ActionRow::builder().use_markup(false).build(),
     });
 
     let switch = adw::SwitchRow::builder()
-        .title("Equalizer")
-        .subtitle("Shapes the sound of this output, even when Openhub is closed")
+        .title(gettext("Equalizer"))
+        .subtitle(gettext(
+            "Shapes the sound of this output, even when Openhub is closed",
+        ))
         .active(editor.settings.borrow().enabled)
         .build();
-    switch.connect_active_notify(glib::clone!(
+    switch.connect_active_notify(clone!(
         #[weak]
         editor,
         move |switch| editor.change(|settings| settings.enabled = switch.is_active())
@@ -123,10 +129,11 @@ fn equalizer(
     top.add(&switch);
     page.add(&top);
 
-    let mut names: Vec<&str> = eq::PRESETS.iter().map(|(name, _)| *name).collect();
-    names.push("Custom");
+    let mut names: Vec<String> = eq::PRESETS.iter().map(|(name, _)| gettext(*name)).collect();
+    names.push(gettext("Custom"));
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
     editor.preset.set_model(Some(&gtk::StringList::new(&names)));
-    editor.preset.connect_selected_notify(glib::clone!(
+    editor.preset.connect_selected_notify(clone!(
         #[weak]
         editor,
         move |row| {
@@ -147,32 +154,32 @@ fn equalizer(
     page.add(&editor.graphic);
 
     let autoeq = adw::PreferencesGroup::builder()
-        .title("AutoEQ")
-        .description(
+        .title(gettext("AutoEQ"))
+        .description(gettext(
             "Correct a headphone or IEM with its ParametricEQ.txt file from the AutoEQ project",
-        )
+        ))
         .build();
     let import = gtk::Button::builder()
-        .label("Import…")
+        .label(gettext("Import…"))
         .valign(gtk::Align::Center)
         .build();
-    import.connect_clicked(glib::clone!(
+    import.connect_clicked(clone!(
         #[weak]
         editor,
         move |_| editor.import()
     ));
     let import_row = adw::ActionRow::builder()
-        .title("Import ParametricEQ.txt")
+        .title(gettext("Import ParametricEQ.txt"))
         .build();
     import_row.add_suffix(&import);
     autoeq.add(&import_row);
     let remove = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
-        .tooltip_text("Back to the graphic equalizer")
+        .tooltip_text(gettext("Back to the graphic equalizer"))
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
         .build();
-    remove.connect_clicked(glib::clone!(
+    remove.connect_clicked(clone!(
         #[weak]
         editor,
         move |_| {
@@ -234,7 +241,8 @@ impl Editor {
             .margin_end(6)
             .build();
         let labels =
-            std::iter::once("Pre".to_owned()).chain(eq::GRAPHIC_FREQS.iter().map(|&freq| {
+            // Translators: short for "Preamp", under the equalizer's first slider.
+            std::iter::once(gettext("Pre")).chain(eq::GRAPHIC_FREQS.iter().map(|&freq| {
                 if freq >= 1000.0 {
                     format!("{}k", freq / 1000.0)
                 } else {
@@ -252,11 +260,11 @@ impl Editor {
                     .build(),
             );
             scale.update_property(&[gtk::accessible::Property::Label(&if index == 0 {
-                "Preamp".to_owned()
+                gettext("Preamp")
             } else {
                 format!("{label}Hz")
             })]);
-            scale.connect_value_changed(glib::clone!(
+            scale.connect_value_changed(clone!(
                 #[weak(rename_to = editor)]
                 self,
                 move |scale| {
@@ -303,10 +311,12 @@ impl Editor {
         }
         if !editable {
             self.imported.set_title(&settings.imported);
-            self.imported.set_subtitle(&format!(
-                "{} filters, preamp {:.1} dB",
-                settings.filters.len(),
-                settings.preamp
+            let n = settings.filters.len();
+            self.imported.set_subtitle(&ngettext_f(
+                "{} filter, preamp {} dB",
+                "{} filters, preamp {} dB",
+                n as u32,
+                &[&n.to_string(), &format!("{:.1}", settings.preamp)],
             ));
         }
         drop(settings);
@@ -349,12 +359,12 @@ impl Editor {
 
     fn import(self: &Rc<Self>) {
         let filter = gtk::FileFilter::new();
-        filter.set_name(Some("Text files"));
+        filter.set_name(Some(gettext_noop("Text files")));
         filter.add_mime_type("text/plain");
         let filters = gio::ListStore::new::<gtk::FileFilter>();
         filters.append(&filter);
         let chooser = gtk::FileDialog::builder()
-            .title("Import ParametricEQ.txt")
+            .title(gettext("Import ParametricEQ.txt"))
             .filters(&filters)
             .build();
         let parent = self.dialog.upgrade().and_then(|dialog| dialog.root());
@@ -390,7 +400,12 @@ impl Editor {
 
     fn toast(&self, title: &str) {
         if let Some(dialog) = self.dialog.upgrade() {
-            dialog.add_toast(adw::Toast::builder().title(title).use_markup(false).build());
+            dialog.add_toast(
+                adw::Toast::builder()
+                    .title(gettext(title))
+                    .use_markup(false)
+                    .build(),
+            );
         }
     }
 }

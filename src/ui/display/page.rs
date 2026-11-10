@@ -10,6 +10,8 @@ use super::details_dialog;
 use crate::ddc;
 use crate::display::config::{Draft, Kind, ORIENTATIONS};
 use crate::display::{self, Mode, Monitor, State, color, edid};
+use crate::i18n::{gettext, gettext_f};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -65,7 +67,7 @@ mod imp {
             content.append(&self.page);
             self.page.set_vexpand(true);
             obj.set_child(Some(&content));
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 obj,
                 async move { obj.start().await }
@@ -90,12 +92,13 @@ impl DisplayPage {
     /// Settings, since a wrong one can leave a screen unusable.
     fn build_bar(&self) {
         let imp = self.imp();
-        imp.bar_label.set_label("Apply the new display settings?");
+        imp.bar_label
+            .set_label(&gettext("Apply the new display settings?"));
         imp.bar_label.set_hexpand(true);
         imp.bar_label.set_xalign(0.0);
         imp.bar_label.set_wrap(true);
-        imp.cancel.set_label("Cancel");
-        imp.apply.set_label("Apply");
+        imp.cancel.set_label(&gettext("Cancel"));
+        imp.apply.set_label(&gettext("Apply"));
         imp.apply.add_css_class("suggested-action");
         let bar = gtk::Box::builder()
             .spacing(12)
@@ -108,12 +111,12 @@ impl DisplayPage {
         bar.append(&imp.cancel);
         bar.append(&imp.apply);
         imp.bar.set_child(Some(&bar));
-        imp.cancel.connect_clicked(glib::clone!(
+        imp.cancel.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             move |_| page.cancel()
         ));
-        imp.apply.connect_clicked(glib::clone!(
+        imp.apply.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             move |_| page.apply()
@@ -128,13 +131,13 @@ impl DisplayPage {
         // Mutter signals each layout change; nothing polls.
         let subscription = display::watch(
             &bus,
-            glib::clone!(
+            clone!(
                 #[weak(rename_to = page)]
                 self,
                 #[strong]
                 bus,
                 move || {
-                    glib::spawn_future_local(glib::clone!(
+                    glib::spawn_future_local(clone!(
                         #[weak]
                         page,
                         #[strong]
@@ -148,11 +151,11 @@ impl DisplayPage {
         // Brightness keys and Quick Settings change it too.
         let backlights = display::watch_backlights(
             &bus,
-            glib::clone!(
+            clone!(
                 #[weak(rename_to = page)]
                 self,
                 move || {
-                    glib::spawn_future_local(glib::clone!(
+                    glib::spawn_future_local(clone!(
                         #[weak]
                         page,
                         async move { page.reload_backlights().await }
@@ -165,12 +168,12 @@ impl DisplayPage {
         // which sends a burst of these while a key is held.
         let shell = display::watch_shell_brightness(
             &bus,
-            glib::clone!(
+            clone!(
                 #[weak(rename_to = page)]
                 self,
                 move || {
                     if !page.imp().follow_queued.replace(true) {
-                        glib::idle_add_local_once(glib::clone!(
+                        glib::idle_add_local_once(clone!(
                             #[weak]
                             page,
                             move || {
@@ -214,14 +217,14 @@ impl DisplayPage {
 
     /// A new layout from Mutter: any edits are dropped.
     fn show_state(&self, state: State) {
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             #[strong]
             state,
             async move { page.load_brightness(&state).await }
         ));
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             #[strong]
@@ -233,7 +236,8 @@ impl DisplayPage {
         imp.state.replace(Some(state));
         imp.apply.set_sensitive(true);
         imp.cancel.set_sensitive(true);
-        imp.bar_label.set_label("Apply the new display settings?");
+        imp.bar_label
+            .set_label(&gettext("Apply the new display settings?"));
         self.render();
     }
 
@@ -252,14 +256,15 @@ impl DisplayPage {
         };
         // Never sent with a gap or an overlap; Mutter would refuse it anyway.
         if !draft.valid() {
-            imp.bar_label
-                .set_label("These displays overlap or don't touch. Move them together first.");
+            imp.bar_label.set_label(&gettext(
+                "These displays overlap or don't touch. Move them together first.",
+            ));
             return;
         }
         imp.apply.set_sensitive(false);
         imp.cancel.set_sensitive(false);
-        imp.bar_label.set_label("Applying…");
-        glib::spawn_future_local(glib::clone!(
+        imp.bar_label.set_label(&gettext("Applying…"));
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
@@ -276,7 +281,7 @@ impl DisplayPage {
                     Err(error) => {
                         let imp = page.imp();
                         imp.bar_label
-                            .set_label(&format!("Couldn't apply: {}", error.message()));
+                            .set_label(&gettext_f("Couldn't apply: {}", &[error.message()]));
                         imp.apply.set_sensitive(true);
                         imp.cancel.set_sensitive(true);
                     }
@@ -293,7 +298,7 @@ impl DisplayPage {
             change(draft);
         }
         if !imp.render_queued.replace(true) {
-            glib::idle_add_local_once(glib::clone!(
+            glib::idle_add_local_once(clone!(
                 #[weak(rename_to = page)]
                 self,
                 move || {
@@ -334,8 +339,11 @@ impl DisplayPage {
                 .unwrap_or_default();
             groups.push(
                 adw::PreferencesGroup::builder()
-                    .title("Mirrored Displays")
-                    .description(format!("Every display shows the same picture, at {size}."))
+                    .title(gettext("Mirrored Displays"))
+                    .description(gettext_f(
+                        "Every display shows the same picture, at {}.",
+                        &[&size],
+                    ))
                     .build(),
             );
         } else {
@@ -405,13 +413,13 @@ impl DisplayPage {
         &self,
         change: impl std::future::Future<Output = Result<(), glib::Error>> + 'static,
     ) {
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
                 if let Err(error) = change.await {
                     let alert = adw::AlertDialog::new(
-                        Some("Couldn't Change the Color Profile"),
+                        Some(&gettext("Couldn't Change the Color Profile")),
                         Some(error.message()),
                     );
                     alert.add_response("ok", "OK");
@@ -434,13 +442,13 @@ impl DisplayPage {
         let labels: Vec<&str> = device.profiles.iter().map(|p| p.title.as_str()).collect();
         let row = if labels.is_empty() {
             adw::ComboRow::builder()
-                .title("Color Profile")
-                .model(&gtk::StringList::new(&["None"]))
+                .title(gettext("Color Profile"))
+                .model(&gtk::StringList::new(&[&gettext("None")]))
                 .sensitive(false)
                 .build()
         } else {
             let (path, profiles) = (device.path.clone(), device.profiles.clone());
-            self.combo("Color Profile", &labels, 0, move |page, index| {
+            self.combo(&gettext("Color Profile"), &labels, 0, move |page, index| {
                 if let Some(profile) = profiles.get(index).filter(|_| index > 0) {
                     let (path, profile) = (path.clone(), profile.path.clone());
                     page.change_color(async move {
@@ -453,12 +461,12 @@ impl DisplayPage {
         if let Some(current) = device.profiles.first().filter(|p| !p.from_edid) {
             let remove = gtk::Button::builder()
                 .icon_name("user-trash-symbolic")
-                .tooltip_text("Remove Profile")
+                .tooltip_text(gettext("Remove Profile"))
                 .valign(gtk::Align::Center)
                 .css_classes(["flat"])
                 .build();
             let (path, profile) = (device.path.clone(), current.path.clone());
-            remove.connect_clicked(glib::clone!(
+            remove.connect_clicked(clone!(
                 #[weak(rename_to = page)]
                 self,
                 move |_| {
@@ -473,12 +481,12 @@ impl DisplayPage {
         }
         let import = gtk::Button::builder()
             .icon_name("document-open-symbolic")
-            .tooltip_text("Import ICC Profile…")
+            .tooltip_text(gettext("Import ICC Profile…"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
         let path = device.path.clone();
-        import.connect_clicked(glib::clone!(
+        import.connect_clicked(clone!(
             #[weak(rename_to = page)]
             self,
             move |_| page.import_profile(path.clone())
@@ -486,8 +494,8 @@ impl DisplayPage {
         row.add_suffix(&import);
 
         let calibrate = adw::ActionRow::builder()
-            .title("Calibrate")
-            .subtitle("Opens GNOME Settings")
+            .title(gettext("Calibrate"))
+            .subtitle(gettext("Opens GNOME Settings"))
             .activatable(true)
             .build();
         calibrate.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
@@ -497,20 +505,20 @@ impl DisplayPage {
 
     fn import_profile(&self, device: String) {
         let filter = gtk::FileFilter::new();
-        filter.set_name(Some("ICC Profiles"));
+        filter.set_name(Some(&gettext("ICC Profiles")));
         filter.add_suffix("icc");
         filter.add_suffix("icm");
         let filters = gio::ListStore::new::<gtk::FileFilter>();
         filters.append(&filter);
         let chooser = gtk::FileDialog::builder()
-            .title("Import ICC Profile")
+            .title(gettext("Import ICC Profile"))
             .filters(&filters)
             .build();
         let parent = self.root().and_downcast::<gtk::Window>();
         chooser.open(
             parent.as_ref(),
             gio::Cancellable::NONE,
-            glib::clone!(
+            clone!(
                 #[weak(rename_to = page)]
                 self,
                 move |file| {
@@ -588,10 +596,10 @@ impl DisplayPage {
         slider.set_value(value);
         slider.set_width_request(240);
         slider.set_valign(gtk::Align::Center);
-        slider.update_property(&[gtk::accessible::Property::Label("Brightness")]);
+        slider.update_property(&[gtk::accessible::Property::Label(&gettext("Brightness"))]);
         let c = connector.to_owned();
         // Only the user's moves are sent; updates from elsewhere aren't.
-        slider.connect_change_value(glib::clone!(
+        slider.connect_change_value(clone!(
             #[weak(rename_to = page)]
             self,
             #[upgrade_or]
@@ -607,7 +615,9 @@ impl DisplayPage {
         imp.sliders
             .borrow_mut()
             .insert(connector.to_owned(), slider.clone());
-        let row = adw::ActionRow::builder().title("Brightness").build();
+        let row = adw::ActionRow::builder()
+            .title(gettext("Brightness"))
+            .build();
         row.add_suffix(&slider);
         Some(row)
     }
@@ -624,7 +634,7 @@ impl DisplayPage {
         imp.writing.set(true);
         let mutter = imp.backlights.borrow().clone();
         let bus = imp.bus.borrow().clone();
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
@@ -668,11 +678,11 @@ impl DisplayPage {
         gio::SettingsSchemaSource::default()?.lookup(SCHEMA, true)?;
         let settings = gio::Settings::new(SCHEMA);
         let group = adw::PreferencesGroup::builder()
-            .title("Night Light")
+            .title(gettext("Night Light"))
             .build();
         let enabled = adw::SwitchRow::builder()
-            .title("Night Light")
-            .subtitle("Makes the screen warmer, which can help you sleep")
+            .title(gettext("Night Light"))
+            .subtitle(gettext("Makes the screen warmer, which can help you sleep"))
             .build();
         settings
             .bind("night-light-enabled", &enabled, "active")
@@ -681,21 +691,21 @@ impl DisplayPage {
 
         let automatic = settings.boolean("night-light-schedule-automatic");
         let schedule = adw::ComboRow::builder()
-            .title("Schedule")
+            .title(gettext("Schedule"))
             .model(&gtk::StringList::new(&[
-                "Sunset to Sunrise",
-                "Manual Schedule",
+                &gettext("Sunset to Sunrise"),
+                &gettext("Manual Schedule"),
             ]))
             .selected(u32::from(!automatic))
             .build();
         group.add(&schedule);
-        let from = time_row("From", &settings, "night-light-schedule-from");
-        let to = time_row("To", &settings, "night-light-schedule-to");
+        let from = time_row(&gettext("From"), &settings, "night-light-schedule-from");
+        let to = time_row(&gettext("To"), &settings, "night-light-schedule-to");
         for row in [&from, &to] {
             row.set_visible(!automatic);
             group.add(row);
         }
-        schedule.connect_selected_notify(glib::clone!(
+        schedule.connect_selected_notify(clone!(
             #[strong]
             settings,
             #[weak]
@@ -716,8 +726,10 @@ impl DisplayPage {
         temperature.set_value(f64::from(settings.uint("night-light-temperature")));
         temperature.set_width_request(240);
         temperature.set_valign(gtk::Align::Center);
-        temperature.update_property(&[gtk::accessible::Property::Label("Color Temperature")]);
-        temperature.connect_change_value(glib::clone!(
+        temperature.update_property(&[gtk::accessible::Property::Label(&gettext(
+            "Color Temperature",
+        ))]);
+        temperature.connect_change_value(clone!(
             #[strong]
             settings,
             move |_, _, value| {
@@ -727,8 +739,8 @@ impl DisplayPage {
             }
         ));
         let row = adw::ActionRow::builder()
-            .title("Color Temperature")
-            .subtitle("Warmer to the left")
+            .title(gettext("Color Temperature"))
+            .subtitle(gettext("Warmer to the left"))
             .build();
         row.add_suffix(&temperature);
         group.add(&row);
@@ -750,7 +762,7 @@ impl DisplayPage {
     /// Join, Mirror or a single display, and which one is primary or shown.
     fn mode_group(&self, draft: &Draft, monitors: &[&Monitor]) -> adw::PreferencesGroup {
         let group = adw::PreferencesGroup::builder()
-            .title("Display Mode")
+            .title(gettext("Display Mode"))
             .build();
         let kinds = [Kind::Join, Kind::Mirror, Kind::Single];
         let kind = draft.mode_kind();
@@ -769,8 +781,12 @@ impl DisplayPage {
         let connectors: Vec<String> = monitors.iter().map(|m| m.connector.clone()).collect();
         let first = connectors.first().cloned().unwrap_or_default();
         group.add(&self.combo(
-            "Mode",
-            &["Join Displays", "Mirror", "Single Display"],
+            &gettext("Mode"),
+            &[
+                &gettext("Join Displays"),
+                &gettext("Mirror"),
+                &gettext("Single Display"),
+            ],
             selected,
             move |page, index| match kinds.get(index) {
                 Some(Kind::Join) => page.edit(Draft::join),
@@ -789,13 +805,16 @@ impl DisplayPage {
                     .position(|c| draft.group(c).is_some_and(|g| g.primary))
                     .unwrap_or(0);
                 let c = connectors.clone();
-                group.add(
-                    &self.combo("Primary Display", &labels, primary, move |page, index| {
+                group.add(&self.combo(
+                    &gettext("Primary Display"),
+                    &labels,
+                    primary,
+                    move |page, index| {
                         if let Some(connector) = c.get(index) {
                             page.edit(|d| d.set_primary(connector));
                         }
-                    }),
-                );
+                    },
+                ));
             }
             Kind::Single => {
                 let shown = connectors
@@ -803,11 +822,13 @@ impl DisplayPage {
                     .position(|c| draft.enabled(c))
                     .unwrap_or(0);
                 let c = connectors.clone();
-                group.add(&self.combo("Display", &labels, shown, move |page, index| {
-                    if let Some(connector) = c.get(index) {
-                        page.edit(|d| d.single(connector));
-                    }
-                }));
+                group.add(
+                    &self.combo(&gettext("Display"), &labels, shown, move |page, index| {
+                        if let Some(connector) = c.get(index) {
+                            page.edit(|d| d.single(connector));
+                        }
+                    }),
+                );
             }
             Kind::Mirror => {}
         }
@@ -817,11 +838,13 @@ impl DisplayPage {
     /// The monitors drawn to scale, to drag into place, and Identify.
     fn arrangement_group(&self, draft: &Draft, monitors: &[&Monitor]) -> adw::PreferencesGroup {
         let group = adw::PreferencesGroup::builder()
-            .title("Arrangement")
-            .description("Drag displays to match how they're placed on your desk.")
+            .title(gettext("Arrangement"))
+            .description(gettext(
+                "Drag displays to match how they're placed on your desk.",
+            ))
             .build();
         let identify = gtk::Button::builder()
-            .label("Identify")
+            .label(gettext("Identify"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
@@ -854,7 +877,7 @@ impl DisplayPage {
             .collect();
         let canvas = Canvas::default();
         canvas.set_items(items);
-        canvas.connect_dropped(glib::clone!(
+        canvas.connect_dropped(clone!(
             #[weak(rename_to = page)]
             self,
             move |connector, x, y| {
@@ -885,7 +908,7 @@ impl DisplayPage {
             .description(subtitle(state, monitor))
             .build();
         let details = gtk::Button::builder()
-            .label("Details")
+            .label(gettext("Details"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
@@ -899,11 +922,11 @@ impl DisplayPage {
         let enabled = draft.enabled(&connector);
         if several {
             let row = adw::SwitchRow::builder()
-                .title("Display")
+                .title(gettext("Display"))
                 .active(enabled)
                 .build();
             let c = connector.clone();
-            row.connect_active_notify(glib::clone!(
+            row.connect_active_notify(clone!(
                 #[weak(rename_to = page)]
                 self,
                 move |row| page.edit(|d| d.set_enabled(&c, row.is_active()))
@@ -918,19 +941,26 @@ impl DisplayPage {
         };
 
         // Orientation.
-        let labels: Vec<&str> = ORIENTATIONS.iter().map(|(_, name)| *name).collect();
+        let labels: Vec<String> = ORIENTATIONS
+            .iter()
+            .map(|(_, name)| gettext(*name))
+            .collect();
+        let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
         let selected = ORIENTATIONS
             .iter()
             .position(|(t, _)| *t == placed.transform)
             .unwrap_or(0);
         let c = connector.clone();
-        group.add(
-            &self.combo("Orientation", &labels, selected, move |page, index| {
+        group.add(&self.combo(
+            &gettext("Orientation"),
+            &labels,
+            selected,
+            move |page, index| {
                 if let Some((transform, _)) = ORIENTATIONS.get(index) {
                     page.edit(|d| d.set_transform(&c, *transform));
                 }
-            }),
-        );
+            },
+        ));
 
         // Resolution, then the rates that resolution offers.
         let fixed: Vec<&Mode> = monitor.modes.iter().filter(|m| !m.variable).collect();
@@ -951,8 +981,11 @@ impl DisplayPage {
             fixed.iter().map(|m| (*m).clone()).collect::<Vec<_>>(),
             mode.refresh,
         );
-        group.add(
-            &self.combo("Resolution", &labels, selected, move |page, index| {
+        group.add(&self.combo(
+            &gettext("Resolution"),
+            &labels,
+            selected,
+            move |page, index| {
                 let Some(&(w, h)) = sizes.get(index) else {
                     return;
                 };
@@ -969,8 +1002,8 @@ impl DisplayPage {
                     let id = pick.id.clone();
                     page.edit(|d| d.set_mode(&c, &id));
                 }
-            }),
-        );
+            },
+        ));
         let rates: Vec<Mode> = fixed
             .iter()
             .filter(|m| (m.width, m.height) == (mode.width, mode.height))
@@ -978,7 +1011,7 @@ impl DisplayPage {
             .collect();
         let labels: Vec<String> = rates
             .iter()
-            .map(|m| format!("{} Hz", refresh(m.refresh)))
+            .map(|m| gettext_f("{} Hz", &[&refresh(m.refresh)]))
             .collect();
         let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
         let selected = rates
@@ -986,32 +1019,36 @@ impl DisplayPage {
             .position(|m| (m.refresh - mode.refresh).abs() < 0.01)
             .unwrap_or(0);
         let (c, variable, modes) = (connector.clone(), mode.variable, monitor.modes.clone());
-        group.add(
-            &self.combo("Refresh Rate", &labels, selected, move |page, index| {
+        group.add(&self.combo(
+            &gettext("Refresh Rate"),
+            &labels,
+            selected,
+            move |page, index| {
                 if let Some(base) = rates.get(index) {
                     // Keeps variable refresh on if this rate offers it.
                     let id = variant(&modes, base, variable).unwrap_or(&base.id).clone();
                     page.edit(|d| d.set_mode(&c, &id));
                 }
-            }),
-        );
+            },
+        ));
         if let Some(base) = fixed
             .iter()
             .find(|m| (m.width, m.height, m.refresh) == (mode.width, mode.height, mode.refresh))
         {
             if variant(&monitor.modes, base, true).is_some() {
                 let row = adw::SwitchRow::builder()
-                    .title("Variable Refresh Rate")
+                    .title(gettext("Variable Refresh Rate"))
                     .subtitle(match monitor.min_refresh {
-                        Some(min) => {
-                            format!("Lets the rate drop to {min} Hz to match what's shown")
-                        }
-                        None => "Lets the rate follow what's shown".to_owned(),
+                        Some(min) => gettext_f(
+                            "Lets the rate drop to {} Hz to match what's shown",
+                            &[&min.to_string()],
+                        ),
+                        None => gettext("Lets the rate follow what's shown"),
                     })
                     .active(mode.variable)
                     .build();
                 let (c, base, modes) = (connector.clone(), (*base).clone(), monitor.modes.clone());
-                row.connect_active_notify(glib::clone!(
+                row.connect_active_notify(clone!(
                     #[weak(rename_to = page)]
                     self,
                     move |row| {
@@ -1038,23 +1075,25 @@ impl DisplayPage {
             .position(|s| (s - placed.scale).abs() < 1e-6)
             .unwrap_or(0);
         let (c, scales) = (connector.clone(), mode.scales.clone());
-        group.add(&self.combo("Scale", &labels, selected, move |page, index| {
-            if let Some(scale) = scales.get(index) {
-                let scale = *scale;
-                page.edit(|d| d.set_scale(&c, scale));
-            }
-        }));
+        group.add(
+            &self.combo(&gettext("Scale"), &labels, selected, move |page, index| {
+                if let Some(scale) = scales.get(index) {
+                    let scale = *scale;
+                    page.edit(|d| d.set_scale(&c, scale));
+                }
+            }),
+        );
         if let Some(row) = self.brightness_row(&connector) {
             group.add(&row);
         }
         if let (true, Some(mode)) = (monitor.hdr_supported(), draft.color_mode(&connector)) {
             let row = adw::SwitchRow::builder()
-                .title("HDR")
-                .subtitle("High dynamic range, for content made for it")
+                .title(gettext("HDR"))
+                .subtitle(gettext("High dynamic range, for content made for it"))
                 .active(mode == 2)
                 .build();
             let c = connector.clone();
-            row.connect_active_notify(glib::clone!(
+            row.connect_active_notify(clone!(
                 #[weak(rename_to = page)]
                 self,
                 move |row| page.edit(|d| d.set_color_mode(&c, if row.is_active() { 2 } else { 0 }))
@@ -1081,7 +1120,7 @@ impl DisplayPage {
             .model(&gtk::StringList::new(labels))
             .build();
         row.set_selected(selected as u32);
-        row.connect_selected_notify(glib::clone!(
+        row.connect_selected_notify(clone!(
             #[weak(rename_to = page)]
             self,
             move |row| chosen(&page, row.selected() as usize)
@@ -1093,8 +1132,8 @@ impl DisplayPage {
     fn show_fallback(&self) {
         self.imp().state.replace(None);
         let group = adw::PreferencesGroup::builder()
-            .title("Displays")
-            .description("Display settings can only be changed on GNOME.")
+            .title(gettext("Displays"))
+            .description(gettext("Display settings can only be changed on GNOME."))
             .build();
         for connector in display::connectors() {
             let name = connector
@@ -1104,7 +1143,7 @@ impl DisplayPage {
                 .unwrap_or_else(|| connector.name.clone());
             let row = adw::ActionRow::builder()
                 .title(if connector.builtin() {
-                    "Built-in Display".to_owned()
+                    gettext("Built-in Display")
                 } else {
                     name
                 })
@@ -1121,7 +1160,7 @@ impl DisplayPage {
 /// what Mutter calls it.
 pub fn title(monitor: &Monitor, edid: Option<&edid::Edid>) -> String {
     if monitor.builtin {
-        return "Built-in Display".to_owned();
+        return gettext("Built-in Display");
     }
     edid.and_then(|e| e.name.clone())
         .unwrap_or_else(|| monitor.display_name.clone())
@@ -1133,15 +1172,15 @@ fn subtitle(state: &State, monitor: &Monitor) -> String {
         monitor.current_mode(),
         state.logical_for(&monitor.connector),
     ) else {
-        return "Off".to_owned();
+        return gettext("Off");
     };
     let mut parts = vec![
         format!("{} × {}", mode.width, mode.height),
-        format!("{} Hz", refresh(mode.refresh)),
+        gettext_f("{} Hz", &[&refresh(mode.refresh)]),
         format!("{:.0}%", logical.scale * 100.0),
     ];
     if logical.primary {
-        parts.push("Primary".to_owned());
+        parts.push(gettext("Primary"));
     }
     parts.join(" · ")
 }
@@ -1184,14 +1223,14 @@ fn time_row(title: &str, settings: &gio::Settings, key: &'static str) -> adw::Ac
     let minutes = gtk::SpinButton::with_range(0.0, 59.0, 1.0);
     hours.set_value(value.trunc());
     minutes.set_value(((value.fract() * 60.0).round()).min(59.0));
-    for (spin, label) in [(&hours, "Hours"), (&minutes, "Minutes")] {
+    for (spin, label) in [(&hours, gettext("Hours")), (&minutes, gettext("Minutes"))] {
         spin.set_valign(gtk::Align::Center);
         spin.set_orientation(gtk::Orientation::Vertical);
         spin.update_property(&[gtk::accessible::Property::Label(&format!(
             "{title} {label}"
         ))]);
     }
-    let save = glib::clone!(
+    let save = clone!(
         #[strong]
         settings,
         #[weak]
@@ -1202,7 +1241,7 @@ fn time_row(title: &str, settings: &gio::Settings, key: &'static str) -> adw::Ac
             let _ = settings.set_double(key, hours.value() + minutes.value() / 60.0);
         }
     );
-    hours.connect_value_changed(glib::clone!(
+    hours.connect_value_changed(clone!(
         #[strong]
         save,
         move |_| save()

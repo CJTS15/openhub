@@ -5,6 +5,7 @@
 
 mod saved;
 
+use crate::i18n::gettext;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::os::fd::AsFd;
@@ -136,7 +137,7 @@ impl Device {
             if !wait_readable(&self.file, Duration::from_secs(2))? {
                 return Err(io::Error::new(
                     io::ErrorKind::TimedOut,
-                    "The mouse didn't answer. Move it to wake it up.",
+                    gettext("The mouse didn't answer. Move it to wake it up."),
                 ));
             }
             let mut reply = [0u8; 64];

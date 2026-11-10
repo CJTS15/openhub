@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use gtk::glib::clone;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
@@ -19,7 +20,7 @@ use gtk::{gio, glib};
 pub fn rescan_while_mapped(widget: &impl IsA<gtk::Widget>, rescan: impl Fn() + 'static) {
     let rescan = Rc::new(rescan);
     let timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
-    let start = Rc::new(glib::clone!(
+    let start = Rc::new(clone!(
         #[strong]
         timer,
         move || {
@@ -34,7 +35,7 @@ pub fn rescan_while_mapped(widget: &impl IsA<gtk::Widget>, rescan: impl Fn() + '
             }
         }
     ));
-    widget.connect_map(glib::clone!(
+    widget.connect_map(clone!(
         #[strong]
         start,
         move |_| start()

@@ -1,7 +1,9 @@
 use adw::prelude::*;
 use gtk::glib;
 
+use crate::i18n::{gettext, gettext_noop};
 use crate::model::UsbDevice;
+use gtk::glib::clone;
 
 /// Everything sysfs says about `device`, with copy buttons for the ID and
 /// serial. Shows the values at the time it opens.
@@ -13,25 +15,25 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
         (
             None,
             vec![
-                ("Vendor", device.subtitle(), false),
-                ("ID", device.id(), true),
-                ("Serial Number", device.serial(), true),
+                (gettext_noop("Vendor"), device.subtitle(), false),
+                (gettext_noop("ID"), device.id(), true),
+                (gettext_noop("Serial Number"), device.serial(), true),
             ],
         ),
         (
-            Some("Connection"),
+            Some(gettext_noop("Connection")),
             vec![
-                ("Speed", device.speed(), false),
-                ("USB Version", device.version(), false),
-                ("Port", device.name(), false),
-                ("Maximum Power", device.max_power(), false),
+                (gettext_noop("Speed"), device.speed(), false),
+                (gettext_noop("USB Version"), device.version(), false),
+                (gettext_noop("Port"), device.name(), false),
+                (gettext_noop("Maximum Power"), device.max_power(), false),
             ],
         ),
         (
-            Some("Function"),
+            Some(gettext_noop("Function")),
             vec![
-                ("Class", device.class_name(), false),
-                ("Driver", device.driver(), false),
+                (gettext_noop("Class"), device.class_name(), false),
+                (gettext_noop("Driver"), device.driver(), false),
             ],
         ),
     ];
@@ -39,9 +41,9 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
     let batteries = device
         .batteries()
         .into_iter()
-        .map(|line| ("Battery", line, false))
+        .map(|line| (gettext_noop("Battery"), line, false))
         .collect();
-    groups.insert(1, (Some("Battery"), batteries));
+    groups.insert(1, (Some(gettext_noop("Battery")), batteries));
     let page = adw::PreferencesPage::new();
     let mut identity = None;
     for (title, rows) in groups {
@@ -50,7 +52,7 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
             identity = Some(group.clone());
         }
         if let Some(title) = title {
-            group.set_title(title);
+            group.set_title(&gettext(title));
         }
         let mut empty = true;
         for (label, value, copy) in rows {
@@ -67,7 +69,7 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
     // The firmware version, where fwupd knows this device.
     if let Some(identity) = identity {
         let id = device.id();
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak]
             dialog,
             async move {
@@ -79,7 +81,12 @@ pub fn new(device: &UsbDevice) -> adw::PreferencesDialog {
                     .iter()
                     .find(|d| d.matches_usb(&id) && !d.version.is_empty())
                 {
-                    identity.add(&property_row(&dialog, "Firmware", &found.version, false));
+                    identity.add(&property_row(
+                        &dialog,
+                        gettext_noop("Firmware"),
+                        &found.version,
+                        false,
+                    ));
                 }
             }
         ));
@@ -94,7 +101,7 @@ fn property_row(
     copy: bool,
 ) -> adw::ActionRow {
     let row = adw::ActionRow::builder()
-        .title(label)
+        .title(gettext(label))
         .subtitle(value)
         .subtitle_selectable(true)
         .use_markup(false)
@@ -103,17 +110,17 @@ fn property_row(
     if copy {
         let button = gtk::Button::builder()
             .icon_name("edit-copy-symbolic")
-            .tooltip_text("Copy")
+            .tooltip_text(gettext("Copy"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
         let value = value.to_owned();
-        button.connect_clicked(glib::clone!(
+        button.connect_clicked(clone!(
             #[weak]
             dialog,
             move |button| {
                 button.clipboard().set_text(&value);
-                dialog.add_toast(adw::Toast::new("Copied"));
+                dialog.add_toast(adw::Toast::new(&gettext("Copied")));
             }
         ));
         row.add_suffix(&button);

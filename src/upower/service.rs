@@ -14,8 +14,10 @@ use zbus::zvariant::OwnedObjectPath;
 
 use super::convert::{self, kind};
 use super::proxies::{DeviceProxy, UPowerProxy};
+use crate::i18n::gettext;
 use crate::model::PowerDevice;
 use crate::watch::{ticks, watch};
+use gtk::glib::clone;
 
 /// A cached property, or its default when UPower doesn't report it (as
 /// python-dbusmock and older UPower versions don't for many).
@@ -192,7 +194,7 @@ impl PowerManager {
             .await?;
         let mut owner_changes = upower.inner().receive_owner_changed().await?;
         loop {
-            let session = glib::spawn_future_local(glib::clone!(
+            let session = glib::spawn_future_local(clone!(
                 #[strong(rename_to = this)]
                 self,
                 #[strong]
@@ -409,7 +411,7 @@ impl PowerManager {
             )
             .property("bluez", native_path.starts_with("/org/bluez/"))
             .property("icon-name", convert::kind_icon(kind))
-            .property("connection", connection)
+            .property("connection", &connection)
             .property(
                 "usb-device",
                 sysfs
@@ -421,7 +423,7 @@ impl PowerManager {
         let manager = self.downgrade();
         let watcher = watch(
             changes,
-            glib::clone!(
+            clone!(
                 #[strong]
                 device,
                 move || {
@@ -463,7 +465,11 @@ impl PowerManager {
                     let subtitle = match (kind, power_supply) {
                         (kind::LINE_POWER, _) => {
                             let online = proxy.cached_online().ok().flatten().unwrap_or_default();
-                            (if online { "Connected" } else { "Not connected" }).to_owned()
+                            if online {
+                                gettext("Connected")
+                            } else {
+                                gettext("Not connected")
+                            }
                         }
                         (_, true) if !state.is_empty() => format!("{level} · {state}"),
                         (_, true) => level,

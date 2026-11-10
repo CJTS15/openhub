@@ -22,6 +22,7 @@ use super::agent::{self, Agent, PairingRequest};
 use super::proxies::{Adapter1Proxy, AgentManager1Proxy, Battery1Proxy, Device1Proxy};
 use crate::model::{Adapter, Device};
 use crate::watch::{ticks, watch};
+use gtk::glib::clone;
 
 const ADAPTER: &str = "org.bluez.Adapter1";
 const DEVICE: &str = "org.bluez.Device1";
@@ -336,7 +337,7 @@ impl BluetoothManager {
             .await?;
         let mut owner_changes = object_manager.inner().receive_owner_changed().await?;
         loop {
-            let session = glib::spawn_future_local(glib::clone!(
+            let session = glib::spawn_future_local(clone!(
                 #[strong(rename_to = this)]
                 self,
                 #[strong]

@@ -1,7 +1,9 @@
 use adw::prelude::*;
 use gtk::glib;
 
+use crate::i18n::{gettext, gettext_f};
 use crate::ratbag::{self, Action, Changes, Mouse, SPECIALS};
+use gtk::glib::clone;
 
 /// A ratbagd mouse's DPI steps, report rate and buttons in the active
 /// profile. Changes wait for Apply, then ratbagd writes them to the mouse.
@@ -12,7 +14,7 @@ pub fn fill(
     mouse: Mouse,
 ) {
     let speed = adw::PreferencesGroup::builder()
-        .title("Pointer Speed")
+        .title(gettext("Pointer Speed"))
         .build();
     let steps: Vec<adw::SpinRow> = mouse
         .resolutions
@@ -29,12 +31,15 @@ pub fn fill(
             row.set_title(&if mouse.resolutions.len() == 1 {
                 "DPI".to_owned()
             } else {
-                format!("DPI Step {}", index + 1)
+                gettext_f("DPI Step {}", &[&(index + 1).to_string()])
             });
-            let marks: Vec<&str> = [(step.active, "In use"), (step.default, "Default")]
-                .into_iter()
-                .filter_map(|(on, label)| on.then_some(label))
-                .collect();
+            let marks: Vec<String> = [
+                (step.active, gettext("In use")),
+                (step.default, gettext("Default")),
+            ]
+            .into_iter()
+            .filter_map(|(on, label)| on.then_some(label))
+            .collect();
             row.set_subtitle(&marks.join(" · "));
             row.set_value(step.dpi.into());
             speed.add(&row);
@@ -42,11 +47,14 @@ pub fn fill(
         })
         .collect();
     let rate = mouse.report_rate.as_ref().map(|(current, rates)| {
-        let labels: Vec<String> = rates.iter().map(|rate| format!("{rate} Hz")).collect();
+        let labels: Vec<String> = rates
+            .iter()
+            .map(|rate| gettext_f("{} Hz", &[&rate.to_string()]))
+            .collect();
         let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
         let row = adw::ComboRow::builder()
-            .title("Report Rate")
-            .subtitle("How often the mouse reports its movement")
+            .title(gettext("Report Rate"))
+            .subtitle(gettext("How often the mouse reports its movement"))
             .model(&gtk::StringList::new(&labels))
             .build();
         row.set_selected(rates.iter().position(|r| r == current).unwrap_or(0) as u32);
@@ -55,7 +63,9 @@ pub fn fill(
     });
     page.add(&speed);
 
-    let buttons_group = adw::PreferencesGroup::builder().title("Buttons").build();
+    let buttons_group = adw::PreferencesGroup::builder()
+        .title(gettext("Buttons"))
+        .build();
     let count = mouse.buttons.len() as u32;
     let buttons: Vec<(adw::ComboRow, Vec<Action>)> = mouse
         .buttons
@@ -77,7 +87,7 @@ pub fn fill(
             let labels: Vec<String> = choices.iter().map(|a| a.label()).collect();
             let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
             let row = adw::ComboRow::builder()
-                .title(format!("Button {}", button.index + 1))
+                .title(gettext_f("Button {}", &[&(button.index + 1).to_string()]))
                 .model(&gtk::StringList::new(&labels))
                 .build();
             row.set_selected(
@@ -88,7 +98,7 @@ pub fn fill(
             );
             // Keys and macros need an editor Openhub doesn't have.
             if button.action == Action::Other {
-                row.set_subtitle("A key or macro; change it in Piper");
+                row.set_subtitle(&gettext("A key or macro; change it in Piper"));
                 row.set_sensitive(false);
             }
             buttons_group.add(&row);
@@ -100,11 +110,11 @@ pub fn fill(
     }
 
     let apply = gtk::Button::builder()
-        .label("Apply")
+        .label(gettext("Apply"))
         .halign(gtk::Align::Center)
         .css_classes(["pill", "suggested-action"])
         .build();
-    apply.connect_clicked(glib::clone!(
+    apply.connect_clicked(clone!(
         #[weak]
         dialog,
         move |button| {
@@ -133,7 +143,7 @@ pub fn fill(
             }
             button.set_sensitive(false);
             let (conn, mouse) = (conn.clone(), mouse.clone());
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 dialog,
                 #[weak]
@@ -142,8 +152,10 @@ pub fn fill(
                     let result = ratbag::apply(&conn, &mouse, &changes).await;
                     button.set_sensitive(true);
                     let title = match result {
-                        Ok(()) => "Applied".to_owned(),
-                        Err(error) => format!("ratbagd refused the change: {error}"),
+                        Ok(()) => gettext("Applied"),
+                        Err(error) => {
+                            gettext_f("ratbagd refused the change: {}", &[&error.to_string()])
+                        }
                     };
                     dialog.add_toast(
                         adw::Toast::builder()

@@ -24,6 +24,9 @@ mod imp {
         pub content_page: TemplateChild<adw::NavigationPage>,
         #[template_child]
         pub category_stack: TemplateChild<gtk::Stack>,
+        /// Window size and the last page; `None` when the schema isn't
+        /// installed, as with `cargo run`.
+        pub settings: std::cell::OnceCell<Option<gio::Settings>>,
     }
 
     #[glib::object_subclass]
@@ -49,6 +52,18 @@ mod imp {
         }
     }
 
+    impl OpenhubWindow {
+        pub(super) fn settings(&self) -> Option<&gio::Settings> {
+            self.settings
+                .get_or_init(|| {
+                    gio::SettingsSchemaSource::default()?
+                        .lookup(crate::config::APP_ID, true)
+                        .map(|_| gio::Settings::new(crate::config::APP_ID))
+                })
+                .as_ref()
+        }
+    }
+
     #[gtk::template_callbacks]
     impl OpenhubWindow {
         #[template_callback]
@@ -62,6 +77,9 @@ mod imp {
             }
             // On narrow windows only one pane is visible; move to the content.
             self.split_view.set_show_content(true);
+            if let Some(settings) = self.settings() {
+                let _ = settings.set_string("last-page", &row.widget_name());
+            }
         }
     }
 
@@ -70,6 +88,17 @@ mod imp {
             self.parent_constructed();
             if let Some(row) = self.categories.row_at_index(0) {
                 self.categories.select_row(Some(&row));
+            }
+            if let Some(settings) = self.settings() {
+                let window = self.obj();
+                for (key, property) in [
+                    ("window-width", "default-width"),
+                    ("window-height", "default-height"),
+                    ("window-maximized", "maximized"),
+                ] {
+                    settings.bind(key, &*window, property).build();
+                }
+                window.show_category(&settings.string("last-page"));
             }
         }
     }

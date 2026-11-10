@@ -1,11 +1,11 @@
 {
   "id": "io.github.cjts15.Openhub",
   "runtime": "org.gnome.Platform",
-  "runtime-version": "50",
+  "runtime-version": "51",
   "sdk": "org.gnome.Sdk",
   "sdk-extensions": [
     "org.freedesktop.Sdk.Extension.rust-stable",
-    "org.freedesktop.Sdk.Extension.llvm21"
+    "org.freedesktop.Sdk.Extension.llvm22"
   ],
   "command": "openhub",
   "finish-args": [
@@ -39,11 +39,11 @@
     "--system-talk-name=org.freedesktop.UPower"
   ],
   "build-options": {
-    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm21/bin",
+    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm22/bin",
     "build-args": ["--share=network"],
     "env": {
       "RUST_BACKTRACE": "1",
-      "LIBCLANG_PATH": "/usr/lib/sdk/llvm21/lib"
+      "LIBCLANG_PATH": "/usr/lib/sdk/llvm22/lib"
     }
   },
   "cleanup": ["/include", "/lib/pkgconfig", "/share/doc", "*.la", "*.a"],

@@ -74,10 +74,10 @@ If blueman-applet is running, Openhub turns off its connection notifications, wh
 
 ### Flatpak (recommended)
 
-Requires `flatpak-builder` (from your distribution, or `flatpak install flathub org.flatpak.Builder` and run it as `flatpak run org.flatpak.Builder`) and the GNOME 50 SDK with the Rust extension:
+Requires `flatpak-builder` (from your distribution, or `flatpak install flathub org.flatpak.Builder` and run it as `flatpak run org.flatpak.Builder`) and the GNOME 51 SDK with the Rust and LLVM extensions:
 
 ```sh
-flatpak install flathub org.gnome.Sdk//50 org.gnome.Platform//50 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.freedesktop.Sdk.Extension.llvm21//25.08
+flatpak install flathub org.gnome.Sdk//51 org.gnome.Platform//51 org.freedesktop.Sdk.Extension.rust-stable//26.08 org.freedesktop.Sdk.Extension.llvm22//26.08
 flatpak-builder --user --install --force-clean _flatpak build-aux/io.github.cjts15.Openhub.json
 flatpak run io.github.cjts15.Openhub
 ```

@@ -81,6 +81,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="1.1.1" date="2026-11-10">
+      <description>
+        <p>A new look for the GNOME Shell extension's menu:</p>
+        <ul>
+          <li>A header with a settings button that opens Openhub, and a Bluetooth card</li>
+          <li>Batteries and Sound Output are sections that collapse and expand smoothly</li>
+          <li>Each battery shows its icon, level and a bar; the current sound output has a radio mark</li>
+          <li>Colours follow the shell theme, including custom themes, and stay readable over a blurred menu</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-11-05">
       <description>
         <p>Adds an optional GNOME Shell extension, with Openhub's icon in the top bar:</p>

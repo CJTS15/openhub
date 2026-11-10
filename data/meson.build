@@ -6,6 +6,15 @@ desktop_file = configure_file(
   install_dir: datadir / 'applications',
 )
 
+# Window size and the last page; compiled by gnome.post_install.
+configure_file(
+  input: 'openhub.gschema.xml.in',
+  output: app_id + '.gschema.xml',
+  configuration: {'APP_ID': app_id},
+  install: true,
+  install_dir: datadir / 'glib-2.0/schemas',
+)
+
 metainfo_file = configure_file(
   input: 'openhub.metainfo.xml.in',
   output: app_id + '.metainfo.xml',
@@ -58,5 +67,14 @@ if appstreamcli.found()
     'validate-metainfo',
     appstreamcli,
     args: ['validate', '--no-net', '--explain', metainfo_file],
+  )
+endif
+
+glib_compile_schemas = find_program('glib-compile-schemas', required: false)
+if glib_compile_schemas.found()
+  test(
+    'validate-schema',
+    glib_compile_schemas,
+    args: ['--strict', '--dry-run', meson.current_build_dir()],
   )
 endif

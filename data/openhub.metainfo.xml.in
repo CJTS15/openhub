@@ -71,6 +71,13 @@
   </screenshots>
   <url type="homepage">https://github.com/CJTS15/openhub</url>
   <url type="bugtracker">https://github.com/CJTS15/openhub/issues</url>
+  <url type="vcs-browser">https://github.com/CJTS15/openhub</url>
+  <!-- From the app icon's Catppuccin Macchiato palette: its light text
+       colour behind the dark icon, and the icon's own base in dark mode. -->
+  <branding>
+    <color type="primary" scheme_preference="light">#cad3f5</color>
+    <color type="primary" scheme_preference="dark">#24273a</color>
+  </branding>
   <content_rating type="oars-1.1"/>
   <requires>
     <display_length compare="ge">360</display_length>

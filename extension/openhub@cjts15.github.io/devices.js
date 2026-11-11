@@ -55,15 +55,3 @@ export function batteries(devices) {
     }
     return rows.sort((a, b) => a.percentage - b.percentage || a.name.localeCompare(b.name));
 }
-
-/**
- * The Bluetooth row's text.
- *
- * @param {number} connected the number of connected devices
- * @returns {string} the label
- */
-export function bluetoothLabel(connected) {
-    if (connected === 0)
-        return 'No devices connected';
-    return connected === 1 ? '1 device connected' : `${connected} devices connected`;
-}

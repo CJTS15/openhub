@@ -2,7 +2,7 @@
 //
 // Run with: gjs -m extension/tests/devices.test.js
 
-import {batteries, bluetoothLabel} from '../openhub@cjts15.github.io/devices.js';
+import {batteries} from '../openhub@cjts15.github.io/devices.js';
 
 /**
  * @param {unknown} actual the value under test
@@ -38,8 +38,5 @@ equal(rows, [
 equal(batteries([device(99, '', '', 40)]),
     [{name: 'Device', icon: 'battery-symbolic', percentage: 40, low: false}], 'unknown type');
 
-equal(bluetoothLabel(0), 'No devices connected', 'none');
-equal(bluetoothLabel(1), '1 device connected', 'one');
-equal(bluetoothLabel(3), '3 devices connected', 'several');
 
 print('devices.test.js: ok');

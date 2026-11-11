@@ -8,7 +8,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-[v1.1.1](https://github.com/CJTS15/openhub/releases/tag/v1.1.1) is the latest release.
+[v1.2.0](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) is the latest release.
 
 - **System** (since v1.0.0): the page Openhub opens on. Connected Devices shows a card for each page with what's connected there, one count of every device, and low batteries; About lists the model, processor, memory, graphics, disk, firmware, OS, desktop and kernel, with Copy Details; Device Firmware lists firmware fwupd can update, with release notes and a link to GNOME Software; and rows open GNOME Settings' device name, region, date and time, users and remote access pages.
 - **GNOME Shell extension** (since v1.1.0): an icon in the top bar with a menu of every peripheral's battery, the connected Bluetooth devices and the sound outputs; rows open Openhub on that page. It works without Openhub running, and is turned on and off from the System page. See [Top-bar extension](#top-bar-extension).
@@ -22,17 +22,31 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download `openhub-1.1.1-x86_64.flatpak` from the [v1.1.1 release](https://github.com/CJTS15/openhub/releases/tag/v1.1.1). It needs the GNOME 50 runtime from Flathub:
+Download these three files from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) into one folder:
+
+- `openhub-1.2.0-x86_64.flatpak`
+- `openhub@cjts15.github.io.shell-extension.zip`
+- `install.sh`
+
+Then run the script from that folder:
 
 ```sh
-flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-1.1.1-x86_64.flatpak
+sh install.sh
+```
+
+It installs the GNOME 51 runtime from Flathub and Openhub, then asks whether to install the top-bar extension too. Everything goes into your user installation, without `sudo`. Log out and back in once if you added the extension.
+
+To install the Flatpak by hand instead:
+
+```sh
+flatpak install --user flathub org.gnome.Platform//51
+flatpak install --user openhub-1.2.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 
 ### Top-bar extension
 
-The extension isn't on extensions.gnome.org. Download `openhub@cjts15.github.io.shell-extension.zip` from the same release and install it from that folder:
+The extension isn't on extensions.gnome.org. `install.sh` offers to install it. To install it by hand, download `openhub@cjts15.github.io.shell-extension.zip` from the same release and install it from that folder:
 
 ```sh
 gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip
@@ -82,7 +96,11 @@ flatpak-builder --user --install --force-clean _flatpak build-aux/io.github.cjts
 flatpak run io.github.cjts15.Openhub
 ```
 
-The manifest currently lets the build fetch crates over the network. Offline vendored sources are added before a Flathub submission.
+The build is offline: the crates come from `build-aux/cargo-sources.json`. Regenerate it whenever `Cargo.lock` changes, with [flatpak-cargo-generator](https://github.com/flatpak/flatpak-builder-tools/tree/master/cargo) (it needs Python's `aiohttp` and `tomlkit`):
+
+```sh
+python3 flatpak-cargo-generator.py Cargo.lock -o build-aux/cargo-sources.json
+```
 
 ### Native (Meson)
 
@@ -104,6 +122,8 @@ Openhub is translatable, but has no translations yet. To start one:
 1. Refresh the template, `po/openhub.pot`, with `meson compile -C _build openhub-pot`. This needs gettext 0.24 or newer, which reads Rust.
 2. Copy it to `po/<language>.po` (such as `po/de.po`) and translate it, for example with GNOME's Translation Editor.
 3. Add the language code to `po/LINGUAS`.
+
+The GNOME Shell extension shares the template: its `extension.js` uses `_()` and `ngettext()`.
 
 In the code, text goes through `gettext()`, or `gettext_f()` and `ngettext_f()` for messages with values, which use `{}` placeholders filled in order (`src/i18n.rs`). Call `clone!` unqualified: xgettext doesn't look inside `glib::clone!(…)`.
 

@@ -11,7 +11,9 @@ The icon turns into a low-battery icon while any device is below 20%.
 
 It works on its own, without Openhub running. It reads UPower, BlueZ and the sound server the same way GNOME Shell does, and only opens Openhub when you click a row. While Openhub runs, the menu also lists the batteries only Openhub reads (Razer mice, some 2.4 GHz dongles), from Openhub's `GetBatteries` D-Bus call.
 
-Supported: GNOME 46 to 51. The accent (the Bluetooth icon, the selected output, the level bars) comes from the shell theme, so it follows GNOME's accent colour and custom shell themes such as Recoolor's.
+Supported: GNOME 46 to 51. The accent (the Bluetooth icon, the selected output, the level bars) and the low-battery warning colour come from the shell theme, so they follow GNOME's accent colour, high contrast and custom shell themes such as Recoolor's.
+
+Its text is translated with Openhub's translations (gettext domain `openhub`), so it shows in your language when Openhub is installed natively or by a distribution.
 
 ## Install
 
@@ -43,13 +45,14 @@ This opens a separate GNOME Shell in a window (GNOME 49 and later). Installed ex
 
 ```sh
 gjs -m extension/tests/devices.test.js
+npx --yes eslint@10.13.0 -c extension/eslint.config.js extension
 ```
 
 ## Files
 
 - `extension.js`: the top-bar icon and its menu
-- `devices.js`: the menu's rules (which batteries to list, the labels), without GNOME Shell imports, so they can be tested with `gjs`
-- `stylesheet.css`: the level bars and the warning colour
+- `devices.js`: the menu's rules (which batteries to list, in what order, which are low), without GNOME Shell imports, so they can be tested with `gjs`
+- `stylesheet.css`: the menu's layout, with fallback colours for themes that don't set them
 - `icons/openhub-symbolic.svg`: the top-bar icon
 
 The extension doesn't import anything from Openhub. It calls Openhub's `app.show-page` action over D-Bus, so this folder can move to its own repository.

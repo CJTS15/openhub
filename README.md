@@ -34,13 +34,13 @@ Then run the script from that folder:
 sh install.sh
 ```
 
-It installs the GNOME 51 runtime from Flathub and Openhub, then asks whether to install the top-bar extension too. Everything goes into your user installation, without `sudo`. Log out and back in once if you added the extension.
+It installs the GNOME 51 runtime from Flathub and Openhub into the system installation (Flatpak may ask for your password), replacing an earlier version, then asks whether to install the top-bar extension too. Log out and back in once if you added the extension.
 
 To install the Flatpak by hand instead:
 
 ```sh
-flatpak install --user flathub org.gnome.Platform//51
-flatpak install --user openhub-1.2.0-x86_64.flatpak
+flatpak install flathub org.gnome.Platform//51
+flatpak install openhub-1.2.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 

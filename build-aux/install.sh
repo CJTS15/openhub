@@ -5,8 +5,9 @@
 # openhub@cjts15.github.io.shell-extension.zip, then run: sh install.sh
 #
 # Flatpak bundles can't run anything when installed, so this script does
-# what would otherwise be done by hand. Everything goes into your user
-# installation; nothing needs sudo.
+# what would otherwise be done by hand. Openhub goes into the system
+# installation, like apps from GNOME Software; Flatpak may ask for your
+# password. The extension is installed for you only.
 set -eu
 
 APP_ID=io.github.cjts15.Openhub
@@ -25,11 +26,14 @@ if [ -z "$bundle" ]; then
 fi
 
 echo "Installing the GNOME 51 runtime from Flathub…"
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user --noninteractive flathub org.gnome.Platform//51
+flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --system -y --or-update flathub org.gnome.Platform//51
 
 echo "Installing $(basename "$bundle")…"
-flatpak install --user --noninteractive --bundle "$bundle"
+# --reinstall replaces an earlier version; your settings and data stay.
+# -y, not --noninteractive: installing a bundle system-wide needs polkit to
+# ask for your password, which --noninteractive forbids.
+flatpak install --system -y --reinstall --bundle "$bundle"
 
 zip="$DIR/$UUID.shell-extension.zip"
 if [ -f "$zip" ] && command -v gnome-extensions >/dev/null 2>&1; then

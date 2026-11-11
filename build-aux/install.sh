@@ -26,14 +26,19 @@ if [ -z "$bundle" ]; then
 fi
 
 echo "Installing the GNOME 51 runtime from Flathub…"
-flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --system -y --or-update flathub org.gnome.Platform//51
+# Only when missing: on an existing remote, remote-add --if-not-exists
+# removes its filter, which would turn Fedora's filtered Flathub into the
+# full one.
+if ! flatpak remotes --system --columns=name | grep -qx flathub; then
+    flatpak remote-add --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+fi
+# No -y below: it also turns off polkit's password prompt, so installing
+# a bundle system-wide would be refused. Flatpak asks to confirm instead.
+flatpak install --system --or-update flathub org.gnome.Platform//51
 
 echo "Installing $(basename "$bundle")…"
 # --reinstall replaces an earlier version; your settings and data stay.
-# -y, not --noninteractive: installing a bundle system-wide needs polkit to
-# ask for your password, which --noninteractive forbids.
-flatpak install --system -y --reinstall --bundle "$bundle"
+flatpak install --system --reinstall --bundle "$bundle"
 
 zip="$DIR/$UUID.shell-extension.zip"
 if [ -f "$zip" ] && command -v gnome-extensions >/dev/null 2>&1; then

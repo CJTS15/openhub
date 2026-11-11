@@ -40,9 +40,9 @@
   ],
   "build-options": {
     "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm22/bin",
-    "build-args": ["--share=network"],
     "env": {
       "RUST_BACKTRACE": "1",
+      "CARGO_NET_OFFLINE": "true",
       "LIBCLANG_PATH": "/usr/lib/sdk/llvm22/lib"
     }
   },
@@ -87,6 +87,14 @@
           "type": "dir",
           "path": "..",
           "skip": ["target", "_build", "_flatpak", ".flatpak-builder", "repo"]
+        },
+        "cargo-sources.json",
+        {
+          "type": "shell",
+          "commands": [
+            "mkdir -p .cargo",
+            "cp cargo/config .cargo/config.toml"
+          ]
         }
       ]
     }

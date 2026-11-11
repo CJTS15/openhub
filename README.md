@@ -82,7 +82,11 @@ flatpak-builder --user --install --force-clean _flatpak build-aux/io.github.cjts
 flatpak run io.github.cjts15.Openhub
 ```
 
-The manifest currently lets the build fetch crates over the network. Offline vendored sources are added before a Flathub submission.
+The build is offline: the crates come from `build-aux/cargo-sources.json`. Regenerate it whenever `Cargo.lock` changes, with [flatpak-cargo-generator](https://github.com/flatpak/flatpak-builder-tools/tree/master/cargo) (it needs Python's `aiohttp` and `tomlkit`):
+
+```sh
+python3 flatpak-cargo-generator.py Cargo.lock -o build-aux/cargo-sources.json
+```
 
 ### Native (Meson)
 

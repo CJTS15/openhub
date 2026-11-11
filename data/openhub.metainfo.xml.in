@@ -88,6 +88,19 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="1.2.0" date="2026-11-11">
+      <description>
+        <p>Foundations for what comes next:</p>
+        <ul>
+          <li>Built on the GNOME 51 platform</li>
+          <li>Openhub remembers its window size and the page it was on</li>
+          <li>A Keyboard Shortcuts window, from the main menu or Ctrl+?</li>
+          <li>Openhub and its GNOME Shell extension can now be translated</li>
+          <li>The extension's low-battery warning follows the shell theme's colour, including high contrast</li>
+          <li>The extension now supports GNOME 51 only</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.1" date="2026-11-10">
       <description>
         <p>A new look for the GNOME Shell extension's menu:</p>

@@ -8,7 +8,7 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Status
 
-[v1.1.1](https://github.com/CJTS15/openhub/releases/tag/v1.1.1) is the latest release.
+[v1.2.0](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) is the latest release.
 
 - **System** (since v1.0.0): the page Openhub opens on. Connected Devices shows a card for each page with what's connected there, one count of every device, and low batteries; About lists the model, processor, memory, graphics, disk, firmware, OS, desktop and kernel, with Copy Details; Device Firmware lists firmware fwupd can update, with release notes and a link to GNOME Software; and rows open GNOME Settings' device name, region, date and time, users and remote access pages.
 - **GNOME Shell extension** (since v1.1.0): an icon in the top bar with a menu of every peripheral's battery, the connected Bluetooth devices and the sound outputs; rows open Openhub on that page. It works without Openhub running, and is turned on and off from the System page. See [Top-bar extension](#top-bar-extension).
@@ -22,11 +22,11 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download `openhub-1.1.1-x86_64.flatpak` from the [v1.1.1 release](https://github.com/CJTS15/openhub/releases/tag/v1.1.1). It needs the GNOME 50 runtime from Flathub:
+Download `openhub-1.2.0-x86_64.flatpak` from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0). It needs the GNOME 51 runtime from Flathub:
 
 ```sh
-flatpak install --user flathub org.gnome.Platform//50
-flatpak install --user openhub-1.1.1-x86_64.flatpak
+flatpak install --user flathub org.gnome.Platform//51
+flatpak install --user openhub-1.2.0-x86_64.flatpak
 flatpak run io.github.cjts15.Openhub
 ```
 

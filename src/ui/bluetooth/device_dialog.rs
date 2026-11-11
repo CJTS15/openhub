@@ -2,7 +2,9 @@ use adw::prelude::*;
 use gtk::glib;
 
 use crate::bluez::BluetoothManager;
+use crate::i18n::{gettext, gettext_f};
 use crate::model::Device;
+use gtk::glib::clone;
 
 /// Details for a paired device: address, battery, trust and block, Forget.
 // ponytail: stays open if the device is forgotten elsewhere; close it on removal if that bites.
@@ -15,13 +17,13 @@ pub fn new(manager: &BluetoothManager, device: &Device) -> adw::PreferencesDialo
 
     let info = adw::PreferencesGroup::new();
     let address = adw::ActionRow::builder()
-        .title("Address")
+        .title(gettext("Address"))
         .subtitle(device.address())
         .subtitle_selectable(true)
         .css_classes(["property"])
         .build();
     let battery = adw::ActionRow::builder()
-        .title("Battery")
+        .title(gettext("Battery"))
         .css_classes(["property"])
         .build();
     device
@@ -43,24 +45,24 @@ pub fn new(manager: &BluetoothManager, device: &Device) -> adw::PreferencesDialo
         manager,
         device,
         "trusted",
-        "Trusted",
-        "Can connect without asking",
+        &gettext("Trusted"),
+        &gettext("Can connect without asking"),
     ));
     access.add(&switch_row(
         &dialog,
         manager,
         device,
         "blocked",
-        "Blocked",
-        "Refuses all connections from this device",
+        &gettext("Blocked"),
+        &gettext("Refuses all connections from this device"),
     ));
 
     let forget = gtk::Button::builder()
-        .label("Forget Device")
+        .label(gettext("Forget Device"))
         .halign(gtk::Align::Center)
         .css_classes(["destructive-action", "pill"])
         .build();
-    forget.connect_clicked(glib::clone!(
+    forget.connect_clicked(clone!(
         #[weak]
         dialog,
         #[strong]
@@ -97,7 +99,7 @@ fn switch_row(
         .bind_property(property, &row, "active")
         .sync_create()
         .build();
-    row.connect_active_notify(glib::clone!(
+    row.connect_active_notify(clone!(
         #[weak]
         dialog,
         #[strong]
@@ -110,7 +112,7 @@ fn switch_row(
             if value == device.property::<bool>(property) {
                 return;
             }
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 dialog,
                 #[strong]
@@ -126,7 +128,7 @@ fn switch_row(
                     };
                     if let Err(err) = result {
                         glib::g_warning!("openhub", "Can't set {property}={value}: {err}");
-                        toast(&dialog, &format!("Couldn't change {}", row.title()));
+                        toast(&dialog, &gettext_f("Couldn't change {}", &[&row.title()]));
                         row.set_active(device.property::<bool>(property));
                     }
                 }
@@ -138,16 +140,16 @@ fn switch_row(
 
 fn confirm_forget(dialog: &adw::PreferencesDialog, manager: &BluetoothManager, device: &Device) {
     let confirm = adw::AlertDialog::new(
-        Some(&format!("Forget {}?", device.name())),
-        Some("You'll need to pair it again to use it."),
+        Some(&gettext_f("Forget {}?", &[&device.name()])),
+        Some(&gettext("You'll need to pair it again to use it.")),
     );
-    confirm.add_response("cancel", "_Cancel");
-    confirm.add_response("forget", "_Forget");
+    confirm.add_response("cancel", &gettext("_Cancel"));
+    confirm.add_response("forget", &gettext("_Forget"));
     confirm.set_response_appearance("forget", adw::ResponseAppearance::Destructive);
     confirm.set_close_response("cancel");
     confirm.connect_response(
         Some("forget"),
-        glib::clone!(
+        clone!(
             #[weak]
             dialog,
             #[strong]
@@ -155,7 +157,7 @@ fn confirm_forget(dialog: &adw::PreferencesDialog, manager: &BluetoothManager, d
             #[weak]
             device,
             move |_, _| {
-                glib::spawn_future_local(glib::clone!(
+                glib::spawn_future_local(clone!(
                     #[weak]
                     dialog,
                     #[strong]
@@ -173,7 +175,7 @@ fn confirm_forget(dialog: &adw::PreferencesDialog, manager: &BluetoothManager, d
                                     "Can't forget {}: {err}",
                                     device.path()
                                 );
-                                toast(&dialog, &format!("Couldn't forget {}", device.name()));
+                                toast(&dialog, &gettext_f("Couldn't forget {}", &[&device.name()]));
                             }
                         }
                     }

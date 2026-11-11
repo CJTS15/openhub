@@ -4,6 +4,7 @@ use adw::prelude::*;
 use futures_channel::oneshot;
 
 use crate::bluez::PairingRequest;
+use crate::i18n::{gettext, gettext_f};
 use crate::model::Device;
 
 /// Builds the dialog that answers `request`, or `None` for `Cancel`. A
@@ -15,17 +16,20 @@ pub fn new(request: PairingRequest<Device>) -> Option<adw::AlertDialog> {
             passkey,
             reply,
         } => {
-            let body = format!("Check that {} shows the code {passkey:06}.", device.name());
-            let dialog = alert("Confirm Pairing", &body, Some("_Pair"));
+            let body = gettext_f(
+                "Check that {} shows the code {}.",
+                &[&device.name(), &format!("{passkey:06}")],
+            );
+            let dialog = alert(&gettext("Confirm Pairing"), &body, Some(&gettext("_Pair")));
             answer_with(&dialog, reply, |accepted| accepted);
             dialog
         }
         PairingRequest::PinCode { device, reply } => {
-            let body = format!(
+            let body = gettext_f(
                 "Enter the PIN code for {}. Many devices use 0000.",
-                device.name()
+                &[&device.name()],
             );
-            let dialog = alert("Enter PIN Code", &body, Some("_Pair"));
+            let dialog = alert(&gettext("Enter PIN Code"), &body, Some(&gettext("_Pair")));
             let entry = gtk::Entry::builder().activates_default(true).build();
             dialog.set_extra_child(Some(&entry));
             answer_with(&dialog, reply, move |accepted| {
@@ -35,8 +39,8 @@ pub fn new(request: PairingRequest<Device>) -> Option<adw::AlertDialog> {
             dialog
         }
         PairingRequest::Passkey { device, reply } => {
-            let body = format!("Enter the six-digit code {} shows.", device.name());
-            let dialog = alert("Enter Passkey", &body, Some("_Pair"));
+            let body = gettext_f("Enter the six-digit code {} shows.", &[&device.name()]);
+            let dialog = alert(&gettext("Enter Passkey"), &body, Some(&gettext("_Pair")));
             let entry = gtk::Entry::builder()
                 .activates_default(true)
                 .input_purpose(gtk::InputPurpose::Digits)
@@ -49,19 +53,20 @@ pub fn new(request: PairingRequest<Device>) -> Option<adw::AlertDialog> {
             dialog
         }
         PairingRequest::Display { device, code } => {
-            alert("Pairing", &display_body(&device, &code), None)
+            alert(&gettext("Pairing"), &display_body(&device, &code), None)
         }
         PairingRequest::Cancel => return None,
     })
 }
 
 pub fn display_body(device: &Device, code: &str) -> String {
-    format!("Type {code} on {}, then press Enter.", device.name())
+    // Translators: the first {} is the code, the second the device's name.
+    gettext_f("Type {} on {}, then press Enter.", &[code, &device.name()])
 }
 
 fn alert(heading: &str, body: &str, accept: Option<&str>) -> adw::AlertDialog {
     let dialog = adw::AlertDialog::new(Some(heading), Some(body));
-    dialog.add_response("cancel", "_Cancel");
+    dialog.add_response("cancel", &gettext("_Cancel"));
     dialog.set_close_response("cancel");
     if let Some(label) = accept {
         dialog.add_response("accept", label);

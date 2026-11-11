@@ -2,8 +2,10 @@ use adw::prelude::*;
 use gtk::glib;
 
 use super::ratbag_dialog;
+use crate::i18n::{gettext, gettext_noop};
 use crate::model::InputDevice;
 use crate::ratbag;
+use gtk::glib::clone;
 
 /// A mouse or touchpad that isn't Logitech or Razer. If ratbagd knows it
 /// (by USB ID), its settings from there; otherwise what it is, and where
@@ -19,7 +21,7 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
         return dialog;
     };
     let (dialog, page, loading) = loading(device);
-    glib::spawn_future_local(glib::clone!(
+    glib::spawn_future_local(clone!(
         #[weak]
         dialog,
         #[weak]
@@ -58,13 +60,13 @@ fn info(device: &InputDevice, without_ratbagd: bool) -> adw::PreferencesGroup {
     }
     let group = adw::PreferencesGroup::builder().description(&text).build();
     for (label, value) in [
-        ("Connection", device.connection()),
-        ("Battery", device.battery()),
+        (gettext_noop("Connection"), device.connection()),
+        (gettext_noop("Battery"), device.battery()),
     ] {
         if !value.is_empty() {
             group.add(
                 &adw::ActionRow::builder()
-                    .title(label)
+                    .title(gettext(label))
                     .subtitle(&value)
                     .use_markup(false)
                     .css_classes(["property"])
@@ -123,7 +125,7 @@ pub(super) fn message(text: &str) -> adw::PreferencesGroup {
     group.add(
         &adw::StatusPage::builder()
             .icon_name("input-mouse-symbolic")
-            .title("Can't Read This Mouse")
+            .title(gettext("Can't Read This Mouse"))
             .description(text)
             .css_classes(["compact"])
             .build(),

@@ -5,10 +5,12 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::{keyboard_dialog, logitech_dialog, mouse_dialog, razer_dialog};
+use crate::i18n::{gettext, gettext_f};
 use crate::input::InputManager;
 use crate::model::{InputDevice, PowerDevice};
 use crate::upower::PowerManager;
 use crate::{hidpp, razer};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -36,9 +38,12 @@ mod imp {
             let obj = self.obj();
             let mice = self.kind.borrow().as_str() != "keyboard";
             let (title, empty) = if mice {
-                ("Mice and Touchpads", "No mouse or touchpad connected")
+                (
+                    gettext("Mice and Touchpads"),
+                    gettext("No mouse or touchpad connected"),
+                )
             } else {
-                ("Keyboards", "No keyboard connected")
+                (gettext("Keyboards"), gettext("No keyboard connected"))
             };
             let manager = self.manager.get_or_init(|| {
                 if mice {
@@ -71,14 +76,14 @@ mod imp {
 
             PowerManager::shared()
                 .peripherals()
-                .connect_items_changed(glib::clone!(
+                .connect_items_changed(clone!(
                     #[weak]
                     obj,
                     move |_, _, _, _| obj.update_batteries()
                 ));
             crate::ui::rescan_while_mapped(
                 &*obj,
-                glib::clone!(
+                clone!(
                     #[weak]
                     obj,
                     move || {
@@ -170,7 +175,7 @@ fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
         .find(|node| !usb_device.is_empty() && node.usb_device == usb_device);
 
     row.set_activatable(true);
-    row.connect_activated(glib::clone!(
+    row.connect_activated(clone!(
         #[weak]
         device,
         move |row| {
@@ -192,17 +197,18 @@ fn battery_text(batteries: &[(String, f64)]) -> String {
     batteries
         .iter()
         .min_by(|a, b| a.1.total_cmp(&b.1))
-        .map_or_else(String::new, |(level, _)| format!("{level} Battery"))
+        .map_or_else(String::new, |(level, _)| gettext_f("{} Battery", &[level]))
 }
 
 /// "Connected · Bluetooth · 85% Battery"; a built-in device is just "Built-in".
 fn subtitle(connection: &str, battery: &str) -> String {
-    let connected = if connection == "Built-in" {
-        ""
+    // The connection is already translated (see InputManager).
+    let connected = if connection == gettext("Built-in") {
+        String::new()
     } else {
-        "Connected"
+        gettext("Connected")
     };
-    [connected, connection, battery]
+    [connected.as_str(), connection, battery]
         .into_iter()
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()

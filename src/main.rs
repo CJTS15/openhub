@@ -8,6 +8,7 @@ mod display;
 mod eq;
 mod fwupd;
 mod hidpp;
+mod i18n;
 mod input;
 mod model;
 mod ratbag;
@@ -41,6 +42,14 @@ fn main() -> glib::ExitCode {
             }
         };
     }
+
+    // Before any UI: GtkBuilder translates .ui files with the default domain.
+    // SAFETY: setlocale isn't thread-safe; this runs before GTK, the sound
+    // server or any other thread starts.
+    unsafe { gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "") };
+    let _ = gettextrs::bindtextdomain(config::GETTEXT_PACKAGE, config::LOCALEDIR);
+    let _ = gettextrs::bind_textdomain_codeset(config::GETTEXT_PACKAGE, "UTF-8");
+    let _ = gettextrs::textdomain(config::GETTEXT_PACKAGE);
 
     gio::resources_register_include!("openhub.gresource").expect("Failed to register resources");
 

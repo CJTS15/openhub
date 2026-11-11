@@ -3,6 +3,7 @@
 //! several input nodes (a keyboard's media keys appear as a "Mouse"), so
 //! nodes are grouped per device first and the group decides what it is.
 
+use crate::i18n::{gettext, gettext_noop};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -122,14 +123,15 @@ fn read_node(dir: &Path, node: String) -> Option<InputInfo> {
         &attr("properties")?,
     )?;
     let bus = u16::from_str_radix(&attr("id/bustype")?, 16).ok()?;
+    // English here, compared below; translated when the device is shown.
     let connection = match bus {
-        0x03 => "USB",
-        0x05 => "Bluetooth",
+        0x03 => gettext_noop("USB"),
+        0x05 => gettext_noop("Bluetooth"),
         // i8042 (laptop keyboard and TrackPoint), I2C and the like.
-        0x10 | 0x11 | 0x18 | 0x19 | 0x1f => "Built-in",
+        0x10 | 0x11 | 0x18 | 0x19 | 0x1f => gettext_noop("Built-in"),
         // Virtual devices (uinput, remappers) aren't hardware.
         0x06 => return None,
-        _ => "Other",
+        _ => gettext_noop("Other"),
     };
     // Razer dongles report "000000000000" on every node: no serial at all.
     let uniq = attr("uniq")
@@ -149,12 +151,12 @@ fn read_node(dir: &Path, node: String) -> Option<InputInfo> {
     };
     let raw_name = attr("name").unwrap_or_default();
     let name = match (connection, kind) {
-        ("Built-in", Kind::Keyboard) => "Built-in Keyboard".to_owned(),
-        ("Built-in", Kind::Touchpad) => "Touchpad".to_owned(),
+        ("Built-in", Kind::Keyboard) => gettext("Built-in Keyboard"),
+        ("Built-in", Kind::Touchpad) => gettext("Touchpad"),
         ("Built-in", Kind::PointingStick) if raw_name.contains("TrackPoint") => {
             "TrackPoint".to_owned()
         }
-        ("Built-in", Kind::PointingStick) => "Pointing Stick".to_owned(),
+        ("Built-in", Kind::PointingStick) => gettext("Pointing Stick"),
         _ => raw_name,
     };
     Some(InputInfo {

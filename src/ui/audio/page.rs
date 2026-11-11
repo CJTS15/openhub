@@ -4,8 +4,10 @@ use gtk::{gio, glib};
 
 use super::device_dialog;
 use crate::audio::{AudioManager, State};
+use crate::i18n::gettext;
 use crate::model::{AudioDevice, PowerDevice};
 use crate::upower::{PowerManager, convert};
+use gtk::glib::clone;
 
 mod imp {
     use super::*;
@@ -52,10 +54,18 @@ mod imp {
 
             let page = adw::PreferencesPage::new();
             for (title, empty, devices) in [
-                ("Output", "No output devices", manager.outputs()),
-                ("Input", "No input devices", manager.inputs()),
+                (
+                    gettext("Output"),
+                    gettext("No output devices"),
+                    manager.outputs(),
+                ),
+                (
+                    gettext("Input"),
+                    gettext("No input devices"),
+                    manager.inputs(),
+                ),
             ] {
-                let (group, list) = group(manager, title, empty, &devices);
+                let (group, list) = group(manager, &title, &empty, &devices);
                 page.add(&group);
                 self.lists.borrow_mut().push((list, devices));
             }
@@ -72,8 +82,8 @@ mod imp {
             self.stack.add_named(
                 &adw::StatusPage::builder()
                     .icon_name("audio-volume-muted-symbolic")
-                    .title("Sound Unavailable")
-                    .description("No PipeWire or PulseAudio server is running")
+                    .title(gettext("Sound Unavailable"))
+                    .description(gettext("No PipeWire or PulseAudio server is running"))
                     .build(),
                 Some("unavailable"),
             );
@@ -98,7 +108,7 @@ mod imp {
                 .build();
 
             // Bluetooth headphones' battery comes from UPower, by address.
-            let update = glib::clone!(
+            let update = clone!(
                 #[weak]
                 obj,
                 move || obj.update_batteries()
@@ -108,7 +118,7 @@ mod imp {
                 manager.inputs(),
                 PowerManager::shared().peripherals(),
             ] {
-                store.connect_items_changed(glib::clone!(
+                store.connect_items_changed(clone!(
                     #[strong]
                     update,
                     move |_, _, _, _| update()
@@ -176,7 +186,7 @@ fn group(
     bind(manager, &list, devices, false);
     // Clicking a row opens its details and equalizer; the default carries
     // a check mark and is set from there.
-    list.connect_row_activated(glib::clone!(
+    list.connect_row_activated(clone!(
         #[strong]
         manager,
         #[strong]
@@ -199,7 +209,7 @@ fn group(
 fn bind(manager: &AudioManager, list: &gtk::ListBox, devices: &gio::ListStore, compact: bool) {
     list.bind_model(
         Some(devices),
-        glib::clone!(
+        clone!(
             #[strong]
             manager,
             move |item| row(&manager, item.downcast_ref().unwrap(), compact)
@@ -263,7 +273,7 @@ fn row(manager: &AudioManager, device: &AudioDevice, compact: bool) -> gtk::Widg
         for name in ["low", "high", "full"] {
             meter.remove_offset_value(Some(name));
         }
-        meter.update_property(&[gtk::accessible::Property::Label("Input level")]);
+        meter.update_property(&[gtk::accessible::Property::Label(&gettext("Input level"))]);
         device
             .bind_property("peak", &meter, "value")
             .sync_create()
@@ -290,10 +300,16 @@ fn row(manager: &AudioManager, device: &AudioDevice, compact: bool) -> gtk::Widg
         .build();
     device
         .bind_property("muted", &mute, "tooltip-text")
-        .transform_to(|_, muted: bool| Some(if muted { "Unmute" } else { "Mute" }))
+        .transform_to(|_, muted: bool| {
+            Some(if muted {
+                gettext("Unmute")
+            } else {
+                gettext("Mute")
+            })
+        })
         .sync_create()
         .build();
-    mute.connect_clicked(glib::clone!(
+    mute.connect_clicked(clone!(
         #[strong]
         manager,
         #[weak]
@@ -306,14 +322,14 @@ fn row(manager: &AudioManager, device: &AudioDevice, compact: bool) -> gtk::Widg
     volume.set_width_request(160);
     volume.set_hexpand(compact);
     volume.set_valign(gtk::Align::Center);
-    volume.update_property(&[gtk::accessible::Property::Label("Volume")]);
+    volume.update_property(&[gtk::accessible::Property::Label(&gettext("Volume"))]);
     device
         .bind_property("volume", &volume.adjustment(), "value")
         .sync_create()
         .build();
     // Only the user's moves reach the server; updates from it come back
     // through the binding without echoing.
-    volume.connect_change_value(glib::clone!(
+    volume.connect_change_value(clone!(
         #[strong]
         manager,
         #[weak]
@@ -329,8 +345,8 @@ fn row(manager: &AudioManager, device: &AudioDevice, compact: bool) -> gtk::Widg
     // A fixed slot keeps its space when the check mark is hidden, so rows
     // don't shift as the default changes.
     let check = gtk::Image::from_icon_name("object-select-symbolic");
-    check.set_tooltip_text(Some("Default"));
-    check.update_property(&[gtk::accessible::Property::Label("Default")]);
+    check.set_tooltip_text(Some(&gettext("Default")));
+    check.update_property(&[gtk::accessible::Property::Label(&gettext("Default"))]);
     device
         .bind_property("is-default", &check, "visible")
         .sync_create()

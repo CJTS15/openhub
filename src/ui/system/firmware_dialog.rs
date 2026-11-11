@@ -2,6 +2,8 @@ use adw::prelude::*;
 use gtk::glib;
 
 use crate::fwupd::{Device, Release};
+use crate::i18n::{gettext, gettext_noop};
+use gtk::glib::clone;
 
 /// A device's firmware: its version, and the update the host's metadata
 /// has, with its release notes and a way into GNOME Software to install.
@@ -13,10 +15,13 @@ pub fn new(device: &Device, update: Option<&Release>) -> adw::PreferencesDialog 
     let page = adw::PreferencesPage::new();
 
     let current = adw::PreferencesGroup::new();
-    for (title, value) in [("Vendor", &device.vendor), ("Version", &device.version)] {
+    for (title, value) in [
+        (gettext_noop("Vendor"), &device.vendor),
+        (gettext_noop("Version"), &device.version),
+    ] {
         if !value.is_empty() {
             let row = adw::ActionRow::builder()
-                .title(title)
+                .title(gettext(title))
                 .subtitle(value)
                 .use_markup(false)
                 .subtitle_selectable(true)
@@ -29,11 +34,11 @@ pub fn new(device: &Device, update: Option<&Release>) -> adw::PreferencesDialog 
 
     let group = adw::PreferencesGroup::new();
     match update {
-        None => group.set_description(Some("This firmware is up to date.")),
+        None => group.set_description(Some(&gettext("This firmware is up to date."))),
         Some(release) => {
-            group.set_title("Update Available");
+            group.set_title(&gettext("Update Available"));
             let row = adw::ActionRow::builder()
-                .title("New Version")
+                .title(gettext("New Version"))
                 .subtitle(&release.version)
                 .use_markup(false)
                 .css_classes(["property"])
@@ -53,7 +58,7 @@ pub fn new(device: &Device, update: Option<&Release>) -> adw::PreferencesDialog 
             // Installing needs a download, polkit and often a reboot; GNOME
             // Software does all of that.
             let open = gtk::Button::builder()
-                .label("Open GNOME Software")
+                .label(gettext("Open GNOME Software"))
                 .halign(gtk::Align::Center)
                 .margin_top(18)
                 .css_classes(["pill", "suggested-action"])
@@ -68,7 +73,7 @@ pub fn new(device: &Device, update: Option<&Release>) -> adw::PreferencesDialog 
                 );
             });
             group.add(&open);
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 open,
                 async move {

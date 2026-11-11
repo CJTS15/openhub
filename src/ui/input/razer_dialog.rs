@@ -2,8 +2,10 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::mouse_dialog::{self, message};
+use crate::i18n::{gettext, gettext_f};
 use crate::model::InputDevice;
 use crate::razer::{self, Node, State};
+use gtk::glib::clone;
 
 const RATES: [u16; 3] = [125, 500, 1000];
 
@@ -12,7 +14,7 @@ const RATES: [u16; 3] = [125, 500, 1000];
 pub fn new(device: &InputDevice, node: Node) -> adw::PreferencesDialog {
     let (dialog, page, loading) = mouse_dialog::loading(device);
 
-    glib::spawn_future_local(glib::clone!(
+    glib::spawn_future_local(clone!(
         #[weak]
         dialog,
         #[weak]
@@ -24,7 +26,7 @@ pub fn new(device: &InputDevice, node: Node) -> adw::PreferencesDialog {
             match state {
                 Ok(Ok(state)) => fill(&dialog, &page, node, state),
                 Ok(Err(error)) => page.add(&message(&error.to_string())),
-                Err(_) => page.add(&message("Reading the mouse failed")),
+                Err(_) => page.add(&message(&gettext("Reading the mouse failed"))),
             }
         }
     ));
@@ -34,17 +36,20 @@ pub fn new(device: &InputDevice, node: Node) -> adw::PreferencesDialog {
 fn fill(dialog: &adw::PreferencesDialog, page: &adw::PreferencesPage, node: Node, state: State) {
     let group = adw::PreferencesGroup::new();
     let dpi = adw::SpinRow::with_range(100.0, state.max_dpi.into(), 50.0);
-    dpi.set_title("Pointer Speed");
-    dpi.set_subtitle("DPI");
+    dpi.set_title(&gettext("Pointer Speed"));
+    dpi.set_subtitle(&gettext("DPI"));
     dpi.set_value(state.dpi.into());
     group.add(&dpi);
 
     let rate = state.poll_rate.map(|current| {
-        let labels: Vec<String> = RATES.iter().map(|rate| format!("{rate} Hz")).collect();
+        let labels: Vec<String> = RATES
+            .iter()
+            .map(|rate| gettext_f("{} Hz", &[&rate.to_string()]))
+            .collect();
         let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
         let row = adw::ComboRow::builder()
-            .title("Polling Rate")
-            .subtitle("How often the mouse reports its movement")
+            .title(gettext("Polling Rate"))
+            .subtitle(gettext("How often the mouse reports its movement"))
             .model(&gtk::StringList::new(&labels))
             .build();
         row.set_selected(RATES.iter().position(|&r| r == current).unwrap_or(2) as u32);
@@ -55,7 +60,7 @@ fn fill(dialog: &adw::PreferencesDialog, page: &adw::PreferencesPage, node: Node
     if let Some(battery) = state.battery {
         group.add(
             &adw::ActionRow::builder()
-                .title("Battery")
+                .title(gettext("Battery"))
                 .subtitle(format!("{battery}%"))
                 .css_classes(["property"])
                 .build(),
@@ -64,11 +69,11 @@ fn fill(dialog: &adw::PreferencesDialog, page: &adw::PreferencesPage, node: Node
     page.add(&group);
 
     let apply = gtk::Button::builder()
-        .label("Apply")
+        .label(gettext("Apply"))
         .halign(gtk::Align::Center)
         .css_classes(["pill", "suggested-action"])
         .build();
-    apply.connect_clicked(glib::clone!(
+    apply.connect_clicked(clone!(
         #[weak]
         dialog,
         move |button| {
@@ -76,7 +81,7 @@ fn fill(dialog: &adw::PreferencesDialog, page: &adw::PreferencesPage, node: Node
             let wanted_rate = rate.as_ref().map(|row| RATES[row.selected() as usize]);
             button.set_sensitive(false);
             let node = node.clone();
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 dialog,
                 #[weak]
@@ -87,9 +92,9 @@ fn fill(dialog: &adw::PreferencesDialog, page: &adw::PreferencesPage, node: Node
                             .await;
                     button.set_sensitive(true);
                     let title = match written {
-                        Ok(Ok(())) => "Applied".to_owned(),
+                        Ok(Ok(())) => gettext("Applied"),
                         Ok(Err(error)) => error.to_string(),
-                        Err(_) => "Writing to the mouse failed".to_owned(),
+                        Err(_) => gettext("Writing to the mouse failed"),
                     };
                     dialog.add_toast(
                         adw::Toast::builder()

@@ -10,6 +10,7 @@ use std::time::Duration;
 use gtk::glib;
 
 use super::{Settings, Wheel};
+use crate::i18n::gettext_f;
 
 /// The mouse's saved settings, by `Node::uniq`.
 fn saved(uniq: &str) -> Option<Settings> {
@@ -99,10 +100,11 @@ fn store(saved: &[(String, Settings)]) -> Result<(), String> {
     let file = to_keyfile(saved);
     let path = path();
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("Could not save mouse settings: {e}"))?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| gettext_f("Could not save mouse settings: {}", &[&e.to_string()]))?;
     }
     glib::file_set_contents(&path, file.to_data().as_bytes())
-        .map_err(|e| format!("Could not save mouse settings: {e}"))
+        .map_err(|e| gettext_f("Could not save mouse settings: {}", &[&e.to_string()]))
 }
 
 fn to_keyfile(saved: &[(String, Settings)]) -> glib::KeyFile {

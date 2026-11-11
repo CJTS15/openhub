@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 
+use crate::i18n::{gettext, gettext_f};
 use serde_json::Value;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -64,17 +65,17 @@ impl ControlKind {
 
 impl Definition {
     pub fn parse(text: &str) -> Result<Self, String> {
-        let json: Value =
-            serde_json::from_str(text).map_err(|e| format!("Not a VIA definition: {e}"))?;
+        let json: Value = serde_json::from_str(text)
+            .map_err(|e| gettext_f("Not a VIA definition: {}", &[&e.to_string()]))?;
         let id = |key: &str| {
             json[key]
                 .as_str()
                 .and_then(|text| u16::from_str_radix(text.trim_start_matches("0x"), 16).ok())
-                .ok_or_else(|| format!("Not a VIA definition: no {key}"))
+                .ok_or_else(|| gettext_f("Not a VIA definition: no {}", &[key]))
         };
         let rows = json["layouts"]["keymap"]
             .as_array()
-            .ok_or("Not a VIA definition: no layouts.keymap")?;
+            .ok_or_else(|| gettext("Not a VIA definition: no layouts.keymap"))?;
         let mut controls = Vec::new();
         for menu in json["menus"].as_array().into_iter().flatten() {
             for section in menu["content"].as_array().into_iter().flatten() {

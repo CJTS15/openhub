@@ -9,6 +9,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use crate::i18n::gettext;
 use rustix::ioctl::{IntegerSetter, ioctl};
 
 /// The monitor's DDC/CI address, and the host's as MCCS writes them.
@@ -96,10 +97,12 @@ fn with_checksum(bytes: &[u8]) -> Vec<u8> {
 fn parse_reply(reply: &[u8; 11], code: u8) -> io::Result<(u16, u16)> {
     let checksum = reply[..10].iter().fold(0x50, |sum, b| sum ^ b);
     if checksum != reply[10] || reply[2] != 0x02 || reply[4] != code {
-        return Err(io::Error::other("The monitor's reply was garbled"));
+        return Err(io::Error::other(gettext("The monitor's reply was garbled")));
     }
     if reply[3] != 0 {
-        return Err(io::Error::other("The monitor doesn't support this setting"));
+        return Err(io::Error::other(gettext(
+            "The monitor doesn't support this setting",
+        )));
     }
     let max = u16::from_be_bytes([reply[6], reply[7]]);
     let current = u16::from_be_bytes([reply[8], reply[9]]);

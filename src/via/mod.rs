@@ -6,6 +6,7 @@
 pub mod definition;
 pub mod keycodes;
 
+use crate::i18n::{gettext, gettext_f};
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::os::fd::AsFd;
@@ -139,19 +140,21 @@ impl Device {
         if rustix::event::poll(&mut fds, Some(&timeout))? == 0 {
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
-                "The keyboard didn't answer",
+                gettext("The keyboard didn't answer"),
             ));
         }
         let mut reply = vec![0u8; self.report_size];
         let length = self.file.read(&mut reply)?;
         // QMK always sends whole reports; a short one isn't an answer.
         if length < self.report_size {
-            return Err(io::Error::other("The keyboard sent a short reply"));
+            return Err(io::Error::other(gettext("The keyboard sent a short reply")));
         }
         // 0xFF: the firmware doesn't know the command.
         match reply.first() {
             Some(&command) if command == request[0] => Ok(reply),
-            _ => Err(io::Error::other("The keyboard doesn't support this")),
+            _ => Err(io::Error::other(gettext(
+                "The keyboard doesn't support this",
+            ))),
         }
     }
 
@@ -231,17 +234,22 @@ pub fn load_definition(vendor: u16, product: u16) -> Option<Definition> {
 pub fn import_definition(vendor: u16, product: u16, text: &str) -> Result<Definition, String> {
     let definition = Definition::parse(text)?;
     if (definition.vendor, definition.product) != (vendor, product) {
-        return Err(format!(
-            "This file is for {} ({:04X}:{:04X}), not this keyboard ({vendor:04X}:{product:04X})",
-            definition.name, definition.vendor, definition.product
+        return Err(gettext_f(
+            "This file is for {} ({}), not this keyboard ({})",
+            &[
+                &definition.name,
+                &format!("{:04X}:{:04X}", definition.vendor, definition.product),
+                &format!("{vendor:04X}:{product:04X}"),
+            ],
         ));
     }
     let path = definition_path(vendor, product);
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("Could not save the definition: {e}"))?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| gettext_f("Could not save the definition: {}", &[&e.to_string()]))?;
     }
     gtk::glib::file_set_contents(&path, text.as_bytes())
-        .map_err(|e| format!("Could not save the definition: {e}"))?;
+        .map_err(|e| gettext_f("Could not save the definition: {}", &[&e.to_string()]))?;
     Ok(definition)
 }
 

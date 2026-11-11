@@ -11,6 +11,7 @@ use gtk::{gio, glib};
 use super::ids::UsbIds;
 use super::sysfs::{self, UsbInfo};
 use super::udisks;
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 use crate::model::UsbDevice;
 
 #[derive(Debug)]
@@ -178,9 +179,9 @@ fn version_label(version: &str) -> String {
 /// The device class, or its interfaces' classes when it defers to them.
 fn class_label(info: &UsbInfo) -> String {
     let name = |class| match (class, info.capture, info.playback) {
-        (0x01, true, false) => "Audio (microphone)".to_owned(),
-        (0x01, false, true) => "Audio (speakers)".to_owned(),
-        (0x01, true, true) => "Audio (microphone and speakers)".to_owned(),
+        (0x01, true, false) => gettext("Audio (microphone)"),
+        (0x01, false, true) => gettext("Audio (speakers)"),
+        (0x01, true, true) => gettext("Audio (microphone and speakers)"),
         _ => class_name(class),
     };
     if !matches!(info.class, 0x00 | 0xef) {
@@ -192,30 +193,31 @@ fn class_label(info: &UsbInfo) -> String {
 }
 
 fn class_name(class: u8) -> String {
-    match class {
-        0x01 => "Audio",
-        0x02 => "Communications",
-        0x03 => "Human Interface Device",
-        0x05 => "Physical",
-        0x06 => "Imaging",
-        0x07 => "Printer",
-        0x08 => "Mass Storage",
-        0x09 => "Hub",
-        0x0a => "CDC Data",
-        0x0b => "Smart Card",
-        0x0d => "Content Security",
-        0x0e => "Video",
-        0x0f => "Personal Healthcare",
-        0x10 => "Audio/Video",
-        0x11 => "Billboard",
-        0xdc => "Diagnostic",
-        0xe0 => "Wireless Controller",
-        0xef => "Miscellaneous",
-        0xfe => "Application Specific",
-        0xff => "Vendor Specific",
-        other => return format!("Class {other:02x}"),
-    }
-    .to_owned()
+    let name = match class {
+        0x01 => gettext_noop("Audio"),
+        0x02 => gettext_noop("Communications"),
+        0x03 => gettext_noop("Human Interface Device"),
+        0x05 => gettext_noop("Physical"),
+        0x06 => gettext_noop("Imaging"),
+        0x07 => gettext_noop("Printer"),
+        0x08 => gettext_noop("Mass Storage"),
+        0x09 => gettext_noop("Hub"),
+        0x0a => gettext_noop("CDC Data"),
+        0x0b => gettext_noop("Smart Card"),
+        0x0d => gettext_noop("Content Security"),
+        0x0e => gettext_noop("Video"),
+        0x0f => gettext_noop("Personal Healthcare"),
+        0x10 => gettext_noop("Audio/Video"),
+        0x11 => gettext_noop("Billboard"),
+        0xdc => gettext_noop("Diagnostic"),
+        0xe0 => gettext_noop("Wireless Controller"),
+        0xef => gettext_noop("Miscellaneous"),
+        0xfe => gettext_noop("Application Specific"),
+        0xff => gettext_noop("Vendor Specific"),
+        // Translators: an unknown USB device class, such as "Class 0c".
+        other => return gettext_f("Class {}", &[&format!("{other:02x}")]),
+    };
+    gettext(name)
 }
 
 /// An icon from the device class, or the first interface class that says

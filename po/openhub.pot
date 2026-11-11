@@ -1,0 +1,2417 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the openhub package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: openhub\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-10 15:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: data/openhub.desktop.in:2 data/openhub.metainfo.xml.in:6
+msgid "Openhub"
+msgstr ""
+
+#: data/openhub.desktop.in:3
+msgid "Manage the devices connected to your computer"
+msgstr ""
+
+#: data/openhub.desktop.in:9
+msgid "bluetooth;devices;hardware;pair;"
+msgstr ""
+
+#: data/openhub.gschema.xml.in:6
+msgid "Window width"
+msgstr ""
+
+#: data/openhub.gschema.xml.in:10
+msgid "Window height"
+msgstr ""
+
+#: data/openhub.gschema.xml.in:14
+msgid "Whether the window is maximized"
+msgstr ""
+
+#: data/openhub.gschema.xml.in:18
+msgid "The page shown when Openhub opens"
+msgstr ""
+
+#: data/openhub.gschema.xml.in:19
+msgid "The name of a sidebar page, such as “system” or “bluetooth”."
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:7
+msgid "Manage your connected devices"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:9
+msgid ""
+"Openhub lists and manages the devices connected to your computer: Bluetooth, "
+"USB, power, mice, keyboards, audio and displays."
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:11
+msgid "See every connected device at a glance, with low batteries flagged"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:12
+msgid ""
+"See your computer's processor, memory, graphics, disk and system versions, "
+"and copy them for a bug report"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:13
+msgid ""
+"Check the firmware of your laptop and devices, and whether an update is "
+"available"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:14
+msgid ""
+"See your devices' batteries, Bluetooth connections and sound output from the "
+"top bar, with the optional GNOME Shell extension"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:15
+msgid "Turn Bluetooth on and off"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:16
+msgid ""
+"See your Bluetooth devices, whether they're connected, and their battery "
+"level"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:17
+msgid "Scan for nearby devices and pair them"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:18
+msgid "Connect, disconnect, trust, block and forget Bluetooth devices"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:19
+msgid ""
+"See your USB devices as they're plugged in, grouped under the hubs they're "
+"connected through"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:20
+msgid "Check a USB device's speed, version, power draw and driver"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:21
+msgid "Safely eject USB drives"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:22
+msgid ""
+"See your laptop's battery and the battery of every wireless device in one "
+"place"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:23
+msgid "Check battery health, charge cycles and energy"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:24
+msgid ""
+"Preserve battery health by stopping charging at 80%, on laptops that support "
+"it"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:25
+msgid ""
+"Change the DPI, scroll wheel and buttons of Logitech, Razer and other gaming "
+"mice"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:26
+msgid "Change the lighting and keys of VIA keyboards, stored on the keyboard"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:27
+msgid ""
+"Choose your audio output and input, set their volume, and see each "
+"microphone's level"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:28
+msgid "Shape each output's sound with a 10-band equalizer or an AutoEQ profile"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:29
+msgid ""
+"Arrange your displays and set their resolution, refresh rate, scale and "
+"orientation, as GNOME Settings does"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:30
+msgid ""
+"Set the brightness of the built-in screen and of external monitors that "
+"support DDC/CI"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:31
+msgid ""
+"Turn on Night Light, choose each display's color profile, and turn on HDR "
+"where supported"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:35
+msgid "CJ"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:41
+msgid "The System page: every connected device, and this computer's details"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:45
+msgid "Bluetooth devices, connected ones first, with their batteries"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:49
+msgid ""
+"Displays, with their arrangement, settings, brightness and color profile"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:53
+msgid "Audio outputs and inputs, with volume, mute and microphone levels"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:57
+msgid "Mice and touchpads, with their connection and battery"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:61
+msgid "Keyboards, with their connection and battery"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:65
+msgid ""
+"The laptop's battery, the charge limit and every wireless device's battery"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:69
+msgid "USB devices, grouped under the hubs they're connected through"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:93
+msgid "A new look for the GNOME Shell extension's menu:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:95
+msgid ""
+"A header with a settings button that opens Openhub, and a Bluetooth card"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:96
+msgid ""
+"Batteries and Sound Output are sections that collapse and expand smoothly"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:97
+msgid ""
+"Each battery shows its icon, level and a bar; the current sound output has a "
+"radio mark"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:98
+msgid ""
+"Colours follow the shell theme, including custom themes, and stay readable "
+"over a blurred menu"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:104
+msgid ""
+"Adds an optional GNOME Shell extension, with Openhub's icon in the top bar:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:106
+msgid ""
+"The battery of every mouse, keyboard and headset, lowest first, with a level "
+"bar in the shell theme's colours and a warning below 20%"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:107
+msgid ""
+"The number of connected Bluetooth devices, and a list of sound outputs to "
+"switch between"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:108
+msgid "Each row opens Openhub on that page; it works without Openhub running"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:109
+msgid "The System page shows whether it's installed, and turns it on and off"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:110
+msgid "The Power page's level bars now use the accent colour"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:116
+msgid "Openhub 1.0 adds a System page, the first page Openhub opens on:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:118
+msgid ""
+"Connected Devices: a card for each page with what's connected there, one "
+"count of every device, and a warning for low batteries"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:119
+msgid ""
+"About this computer: model, processor, memory, graphics, disk, firmware, "
+"operating system, desktop and kernel, with Copy Details for bug reports"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:120
+msgid ""
+"Device Firmware: the firmware of your laptop, drives and devices from fwupd, "
+"with update notes and a link to GNOME Software to install"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:121
+msgid ""
+"Links to the GNOME Settings pages for device name, region, date and time, "
+"users and remote access"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:122
+msgid "The sidebar is reordered, and every page now fits a phone-sized window"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:128
+msgid "Adds a Displays page:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:130
+msgid ""
+"Arrange displays by dragging them, and choose Join, Mirror or a single "
+"display, with an Identify button"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:131
+msgid ""
+"Resolution, refresh rate, variable refresh rate, scale and orientation for "
+"each display, applied with GNOME's \"Keep these display settings?\" check"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:132
+msgid ""
+"Brightness of the built-in screen, following the brightness keys, and of "
+"external monitors over DDC/CI"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:133
+msgid ""
+"Night Light: on and off, sunset to sunrise or set times, and the color "
+"temperature"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:134
+msgid ""
+"Color profiles through colord: choose, import and remove, with a link to "
+"GNOME Settings to calibrate"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:135
+msgid "HDR on displays that support it"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:136
+msgid "A details dialog for each display, read from its EDID"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:142
+msgid "A new app icon, and clearer setup for the Flatpak:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:144
+msgid ""
+"A new icon: a ring of devices around a switch, in Catppuccin colours, with a "
+"matching symbolic icon"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:145
+msgid ""
+"The README copies the udev rules from the installed Flatpak, so Flatpak "
+"users don't need the source code"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:151
+msgid "Security and reliability fixes:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:153
+msgid ""
+"The VIA and Razer udev rules now open only the interface Openhub uses, so a "
+"keyboard's own interface can't be read by other programs"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:154
+msgid ""
+"A VIA keyboard sending unexpected replies, or an unusual VIA definition "
+"file, can no longer crash Openhub"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:155
+msgid ""
+"Equalizer settings are saved only for outputs with ordinary names, so a "
+"crafted output name can't change WirePlumber's configuration"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:161
+msgid "Adds Mouse, Keyboard and Audio pages:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:163
+msgid ""
+"Logitech mice: DPI, SmartShift and scroll direction, restored automatically "
+"when the mouse reconnects"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:164
+msgid ""
+"Razer mice: DPI and polling rate, stored on the mouse; other brands through "
+"ratbagd"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:165
+msgid ""
+"VIA keyboards on their cable: lighting and key remapping from the keyboard's "
+"VIA definition, and a shortcut to GNOME Settings' keyboard shortcuts"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:166
+msgid ""
+"Audio outputs and inputs: default device, volume, mute, Bluetooth codec and "
+"a live microphone level"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:167
+msgid ""
+"A built-in equalizer for each output, with presets and AutoEQ import, that "
+"keeps working when Openhub is closed"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:168
+msgid ""
+"Batteries the kernel reports but UPower misses, such as some 2.4 GHz mice"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:174
+msgid "Adds a Power page:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:176
+msgid ""
+"The laptop's battery level and charging state, and the battery of every "
+"wireless mouse, keyboard or headset UPower knows about, updated live"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:177
+msgid ""
+"Battery details: health, charge cycles, energy, charge rate, voltage and "
+"technology"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:178
+msgid ""
+"A \"Preserve Battery Health\" setting that stops charging at the laptop's "
+"limit, shown only where it's supported"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:179
+msgid "Low batteries shown in the warning colour"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:181
+msgid ""
+"On the USB page, a wireless receiver now shows the battery of the devices it "
+"serves."
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:186
+msgid "Adds a USB page:"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:188
+msgid ""
+"A live list of USB devices, grouped under the hubs they're connected "
+"through, with microphones and speakers recognized"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:189
+msgid ""
+"Details for each device: IDs and serial number (with copy buttons), speed, "
+"USB version, power draw, class and driver"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:190
+msgid "Safe eject for USB drives, including encrypted ones"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:191
+msgid ""
+"Built-in devices such as cameras and fingerprint readers hidden unless you "
+"ask for them"
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:193
+msgid ""
+"Bluetooth: connected devices are listed first, connecting shows progress, "
+"pairing pauses scanning, and blueman's connection notifications, which can "
+"freeze GNOME Shell, are turned off when blueman is running."
+msgstr ""
+
+#: data/openhub.metainfo.xml.in:198
+msgid ""
+"The first release, for Bluetooth: power the adapter on and off, connect and "
+"disconnect paired devices, scan for and pair new ones, and trust, block or "
+"forget them."
+msgstr ""
+
+#: data/resources/shortcuts-dialog.ui:8
+msgid "General"
+msgstr ""
+
+#: data/resources/shortcuts-dialog.ui:11 src/ui/input/keyboard_dialog.rs:671
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: data/resources/shortcuts-dialog.ui:17
+msgid "Close Window"
+msgstr ""
+
+#: data/resources/shortcuts-dialog.ui:23
+msgid "Quit"
+msgstr ""
+
+#: data/resources/ui/usb_page.ui:14
+msgid "Show Internal Devices"
+msgstr ""
+
+#: data/resources/ui/usb_page.ui:15
+msgid "Built-in cameras, fingerprint readers and Bluetooth radios"
+msgstr ""
+
+#: data/resources/ui/usb_page.ui:22
+msgid "USB Devices"
+msgstr ""
+
+#: data/resources/ui/usb_page.ui:31
+msgid "No USB devices plugged in"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:31
+msgid "Power Information Unavailable"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:32
+msgid "The UPower service isn't running"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:43
+msgid "No Batteries"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:44
+msgid "This computer and its devices don't report a battery"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:56
+msgid "Battery Level"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:100
+msgid "Battery Charging"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:104
+msgid "Maximize Charge"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:115
+msgid "Preserve Battery Health"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:129 src/ui/system/page.rs:166
+msgid "Connected Devices"
+msgstr ""
+
+#: data/resources/ui/power_page.ui:138
+msgid "No wireless devices report a battery"
+msgstr ""
+
+#: data/resources/ui/window.ui:41
+msgid "Main Menu"
+msgstr ""
+
+#: data/resources/ui/window.ui:68 data/resources/ui/window.ui:233
+#: data/resources/ui/window.ui:244
+msgid "System"
+msgstr ""
+
+#. / The Connected Devices rows: (page name, title, icon).
+
+#. / In the sidebar's order.
+
+#: data/resources/ui/window.ui:89 data/resources/ui/window.ui:271
+#: src/ui/system/page.rs:27
+msgid "Power"
+msgstr ""
+
+#: data/resources/ui/window.ui:110 data/resources/ui/window.ui:253
+#: src/audio/service.rs:629 src/input/sysfs.rs:129
+#: src/ui/input/keyboard_dialog.rs:34 src/ui/system/page.rs:28
+#: src/upower/convert.rs:186 src/upower/convert.rs:190
+msgid "Bluetooth"
+msgstr ""
+
+#: data/resources/ui/window.ui:131 data/resources/ui/window.ui:262
+#: src/audio/service.rs:630 src/input/sysfs.rs:128 src/ui/system/page.rs:29
+#: src/upower/convert.rs:192
+msgid "USB"
+msgstr ""
+
+#: data/resources/ui/window.ui:152 data/resources/ui/window.ui:311
+#: src/ui/display/page.rs:1135 src/ui/system/page.rs:32
+msgid "Displays"
+msgstr ""
+
+#: data/resources/ui/window.ui:173 data/resources/ui/window.ui:291
+#: src/ui/system/page.rs:37 src/upower/convert.rs:50
+msgid "Keyboard"
+msgstr ""
+
+#: data/resources/ui/window.ui:194 data/resources/ui/window.ui:280
+#: src/ui/system/page.rs:40 src/upower/convert.rs:49
+msgid "Mouse"
+msgstr ""
+
+#: data/resources/ui/window.ui:215 data/resources/ui/window.ui:302
+#: src/ui/system/page.rs:41 src/usb/service.rs:197
+msgid "Audio"
+msgstr ""
+
+#: data/resources/ui/window.ui:329
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: data/resources/ui/window.ui:334
+msgid "_About Openhub"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:31
+msgid "Bluetooth Unavailable"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:32
+msgid "The Bluetooth service isn't running"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:43
+msgid "No Bluetooth Adapter"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:44
+msgid "Connect a Bluetooth adapter to use Bluetooth"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:68
+msgid "My Devices"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:77
+msgid "No paired devices"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:91
+msgid "Nearby Devices"
+msgstr ""
+
+#: data/resources/ui/bluetooth_page.ui:116
+msgid "No devices found"
+msgstr ""
+
+#: src/audio/service.rs:631
+msgid "Virtual"
+msgstr ""
+
+#. i8042 (laptop keyboard and TrackPoint), I2C and the like.
+#. / "Connected · Bluetooth · 85% Battery"; a built-in device is just "Built-in".
+
+#. The connection is already translated (see InputManager).
+#: src/audio/service.rs:632 src/input/sysfs.rs:131
+#: src/ui/display/details_dialog.rs:56 src/ui/input/page.rs:206
+msgid "Built-in"
+msgstr ""
+
+#: src/ddc/mod.rs:100
+msgid "The monitor's reply was garbled"
+msgstr ""
+
+#: src/ddc/mod.rs:104
+msgid "The monitor doesn't support this setting"
+msgstr ""
+
+#: src/display/color.rs:164
+msgid "The import stopped"
+msgstr ""
+
+#: src/display/color.rs:195
+msgid "The color service didn't pick up the profile"
+msgstr ""
+
+#: src/display/color.rs:225
+msgid "Too many profiles with this name"
+msgstr ""
+
+#: src/display/color.rs:232
+msgid "This isn't an ICC profile"
+msgstr ""
+
+#: src/display/color.rs:236
+msgid "This ICC profile is damaged"
+msgstr ""
+
+#: src/display/color.rs:239
+msgid "This ICC profile isn't for a display"
+msgstr ""
+
+#. / Orientations, as Mutter numbers them, with GNOME Settings' names.
+
+#: src/display/config.rs:20
+msgid "Landscape"
+msgstr ""
+
+#: src/display/config.rs:21
+msgid "Portrait Right"
+msgstr ""
+
+#: src/display/config.rs:22
+msgid "Portrait Left"
+msgstr ""
+
+#: src/display/config.rs:23
+msgid "Landscape (Flipped)"
+msgstr ""
+
+#: src/eq/mod.rs:174
+msgid "Flat"
+msgstr ""
+
+#: src/eq/mod.rs:176
+msgid "Bass Boost"
+msgstr ""
+
+#: src/eq/mod.rs:180
+msgid "Vocal"
+msgstr ""
+
+#: src/eq/mod.rs:217
+#, rust-format
+msgid "Bad preamp: “{}”"
+msgstr ""
+
+#: src/eq/mod.rs:238
+#, rust-format
+msgid "Unsupported filter: “{}”"
+msgstr ""
+
+#: src/eq/mod.rs:246
+msgid "No filters found. Choose an AutoEQ ParametricEQ.txt file."
+msgstr ""
+
+#: src/eq/mod.rs:374
+#, rust-format
+msgid "Could not remove {}: {}"
+msgstr ""
+
+#: src/eq/mod.rs:387
+#, rust-format
+msgid "Could not save {}: {}"
+msgstr ""
+
+#: src/eq/mod.rs:394
+#, rust-format
+msgid "Could not create {}: {}"
+msgstr ""
+
+#: src/hidpp/mod.rs:140 src/razer/mod.rs:168
+msgid "The mouse didn't answer. Move it to wake it up."
+msgstr ""
+
+#: src/hidpp/saved.rs:104 src/hidpp/saved.rs:107
+#, rust-format
+msgid "Could not save mouse settings: {}"
+msgstr ""
+
+#: src/input/sysfs.rs:134 src/upower/convert.rs:194
+msgid "Other"
+msgstr ""
+
+#: src/input/sysfs.rs:154
+msgid "Built-in Keyboard"
+msgstr ""
+
+#: src/input/sysfs.rs:155 src/upower/convert.rs:56
+msgid "Touchpad"
+msgstr ""
+
+#: src/input/sysfs.rs:159
+msgid "Pointing Stick"
+msgstr ""
+
+#. / The special functions the button picker offers, by offset from 1 << 30.
+
+#: src/ratbag/mod.rs:23
+msgid "Double-Click"
+msgstr ""
+
+#: src/ratbag/mod.rs:24
+msgid "Scroll Left"
+msgstr ""
+
+#: src/ratbag/mod.rs:25
+msgid "Scroll Right"
+msgstr ""
+
+#: src/ratbag/mod.rs:26
+msgid "Scroll Up"
+msgstr ""
+
+#: src/ratbag/mod.rs:27
+msgid "Scroll Down"
+msgstr ""
+
+#: src/ratbag/mod.rs:28
+msgid "Wheel Mode Switch"
+msgstr ""
+
+#: src/ratbag/mod.rs:29
+msgid "DPI Cycle Up"
+msgstr ""
+
+#: src/ratbag/mod.rs:30
+msgid "DPI Cycle Down"
+msgstr ""
+
+#: src/ratbag/mod.rs:31
+msgid "DPI Up"
+msgstr ""
+
+#: src/ratbag/mod.rs:32
+msgid "DPI Down"
+msgstr ""
+
+#: src/ratbag/mod.rs:33
+msgid "DPI Shift"
+msgstr ""
+
+#: src/ratbag/mod.rs:34
+msgid "Profile Cycle Up"
+msgstr ""
+
+#: src/ratbag/mod.rs:35
+msgid "Profile Cycle Down"
+msgstr ""
+
+#: src/ratbag/mod.rs:83
+msgid "Disabled"
+msgstr ""
+
+#: src/ratbag/mod.rs:88
+msgid "Special"
+msgstr ""
+
+#: src/ratbag/mod.rs:89
+msgid "Key or Macro"
+msgstr ""
+
+#: src/ratbag/mod.rs:100
+msgid "Left Click"
+msgstr ""
+
+#: src/ratbag/mod.rs:101
+msgid "Right Click"
+msgstr ""
+
+#: src/ratbag/mod.rs:102
+msgid "Middle Click"
+msgstr ""
+
+#: src/ratbag/mod.rs:103
+msgid "Back"
+msgstr ""
+
+#: src/ratbag/mod.rs:104
+msgid "Forward"
+msgstr ""
+
+#. Translators: a mouse button without a name, such as "Button 8".
+#: src/ratbag/mod.rs:106 src/ui/input/ratbag_dialog.rs:90
+#, rust-format
+msgid "Button {}"
+msgstr ""
+
+#: src/razer/mod.rs:136
+msgid "This Razer mouse doesn't answer"
+msgstr ""
+
+#: src/razer/mod.rs:157
+msgid "Not supported by this mouse"
+msgstr ""
+
+#: src/razer/mod.rs:160
+#, rust-format
+msgid "The mouse refused the command ({})"
+msgstr ""
+
+#. / (title, value) rows for the Hardware group.
+
+#: src/sysinfo/mod.rs:37 src/ui/display/details_dialog.rs:48
+#: src/ui/power/battery_dialog.rs:62
+msgid "Model"
+msgstr ""
+
+#: src/sysinfo/mod.rs:41
+msgid "Processor"
+msgstr ""
+
+#: src/sysinfo/mod.rs:43
+msgid "Memory"
+msgstr ""
+
+#: src/sysinfo/mod.rs:45
+msgid "Graphics"
+msgstr ""
+
+#: src/sysinfo/mod.rs:50
+msgid "Disk Capacity"
+msgstr ""
+
+#: src/sysinfo/mod.rs:55
+msgid "Firmware Version"
+msgstr ""
+
+#: src/sysinfo/mod.rs:65
+msgid "OS Name"
+msgstr ""
+
+#: src/sysinfo/mod.rs:66
+msgid "OS Type"
+msgstr ""
+
+#: src/sysinfo/mod.rs:68
+msgid "Desktop"
+msgstr ""
+
+#: src/sysinfo/mod.rs:69
+msgid "Windowing System"
+msgstr ""
+
+#: src/sysinfo/mod.rs:70
+msgid "Kernel Version"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:34
+msgid "Default Output"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:36
+msgid "Default Input"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:40 src/ui/audio/page.rs:348
+#: src/ui/audio/page.rs:349 src/ui/input/ratbag_dialog.rs:38
+msgid "Default"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:42
+msgid "Set as Default"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:67
+msgid "Mono"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:68
+msgid "Stereo"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:69
+#, rust-format
+msgid "{} channel"
+msgid_plural "{} channels"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/audio/device_dialog.rs:72 src/ui/input/mouse_dialog.rs:63
+#: src/ui/power/battery_dialog.rs:64 src/ui/usb/device_dialog.rs:24
+msgid "Connection"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:73
+msgid "Codec"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:74 src/ui/bluetooth/device_dialog.rs:26
+#: src/ui/input/mouse_dialog.rs:64 src/ui/input/razer_dialog.rs:63
+#: src/ui/usb/device_dialog.rs:44 src/ui/usb/device_dialog.rs:46
+#: src/upower/convert.rs:47
+msgid "Battery"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:75
+msgid "Channels"
+msgstr ""
+
+#. / A peripheral below this percentage is flagged.
+
+#. / GNOME Settings › System pages Openhub doesn't rebuild: (title, panel).
+
+#: src/ui/audio/device_dialog.rs:76 src/ui/system/page.rs:49
+msgid "Device Name"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:107
+msgid "Preset"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:111
+msgid "Bands"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:117
+msgid "Equalizer"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:119
+msgid "Shapes the sound of this output, even when Openhub is closed"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:133
+msgid "Custom"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:157
+msgid "AutoEQ"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:159
+msgid ""
+"Correct a headphone or IEM with its ParametricEQ.txt file from the AutoEQ "
+"project"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:163 src/ui/input/keyboard_dialog.rs:119
+msgid "Import…"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:172 src/ui/audio/device_dialog.rs:367
+msgid "Import ParametricEQ.txt"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:178
+msgid "Back to the graphic equalizer"
+msgstr ""
+
+#. Translators: short for "Preamp", under the equalizer's first slider.
+#: src/ui/audio/device_dialog.rs:245
+msgid "Pre"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:263
+msgid "Preamp"
+msgstr ""
+
+#: src/ui/audio/device_dialog.rs:316
+#, rust-format
+msgid "{} filter, preamp {} dB"
+msgid_plural "{} filters, preamp {} dB"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/audio/device_dialog.rs:362
+msgid "Text files"
+msgstr ""
+
+#: src/ui/audio/page.rs:58
+msgid "Output"
+msgstr ""
+
+#: src/ui/audio/page.rs:59
+msgid "No output devices"
+msgstr ""
+
+#: src/ui/audio/page.rs:63
+msgid "Input"
+msgstr ""
+
+#: src/ui/audio/page.rs:64
+msgid "No input devices"
+msgstr ""
+
+#: src/ui/audio/page.rs:85
+msgid "Sound Unavailable"
+msgstr ""
+
+#: src/ui/audio/page.rs:86
+msgid "No PipeWire or PulseAudio server is running"
+msgstr ""
+
+#: src/ui/audio/page.rs:276
+msgid "Input level"
+msgstr ""
+
+#: src/ui/audio/page.rs:305
+msgid "Unmute"
+msgstr ""
+
+#: src/ui/audio/page.rs:307
+msgid "Mute"
+msgstr ""
+
+#: src/ui/audio/page.rs:325
+msgid "Volume"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:20
+msgid "Address"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:48
+msgid "Trusted"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:49
+msgid "Can connect without asking"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:56
+msgid "Blocked"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:57
+msgid "Refuses all connections from this device"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:61
+msgid "Forget Device"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:131
+#, rust-format
+msgid "Couldn't change {}"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:143
+#, rust-format
+msgid "Forget {}?"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:144
+msgid "You'll need to pair it again to use it."
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:146 src/ui/bluetooth/pairing_dialog.rs:69
+#: src/ui/input/keyboard_dialog.rs:616
+msgid "_Cancel"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:147
+msgid "_Forget"
+msgstr ""
+
+#: src/ui/bluetooth/device_dialog.rs:178
+#, rust-format
+msgid "Couldn't forget {}"
+msgstr ""
+
+#: src/ui/bluetooth/device_row.rs:31
+msgid "Not set up"
+msgstr ""
+
+#: src/ui/bluetooth/device_row.rs:34 src/upower/service.rs:471
+msgid "Not connected"
+msgstr ""
+
+#: src/ui/bluetooth/device_row.rs:35 src/ui/input/page.rs:209
+#: src/upower/service.rs:469
+msgid "Connected"
+msgstr ""
+
+#. Translators: a Bluetooth device's state, such as "Connected · 80% Battery".
+#: src/ui/bluetooth/device_row.rs:37
+#, rust-format
+msgid "Connected · {}% Battery"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:144
+msgid ""
+"Turned off blueman's connection notifications, which can freeze GNOME Shell"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:159
+msgid "Stop"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:161
+msgid "Scan"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:241
+#, rust-format
+msgid "Paired with {}, but couldn't connect"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:249
+#, rust-format
+msgid "Couldn't pair with {}"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:348
+msgid "Couldn't turn Bluetooth on"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:350
+msgid "Couldn't turn Bluetooth off"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:367
+msgid "Disconnect"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:369
+msgid "Connect"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:408
+#, rust-format
+msgid "Couldn't disconnect {}"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:410
+#, rust-format
+msgid "Couldn't connect to {}"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:430
+msgid "Couldn't start scanning"
+msgstr ""
+
+#: src/ui/bluetooth/page.rs:432
+msgid "Couldn't stop scanning"
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:20
+#, rust-format
+msgid "Check that {} shows the code {}."
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:23
+msgid "Confirm Pairing"
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:23 src/ui/bluetooth/pairing_dialog.rs:32
+#: src/ui/bluetooth/pairing_dialog.rs:43
+msgid "_Pair"
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:29
+#, rust-format
+msgid "Enter the PIN code for {}. Many devices use 0000."
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:32
+msgid "Enter PIN Code"
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:42
+#, rust-format
+msgid "Enter the six-digit code {} shows."
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:43
+msgid "Enter Passkey"
+msgstr ""
+
+#: src/ui/bluetooth/pairing_dialog.rs:56
+msgid "Pairing"
+msgstr ""
+
+#. Translators: the first {} is the code, the second the device's name.
+#: src/ui/bluetooth/pairing_dialog.rs:64
+#, rust-format
+msgid "Type {} on {}, then press Enter."
+msgstr ""
+
+#: src/ui/display/canvas.rs:117
+#, rust-format
+msgid "Arrangement: {}"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:15 src/ui/display/page.rs:1146
+#: src/ui/display/page.rs:1163
+msgid "Built-in Display"
+msgstr ""
+
+#. Translators: when a monitor was made, such as "Week 12, 2023".
+#: src/ui/display/details_dialog.rs:38
+#, rust-format
+msgid "Week {}, {}"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:45
+msgid "Monitor"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:47
+msgid "Manufacturer"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:49 src/ui/power/battery_dialog.rs:63
+#: src/ui/usb/device_dialog.rs:20
+msgid "Serial Number"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:50
+msgid "Manufactured"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:51
+msgid "Size"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:52
+msgid "Connector"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:54
+msgid "Type"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:58
+msgid "External"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:66
+#, rust-format
+msgid "Supported, from {} Hz"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:67 src/ui/display/details_dialog.rs:88
+msgid "Supported"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:70
+msgid "Current Mode"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:73 src/ui/display/page.rs:985
+msgid "Resolution"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:77 src/ui/display/page.rs:1023
+msgid "Refresh Rate"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:78 src/ui/display/details_dialog.rs:115
+#: src/ui/display/page.rs:1014 src/ui/display/page.rs:1179
+#: src/ui/input/ratbag_dialog.rs:52 src/ui/input/razer_dialog.rs:47
+#, rust-format
+msgid "{} Hz"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:81 src/ui/display/page.rs:1079
+msgid "Scale"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:84 src/ui/display/page.rs:1040
+msgid "Variable Refresh Rate"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:90
+msgid "Not supported"
+msgstr ""
+
+#: src/ui/display/details_dialog.rs:107
+msgid "Supported Modes"
+msgstr ""
+
+#: src/ui/display/page.rs:96 src/ui/display/page.rs:240
+msgid "Apply the new display settings?"
+msgstr ""
+
+#: src/ui/display/page.rs:100
+msgid "Cancel"
+msgstr ""
+
+#: src/ui/display/page.rs:101 src/ui/input/logitech_dialog.rs:109
+#: src/ui/input/ratbag_dialog.rs:113 src/ui/input/razer_dialog.rs:72
+msgid "Apply"
+msgstr ""
+
+#: src/ui/display/page.rs:260
+msgid "These displays overlap or don't touch. Move them together first."
+msgstr ""
+
+#: src/ui/display/page.rs:266
+msgid "Applying…"
+msgstr ""
+
+#: src/ui/display/page.rs:284
+#, rust-format
+msgid "Couldn't apply: {}"
+msgstr ""
+
+#: src/ui/display/page.rs:342
+msgid "Mirrored Displays"
+msgstr ""
+
+#: src/ui/display/page.rs:344
+#, rust-format
+msgid "Every display shows the same picture, at {}."
+msgstr ""
+
+#: src/ui/display/page.rs:422
+msgid "Couldn't Change the Color Profile"
+msgstr ""
+
+#: src/ui/display/page.rs:445 src/ui/display/page.rs:451
+msgid "Color Profile"
+msgstr ""
+
+#: src/ui/display/page.rs:446 src/via/keycodes.rs:31
+msgid "None"
+msgstr ""
+
+#: src/ui/display/page.rs:464
+msgid "Remove Profile"
+msgstr ""
+
+#: src/ui/display/page.rs:484
+msgid "Import ICC Profile…"
+msgstr ""
+
+#: src/ui/display/page.rs:497
+msgid "Calibrate"
+msgstr ""
+
+#: src/ui/display/page.rs:498 src/ui/input/keyboard_dialog.rs:672
+msgid "Opens GNOME Settings"
+msgstr ""
+
+#: src/ui/display/page.rs:508
+msgid "ICC Profiles"
+msgstr ""
+
+#: src/ui/display/page.rs:514
+msgid "Import ICC Profile"
+msgstr ""
+
+#: src/ui/display/page.rs:599 src/ui/display/page.rs:619
+msgid "Brightness"
+msgstr ""
+
+#: src/ui/display/page.rs:681 src/ui/display/page.rs:684
+msgid "Night Light"
+msgstr ""
+
+#: src/ui/display/page.rs:685
+msgid "Makes the screen warmer, which can help you sleep"
+msgstr ""
+
+#: src/ui/display/page.rs:694
+msgid "Schedule"
+msgstr ""
+
+#: src/ui/display/page.rs:696
+msgid "Sunset to Sunrise"
+msgstr ""
+
+#: src/ui/display/page.rs:697
+msgid "Manual Schedule"
+msgstr ""
+
+#: src/ui/display/page.rs:702
+msgid "From"
+msgstr ""
+
+#: src/ui/display/page.rs:703
+msgid "To"
+msgstr ""
+
+#: src/ui/display/page.rs:730 src/ui/display/page.rs:742
+msgid "Color Temperature"
+msgstr ""
+
+#: src/ui/display/page.rs:743
+msgid "Warmer to the left"
+msgstr ""
+
+#: src/ui/display/page.rs:765
+msgid "Display Mode"
+msgstr ""
+
+#: src/ui/display/page.rs:784
+msgid "Mode"
+msgstr ""
+
+#: src/ui/display/page.rs:786
+msgid "Join Displays"
+msgstr ""
+
+#: src/ui/display/page.rs:787
+msgid "Mirror"
+msgstr ""
+
+#: src/ui/display/page.rs:788
+msgid "Single Display"
+msgstr ""
+
+#: src/ui/display/page.rs:809
+msgid "Primary Display"
+msgstr ""
+
+#: src/ui/display/page.rs:826 src/ui/display/page.rs:925
+msgid "Display"
+msgstr ""
+
+#: src/ui/display/page.rs:841
+msgid "Arrangement"
+msgstr ""
+
+#: src/ui/display/page.rs:843
+msgid "Drag displays to match how they're placed on your desk."
+msgstr ""
+
+#: src/ui/display/page.rs:847
+msgid "Identify"
+msgstr ""
+
+#: src/ui/display/page.rs:911
+msgid "Details"
+msgstr ""
+
+#: src/ui/display/page.rs:955
+msgid "Orientation"
+msgstr ""
+
+#: src/ui/display/page.rs:1043
+#, rust-format
+msgid "Lets the rate drop to {} Hz to match what's shown"
+msgstr ""
+
+#: src/ui/display/page.rs:1046
+msgid "Lets the rate follow what's shown"
+msgstr ""
+
+#: src/ui/display/page.rs:1091
+msgid "HDR"
+msgstr ""
+
+#: src/ui/display/page.rs:1092
+msgid "High dynamic range, for content made for it"
+msgstr ""
+
+#: src/ui/display/page.rs:1136
+msgid "Display settings can only be changed on GNOME."
+msgstr ""
+
+#: src/ui/display/page.rs:1175 src/ui/system/page.rs:726
+msgid "Off"
+msgstr ""
+
+#: src/ui/display/page.rs:1183
+msgid "Primary"
+msgstr ""
+
+#: src/ui/display/page.rs:1226
+msgid "Hours"
+msgstr ""
+
+#: src/ui/display/page.rs:1226
+msgid "Minutes"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:59 src/ui/input/keyboard_dialog.rs:111
+msgid "Lighting and Keys"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:82 src/ui/usb/device_dialog.rs:113
+msgid "Copy"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:92 src/ui/system/page.rs:132
+#: src/ui/system/page.rs:441 src/ui/usb/device_dialog.rs:123
+msgid "Copied"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:123
+msgid "VIA Definition"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:138
+msgid "VIA definitions"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:143
+msgid "Import VIA Definition"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:227
+#, rust-format
+msgid "Couldn't read the keyboard: {}"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:234
+msgid "Couldn't read the keyboard"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:425
+#, rust-format
+msgid "Couldn't change the lighting: {}"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:453
+msgid "Keys"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:455
+msgid "Click a key to choose what it does. Changes are stored on the keyboard."
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:484
+#, rust-format
+msgid "Row {} key {}: {}"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:508
+msgid "Restore Default Keys"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:539
+msgid "This Keyboard"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:597
+#, rust-format
+msgid "Couldn't change the key: {}"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:600
+msgid "Couldn't change the key"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:610
+msgid "Restore Default Keys?"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:612
+msgid ""
+"Every key goes back to what the keyboard's firmware sets, on all layers."
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:617
+msgid "_Restore"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:643
+msgid "Keys restored"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:646
+#, rust-format
+msgid "Couldn't restore the keys: {}"
+msgstr ""
+
+#: src/ui/input/keyboard_dialog.rs:649
+msgid "Couldn't restore the keys"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:29 src/ui/input/razer_dialog.rs:29
+msgid "Reading the mouse failed"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:46
+#, rust-format
+msgid "{} is managing this mouse. Close it to change its settings here."
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:57 src/ui/input/ratbag_dialog.rs:17
+#: src/ui/input/razer_dialog.rs:39
+msgid "Pointer Speed"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:59
+#, rust-format
+msgid "DPI · default {}"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:68
+msgid "Scroll Wheel"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:71
+msgid "Ratchet"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:72
+msgid "Free Spin"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:86
+msgid "SmartShift Threshold"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:87
+msgid "How fast a flick lets the wheel spin free"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:100
+msgid "Reverse Scroll Direction"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:144 src/ui/input/razer_dialog.rs:97
+msgid "Writing to the mouse failed"
+msgstr ""
+
+#: src/ui/input/logitech_dialog.rs:146 src/ui/input/ratbag_dialog.rs:155
+#: src/ui/input/razer_dialog.rs:95
+msgid "Applied"
+msgstr ""
+
+#: src/ui/input/mouse_dialog.rs:128
+msgid "Can't Read This Mouse"
+msgstr ""
+
+#: src/ui/input/page.rs:42
+msgid "Mice and Touchpads"
+msgstr ""
+
+#: src/ui/input/page.rs:43
+msgid "No mouse or touchpad connected"
+msgstr ""
+
+#: src/ui/input/page.rs:46
+msgid "Keyboards"
+msgstr ""
+
+#: src/ui/input/page.rs:46
+msgid "No keyboard connected"
+msgstr ""
+
+#. Translators: a battery level on a USB row, such as "80% Battery".
+#: src/ui/input/page.rs:200 src/upower/convert.rs:231
+#, rust-format
+msgid "{} Battery"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:34
+#, rust-format
+msgid "DPI Step {}"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:37
+msgid "In use"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:56
+msgid "Report Rate"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:57 src/ui/input/razer_dialog.rs:52
+msgid "How often the mouse reports its movement"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:67
+msgid "Buttons"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:101
+msgid "A key or macro; change it in Piper"
+msgstr ""
+
+#: src/ui/input/ratbag_dialog.rs:157
+#, rust-format
+msgid "ratbagd refused the change: {}"
+msgstr ""
+
+#: src/ui/input/razer_dialog.rs:40
+msgid "DPI"
+msgstr ""
+
+#: src/ui/input/razer_dialog.rs:51
+msgid "Polling Rate"
+msgstr ""
+
+#. Translators: an amount of energy, such as "52.4 Wh".
+#: src/ui/power/battery_dialog.rs:14
+#, rust-format
+msgid "{} Wh"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:20
+msgid "Level"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:24
+msgid "Health"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:28
+msgid "Charge Cycles"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:32
+msgid "Technology"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:38
+msgid "Energy"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:40
+msgid "Current Charge"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:41
+msgid "Full Charge"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:43
+msgid "Design Capacity"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:47
+msgid "Energy Rate"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:52
+msgid "Voltage"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:54
+#, rust-format
+msgid "{} V"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:59 src/upower/convert.rs:60
+msgid "Device"
+msgstr ""
+
+#: src/ui/power/battery_dialog.rs:61 src/ui/system/firmware_dialog.rs:19
+#: src/ui/usb/device_dialog.rs:18
+msgid "Vendor"
+msgstr ""
+
+#: src/ui/power/page.rs:120
+msgid "Uses all battery capacity. Degrades batteries more quickly."
+msgstr ""
+
+#: src/ui/power/page.rs:199
+#, rust-format
+msgid "Increases battery longevity by stopping charging at {}"
+msgstr ""
+
+#: src/ui/power/page.rs:223
+msgid "Couldn't change battery charging"
+msgstr ""
+
+#: src/ui/system/firmware_dialog.rs:20
+msgid "Version"
+msgstr ""
+
+#: src/ui/system/firmware_dialog.rs:37
+msgid "This firmware is up to date."
+msgstr ""
+
+#: src/ui/system/firmware_dialog.rs:39 src/ui/system/page.rs:656
+msgid "Update Available"
+msgstr ""
+
+#: src/ui/system/firmware_dialog.rs:41
+msgid "New Version"
+msgstr ""
+
+#: src/ui/system/firmware_dialog.rs:61
+msgid "Open GNOME Software"
+msgstr ""
+
+#: src/ui/system/page.rs:50
+msgid "Region & Language"
+msgstr ""
+
+#: src/ui/system/page.rs:51
+msgid "Date & Time"
+msgstr ""
+
+#: src/ui/system/page.rs:52
+msgid "Users"
+msgstr ""
+
+#: src/ui/system/page.rs:53
+msgid "Remote Desktop"
+msgstr ""
+
+#: src/ui/system/page.rs:54
+msgid "Secure Shell"
+msgstr ""
+
+#: src/ui/system/page.rs:123
+msgid "Hardware"
+msgstr ""
+
+#: src/ui/system/page.rs:125
+msgid "Copy Details"
+msgstr ""
+
+#: src/ui/system/page.rs:137
+msgid "Software"
+msgstr ""
+
+#: src/ui/system/page.rs:147
+msgid "More in GNOME Settings"
+msgstr ""
+
+#: src/ui/system/page.rs:191
+msgid "Low battery"
+msgstr ""
+
+#. Translators: a card's tooltip, such as "Open Bluetooth".
+#: src/ui/system/page.rs:217
+#, rust-format
+msgid "Open {}"
+msgstr ""
+
+#: src/ui/system/page.rs:318 src/ui/system/page.rs:727
+msgid "No devices"
+msgstr ""
+
+#: src/ui/system/page.rs:319
+#, rust-format
+msgid "{} device"
+msgid_plural "{} devices"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/system/page.rs:339
+msgid "No batteries"
+msgstr ""
+
+#: src/ui/system/page.rs:340
+#, rust-format
+msgid "{} battery"
+msgid_plural "{} batteries"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/system/page.rs:347
+#, rust-format
+msgid "{} at {}"
+msgstr ""
+
+#: src/ui/system/page.rs:364
+msgid "None connected"
+msgstr ""
+
+#: src/ui/system/page.rs:380
+#, rust-format
+msgid "Output: {} · Input: {}"
+msgstr ""
+
+#: src/ui/system/page.rs:381
+#, rust-format
+msgid "Output: {}"
+msgstr ""
+
+#: src/ui/system/page.rs:382
+#, rust-format
+msgid "Input: {}"
+msgstr ""
+
+#: src/ui/system/page.rs:383
+msgid "No audio devices"
+msgstr ""
+
+#: src/ui/system/page.rs:406
+#, rust-format
+msgid "{} display"
+msgid_plural "{} displays"
+msgstr[0] ""
+msgstr[1] ""
+
+#. Translators: such as "2 displays · ASUS VP249 is primary".
+#: src/ui/system/page.rs:410
+#, rust-format
+msgid "{} · {} is primary"
+msgstr ""
+
+#: src/ui/system/page.rs:426
+msgid "GNOME Shell Extension"
+msgstr ""
+
+#: src/ui/system/page.rs:430
+msgid "Openhub in the Top Bar"
+msgstr ""
+
+#: src/ui/system/page.rs:434
+msgid "Copy Command"
+msgstr ""
+
+#: src/ui/system/page.rs:541
+#, rust-format
+msgid ""
+"Not installed. Download {} from Openhub's release, run the copied command in "
+"that folder, then log out and back in."
+msgstr ""
+
+#: src/ui/system/page.rs:547
+msgid "Batteries, Bluetooth and sound output, one click away"
+msgstr ""
+
+#: src/ui/system/page.rs:551
+#, rust-format
+msgid "The extension couldn't start: {}"
+msgstr ""
+
+#: src/ui/system/page.rs:555
+msgid "Extensions are turned off in GNOME. Turn them on in the Extensions app."
+msgstr ""
+
+#: src/ui/system/page.rs:574
+msgid "Device Firmware"
+msgstr ""
+
+#: src/ui/system/page.rs:631
+msgid "Everything is up to date."
+msgstr ""
+
+#: src/ui/system/page.rs:633
+#, rust-format
+msgid "{} update available"
+msgid_plural "{} updates available"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/system/page.rs:725
+msgid "No adapter"
+msgstr ""
+
+#: src/ui/system/page.rs:729
+#, rust-format
+msgid "{} paired"
+msgid_plural "{} paired"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/system/page.rs:735
+#, rust-format
+msgid "{} connected, {} paired"
+msgid_plural "{} connected, {} paired"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/system/page.rs:748
+msgid "No devices connected"
+msgstr ""
+
+#: src/ui/system/page.rs:750
+#, rust-format
+msgid "{} device connected"
+msgid_plural "{} devices connected"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/ui/usb/device_dialog.rs:19
+msgid "ID"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:26
+msgid "Speed"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:27
+msgid "USB Version"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:28
+msgid "Port"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:29
+msgid "Maximum Power"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:33
+msgid "Function"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:35
+msgid "Class"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:36
+msgid "Driver"
+msgstr ""
+
+#: src/ui/usb/device_dialog.rs:86
+msgid "Firmware"
+msgstr ""
+
+#: src/ui/usb/page.rs:188
+#, rust-format
+msgid "{} can be removed"
+msgstr ""
+
+#: src/ui/usb/page.rs:191
+#, rust-format
+msgid "{} is in use. Close any open files on it and try again."
+msgstr ""
+
+#: src/ui/usb/page.rs:196
+#, rust-format
+msgid "Couldn't eject {}"
+msgstr ""
+
+#. / "Vendor · Connected through USB2.1 Hub · 80% Battery", without the
+
+#. / parts a device doesn't have.
+
+#: src/ui/usb/page.rs:431
+#, rust-format
+msgid "Connected through {}"
+msgstr ""
+
+#: src/upower/convert.rs:46
+msgid "Charger"
+msgstr ""
+
+#: src/upower/convert.rs:48
+msgid "UPS"
+msgstr ""
+
+#: src/upower/convert.rs:51
+msgid "Phone"
+msgstr ""
+
+#: src/upower/convert.rs:52
+msgid "Tablet"
+msgstr ""
+
+#: src/upower/convert.rs:53
+msgid "Computer"
+msgstr ""
+
+#: src/upower/convert.rs:54
+msgid "Game Controller"
+msgstr ""
+
+#: src/upower/convert.rs:55
+msgid "Pen"
+msgstr ""
+
+#: src/upower/convert.rs:57
+msgid "Headset"
+msgstr ""
+
+#: src/upower/convert.rs:58
+msgid "Speakers"
+msgstr ""
+
+#: src/upower/convert.rs:59
+msgid "Headphones"
+msgstr ""
+
+#: src/upower/convert.rs:85 src/upower/convert.rs:126
+msgid "Charging"
+msgstr ""
+
+#: src/upower/convert.rs:86
+msgid "Discharging"
+msgstr ""
+
+#: src/upower/convert.rs:87
+msgid "Empty"
+msgstr ""
+
+#: src/upower/convert.rs:88 src/upower/convert.rs:122
+msgid "Fully charged"
+msgstr ""
+
+#. Plugged in but held, for example by a charge limit.
+#: src/upower/convert.rs:90 src/upower/convert.rs:127
+msgid "Not charging"
+msgstr ""
+
+#: src/upower/convert.rs:91
+msgid "Waiting to discharge"
+msgstr ""
+
+#: src/upower/convert.rs:100
+msgid "less than a minute"
+msgstr ""
+
+#. Translators: a duration, such as "45 min".
+#: src/upower/convert.rs:102
+#, rust-format
+msgid "{} min"
+msgstr ""
+
+#. Translators: a duration, such as "2 h".
+#: src/upower/convert.rs:104
+#, rust-format
+msgid "{} h"
+msgstr ""
+
+#. Translators: a duration, such as "3 h 10 min".
+#: src/upower/convert.rs:106
+#, rust-format
+msgid "{} h {} min"
+msgstr ""
+
+#: src/upower/convert.rs:116
+msgid "On battery"
+msgstr ""
+
+#. Translators: time until the battery is empty, such as "3 h 10 min left".
+#: src/upower/convert.rs:118
+#, rust-format
+msgid "{} left"
+msgstr ""
+
+#: src/upower/convert.rs:124
+#, rust-format
+msgid "Charging · full in {}"
+msgstr ""
+
+#: src/upower/convert.rs:135
+msgid "Low"
+msgstr ""
+
+#: src/upower/convert.rs:136
+msgid "Critical"
+msgstr ""
+
+#: src/upower/convert.rs:137
+msgid "Normal"
+msgstr ""
+
+#: src/upower/convert.rs:138
+msgid "High"
+msgstr ""
+
+#: src/upower/convert.rs:139
+msgid "Full"
+msgstr ""
+
+#: src/upower/convert.rs:165
+msgid "Lithium-ion"
+msgstr ""
+
+#: src/upower/convert.rs:166
+msgid "Lithium polymer"
+msgstr ""
+
+#: src/upower/convert.rs:167
+msgid "Lithium iron phosphate"
+msgstr ""
+
+#: src/upower/convert.rs:168
+msgid "Lead acid"
+msgstr ""
+
+#: src/upower/convert.rs:169
+msgid "Nickel cadmium"
+msgstr ""
+
+#: src/upower/convert.rs:170
+msgid "Nickel metal hydride"
+msgstr ""
+
+#: src/usb/service.rs:182
+msgid "Audio (microphone)"
+msgstr ""
+
+#: src/usb/service.rs:183
+msgid "Audio (speakers)"
+msgstr ""
+
+#: src/usb/service.rs:184
+msgid "Audio (microphone and speakers)"
+msgstr ""
+
+#: src/usb/service.rs:198
+msgid "Communications"
+msgstr ""
+
+#: src/usb/service.rs:199
+msgid "Human Interface Device"
+msgstr ""
+
+#: src/usb/service.rs:200
+msgid "Physical"
+msgstr ""
+
+#: src/usb/service.rs:201
+msgid "Imaging"
+msgstr ""
+
+#: src/usb/service.rs:202
+msgid "Printer"
+msgstr ""
+
+#: src/usb/service.rs:203
+msgid "Mass Storage"
+msgstr ""
+
+#: src/usb/service.rs:204
+msgid "Hub"
+msgstr ""
+
+#: src/usb/service.rs:205
+msgid "CDC Data"
+msgstr ""
+
+#: src/usb/service.rs:206
+msgid "Smart Card"
+msgstr ""
+
+#: src/usb/service.rs:207
+msgid "Content Security"
+msgstr ""
+
+#: src/usb/service.rs:208
+msgid "Video"
+msgstr ""
+
+#: src/usb/service.rs:209
+msgid "Personal Healthcare"
+msgstr ""
+
+#: src/usb/service.rs:210
+msgid "Audio/Video"
+msgstr ""
+
+#: src/usb/service.rs:211
+msgid "Billboard"
+msgstr ""
+
+#: src/usb/service.rs:212
+msgid "Diagnostic"
+msgstr ""
+
+#: src/usb/service.rs:213
+msgid "Wireless Controller"
+msgstr ""
+
+#: src/usb/service.rs:214
+msgid "Miscellaneous"
+msgstr ""
+
+#: src/usb/service.rs:215
+msgid "Application Specific"
+msgstr ""
+
+#: src/usb/service.rs:216
+msgid "Vendor Specific"
+msgstr ""
+
+#. Translators: an unknown USB device class, such as "Class 0c".
+#: src/usb/service.rs:218
+#, rust-format
+msgid "Class {}"
+msgstr ""
+
+#: src/via/definition.rs:69
+#, rust-format
+msgid "Not a VIA definition: {}"
+msgstr ""
+
+#: src/via/definition.rs:74
+#, rust-format
+msgid "Not a VIA definition: no {}"
+msgstr ""
+
+#: src/via/definition.rs:78
+msgid "Not a VIA definition: no layouts.keymap"
+msgstr ""
+
+#: src/via/keycodes.rs:17
+#, rust-format
+msgid "Hold for Layer {}"
+msgstr ""
+
+#: src/via/keycodes.rs:21
+#, rust-format
+msgid "Toggle Layer {}"
+msgstr ""
+
+#: src/via/keycodes.rs:25
+msgid "Letters and Numbers"
+msgstr ""
+
+#: src/via/keycodes.rs:26
+msgid "Symbols"
+msgstr ""
+
+#: src/via/keycodes.rs:28
+msgid "Editing"
+msgstr ""
+
+#: src/via/keycodes.rs:35
+msgid "Function Keys"
+msgstr ""
+
+#: src/via/keycodes.rs:41
+msgid "Navigation"
+msgstr ""
+
+#: src/via/keycodes.rs:43
+msgid "Modifiers"
+msgstr ""
+
+#: src/via/keycodes.rs:49
+msgid "Media"
+msgstr ""
+
+#: src/via/keycodes.rs:50
+msgid "Layers"
+msgstr ""
+
+#: src/via/mod.rs:143
+msgid "The keyboard didn't answer"
+msgstr ""
+
+#: src/via/mod.rs:150
+msgid "The keyboard sent a short reply"
+msgstr ""
+
+#: src/via/mod.rs:156
+msgid "The keyboard doesn't support this"
+msgstr ""
+
+#: src/via/mod.rs:238
+#, rust-format
+msgid "This file is for {} ({}), not this keyboard ({})"
+msgstr ""
+
+#: src/via/mod.rs:249 src/via/mod.rs:252
+#, rust-format
+msgid "Could not save the definition: {}"
+msgstr ""

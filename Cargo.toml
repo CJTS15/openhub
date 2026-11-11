@@ -19,6 +19,8 @@ libpulse-glib-binding = "2.29.0"
 pipewire = "0.10.1"
 rustix = { version = "1.1.5", features = ["event"] }
 serde_json = "1.0.140"
+# The system's own gettext (glibc), not a bundled copy.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 
 [dev-dependencies]
 # A fake ratbagd in the tests talks to the client over a socket pair.

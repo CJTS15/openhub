@@ -18,17 +18,27 @@ use crate::usb::UsbManager;
 use crate::window::OpenhubWindow;
 
 use super::firmware_dialog;
+use crate::i18n::{gettext, gettext_f, gettext_noop, ngettext_f};
+use gtk::glib::clone;
 
 /// The Connected Devices rows: (page name, title, icon).
 /// In the sidebar's order.
 const PAGES: [(&str, &str, &str); 7] = [
-    ("power", "Power", "battery-symbolic"),
-    ("bluetooth", "Bluetooth", "bluetooth-symbolic"),
-    ("usb", "USB", "media-removable-symbolic"),
-    ("displays", "Displays", "video-display-symbolic"),
-    ("keyboard", "Keyboard", "input-keyboard-symbolic"),
-    ("mouse", "Mouse", "input-mouse-symbolic"),
-    ("audio", "Audio", "audio-speakers-symbolic"),
+    ("power", gettext_noop("Power"), "battery-symbolic"),
+    ("bluetooth", gettext_noop("Bluetooth"), "bluetooth-symbolic"),
+    ("usb", gettext_noop("USB"), "media-removable-symbolic"),
+    (
+        "displays",
+        gettext_noop("Displays"),
+        "video-display-symbolic",
+    ),
+    (
+        "keyboard",
+        gettext_noop("Keyboard"),
+        "input-keyboard-symbolic",
+    ),
+    ("mouse", gettext_noop("Mouse"), "input-mouse-symbolic"),
+    ("audio", gettext_noop("Audio"), "audio-speakers-symbolic"),
 ];
 
 /// A peripheral below this percentage is flagged.
@@ -36,12 +46,12 @@ const LOW_BATTERY: f64 = 20.0;
 
 /// GNOME Settings › System pages Openhub doesn't rebuild: (title, panel).
 const SETTINGS: [(&str, &str); 6] = [
-    ("Device Name", "system/about"),
-    ("Region & Language", "system/region"),
-    ("Date & Time", "system/datetime"),
-    ("Users", "system/users"),
-    ("Remote Desktop", "system/remote-desktop"),
-    ("Secure Shell", "system/secure-shell"),
+    (gettext_noop("Device Name"), "system/about"),
+    (gettext_noop("Region & Language"), "system/region"),
+    (gettext_noop("Date & Time"), "system/datetime"),
+    (gettext_noop("Users"), "system/users"),
+    (gettext_noop("Remote Desktop"), "system/remote-desktop"),
+    (gettext_noop("Secure Shell"), "system/secure-shell"),
 ];
 
 mod imp {
@@ -79,7 +89,7 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
             obj.set_child(Some(&self.page));
-            glib::spawn_future_local(glib::clone!(
+            glib::spawn_future_local(clone!(
                 #[weak]
                 obj,
                 async move {
@@ -110,20 +120,23 @@ impl SystemPage {
         page.add(&self.header(about));
         page.add(&self.devices_group());
 
-        let hardware = values_group("Hardware", &about.hardware());
+        let hardware = values_group(&gettext("Hardware"), &about.hardware());
         let copy = gtk::Button::builder()
-            .label("Copy Details")
+            .label(gettext("Copy Details"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
         let report = about.report(&windowing);
         copy.connect_clicked(move |button| {
             button.clipboard().set_text(&report);
-            button.set_label("Copied");
+            button.set_label(&gettext("Copied"));
         });
         hardware.set_header_suffix(Some(&copy));
         page.add(&hardware);
-        page.add(&values_group("Software", &about.software(&windowing)));
+        page.add(&values_group(
+            &gettext("Software"),
+            &about.software(&windowing),
+        ));
         page.add(&self.firmware_group());
         page.add(&self.extension_group());
 
@@ -131,11 +144,11 @@ impl SystemPage {
         // nowhere.
         if std::env::var("XDG_CURRENT_DESKTOP").is_ok_and(|d| d.contains("GNOME")) {
             let group = adw::PreferencesGroup::builder()
-                .title("More in GNOME Settings")
+                .title(gettext("More in GNOME Settings"))
                 .build();
             for (title, panel) in SETTINGS {
                 let row = adw::ActionRow::builder()
-                    .title(title)
+                    .title(gettext(title))
                     .use_markup(false)
                     .activatable(true)
                     .build();
@@ -150,7 +163,7 @@ impl SystemPage {
     /// One row per page, with what's connected there; a row opens its page.
     fn devices_group(&self) -> adw::PreferencesGroup {
         let imp = self.imp();
-        imp.devices.set_title("Connected Devices");
+        imp.devices.set_title(&gettext("Connected Devices"));
         // Cards, three to a line, fewer on a narrow window.
         let grid = gtk::FlowBox::builder()
             .homogeneous(true)
@@ -167,7 +180,7 @@ impl SystemPage {
             heading.append(&gtk::Image::from_icon_name(icon));
             heading.append(
                 &gtk::Label::builder()
-                    .label(title)
+                    .label(gettext(title))
                     .css_classes(["heading"])
                     .hexpand(true)
                     .xalign(0.0)
@@ -175,7 +188,7 @@ impl SystemPage {
             );
             let warning = gtk::Image::builder()
                 .icon_name("dialog-warning-symbolic")
-                .tooltip_text("Low battery")
+                .tooltip_text(gettext("Low battery"))
                 .css_classes(["warning"])
                 .visible(false)
                 .build();
@@ -200,7 +213,8 @@ impl SystemPage {
             let card = gtk::Button::builder()
                 .child(&content)
                 .css_classes(["card", "openhub-device-card"])
-                .tooltip_text(format!("Open {title}"))
+                // Translators: a card's tooltip, such as "Open Bluetooth".
+                .tooltip_text(gettext_f("Open {}", &[&gettext(title)]))
                 .build();
             card.connect_clicked(move |card| {
                 if let Some(window) = card.root().and_downcast::<OpenhubWindow>() {
@@ -222,7 +236,7 @@ impl SystemPage {
         // picks up connections and battery levels.
         crate::ui::rescan_while_mapped(
             self,
-            glib::clone!(
+            clone!(
                 #[weak(rename_to = page)]
                 self,
                 move || {
@@ -233,7 +247,7 @@ impl SystemPage {
                 }
             ),
         );
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move { page.watch_displays().await }
@@ -245,13 +259,13 @@ impl SystemPage {
         let Ok(bus) = gio::bus_get_future(gio::BusType::Session).await else {
             return;
         };
-        let reload = glib::clone!(
+        let reload = clone!(
             #[weak(rename_to = page)]
             self,
             #[strong]
             bus,
             move || {
-                glib::spawn_future_local(glib::clone!(
+                glib::spawn_future_local(clone!(
                     #[weak]
                     page,
                     #[strong]
@@ -300,7 +314,11 @@ impl SystemPage {
         );
 
         let usb = external_usb(&UsbManager::shared().devices());
-        set("usb", count(usb, "device", "devices", "No devices"), false);
+        let status = match usb {
+            0 => gettext("No devices"),
+            n => ngettext_f("{} device", "{} devices", n as u32, &[&n.to_string()]),
+        };
+        set("usb", status, false);
 
         let power = PowerManager::shared();
         let low: Vec<PowerDevice> = power
@@ -317,26 +335,24 @@ impl SystemPage {
                 format!("{:.0}% · {status}", power.level())
             }
         } else {
-            count(
-                power.peripherals().n_items() as usize,
-                "battery",
-                "batteries",
-                "No batteries",
-            )
+            match power.peripherals().n_items() {
+                0 => gettext("No batteries"),
+                n => ngettext_f("{} battery", "{} batteries", n, &[&n.to_string()]),
+            }
         };
         for device in &low {
-            status.push_str(&format!(" · {} at {}", device.title(), device.level_text()));
+            status.push_str(" · ");
+            // Translators: a low battery, such as "MX Master 3S at 12%".
+            status.push_str(&gettext_f(
+                "{} at {}",
+                &[&device.title(), &device.level_text()],
+            ));
         }
         set("power", status, !low.is_empty());
 
-        for (name, manager, kind_id, none) in [
-            ("mouse", InputManager::mice(), kind::MOUSE, "None connected"),
-            (
-                "keyboard",
-                InputManager::keyboards(),
-                kind::KEYBOARD,
-                "None connected",
-            ),
+        for (name, manager, kind_id) in [
+            ("mouse", InputManager::mice(), kind::MOUSE),
+            ("keyboard", InputManager::keyboards(), kind::KEYBOARD),
         ] {
             let names: Vec<String> = manager
                 .devices()
@@ -345,7 +361,7 @@ impl SystemPage {
                 .map(|d| d.title())
                 .collect();
             let status = if names.is_empty() {
-                none.to_owned()
+                gettext("None connected")
             } else {
                 names.join(", ")
             };
@@ -361,10 +377,10 @@ impl SystemPage {
                 .map(|d| d.title())
         };
         let status = match (default(audio.outputs()), default(audio.inputs())) {
-            (Some(output), Some(input)) => format!("Output: {output} · Input: {input}"),
-            (Some(output), None) => format!("Output: {output}"),
-            (None, Some(input)) => format!("Input: {input}"),
-            (None, None) => "No audio devices".to_owned(),
+            (Some(output), Some(input)) => gettext_f("Output: {} · Input: {}", &[&output, &input]),
+            (Some(output), None) => gettext_f("Output: {}", &[&output]),
+            (None, Some(input)) => gettext_f("Input: {}", &[&input]),
+            (None, None) => gettext("No audio devices"),
         };
         set("audio", status, false);
 
@@ -386,13 +402,14 @@ impl SystemPage {
                 display::edid_for(connector).as_ref(),
             ))
         });
-        let status = match (count(monitors.len(), "display", "displays", ""), primary) {
-            (count, _) if monitors.is_empty() => count,
-            (count, Some(primary)) if monitors.len() > 1 => {
-                format!("{count} · {primary} is primary")
-            }
-            (_, Some(primary)) => primary,
-            (count, None) => count,
+        let n = monitors.len();
+        let count = ngettext_f("{} display", "{} displays", n as u32, &[&n.to_string()]);
+        let status = match primary {
+            _ if n == 0 => String::new(),
+            // Translators: such as "2 displays · ASUS VP249 is primary".
+            Some(primary) if n > 1 => gettext_f("{} · {} is primary", &[&count, &primary]),
+            Some(primary) => primary,
+            None => count,
         };
         set("displays", status, false);
 
@@ -406,29 +423,29 @@ impl SystemPage {
     /// running.
     fn extension_group(&self) -> adw::PreferencesGroup {
         let group = adw::PreferencesGroup::builder()
-            .title("GNOME Shell Extension")
+            .title(gettext("GNOME Shell Extension"))
             .visible(false)
             .build();
         let row = adw::ActionRow::builder()
-            .title("Openhub in the Top Bar")
+            .title(gettext("Openhub in the Top Bar"))
             .build();
         let switch = gtk::Switch::builder().valign(gtk::Align::Center).build();
         let copy = gtk::Button::builder()
-            .label("Copy Command")
+            .label(gettext("Copy Command"))
             .valign(gtk::Align::Center)
             .build();
         copy.connect_clicked(|button| {
             button
                 .clipboard()
                 .set_text(shell_extension::INSTALL_COMMAND);
-            button.set_label("Copied");
+            button.set_label(&gettext("Copied"));
         });
         row.add_suffix(&copy);
         row.add_suffix(&switch);
         row.set_activatable_widget(Some(&switch));
         group.add(&row);
 
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             #[weak]
@@ -443,7 +460,7 @@ impl SystemPage {
                 let Ok(bus) = gio::bus_get_future(gio::BusType::Session).await else {
                     return;
                 };
-                let show = glib::clone!(
+                let show = clone!(
                     #[weak]
                     page,
                     #[weak]
@@ -457,7 +474,7 @@ impl SystemPage {
                     #[strong]
                     bus,
                     move || {
-                        glib::spawn_future_local(glib::clone!(
+                        glib::spawn_future_local(clone!(
                             #[weak]
                             page,
                             #[strong]
@@ -474,7 +491,7 @@ impl SystemPage {
                 page.imp()
                     .extension_subscriptions
                     .replace(subscriptions.into());
-                switch.connect_active_notify(glib::clone!(
+                switch.connect_active_notify(clone!(
                     #[weak]
                     page,
                     #[strong]
@@ -484,7 +501,7 @@ impl SystemPage {
                             return;
                         }
                         let on = switch.is_active();
-                        glib::spawn_future_local(glib::clone!(
+                        glib::spawn_future_local(clone!(
                             #[strong]
                             bus,
                             async move {
@@ -520,20 +537,22 @@ impl SystemPage {
         group.set_visible(true);
         let (subtitle, installed) = match &status {
             Status::Missing => (
-                format!(
+                gettext_f(
                     "Not installed. Download {} from Openhub's release, run the copied command in that folder, then log out and back in.",
-                    shell_extension::ZIP
+                    &[shell_extension::ZIP],
                 ),
                 false,
             ),
             Status::Installed { .. } => (
-                "Batteries, Bluetooth and sound output, one click away".to_owned(),
+                gettext("Batteries, Bluetooth and sound output, one click away"),
                 true,
             ),
-            Status::Failed(error) => (format!("The extension couldn't start: {error}"), true),
+            Status::Failed(error) => (
+                gettext_f("The extension couldn't start: {}", &[error]),
+                true,
+            ),
             Status::ExtensionsOff => (
-                "Extensions are turned off in GNOME. Turn them on in the Extensions app."
-                    .to_owned(),
+                gettext("Extensions are turned off in GNOME. Turn them on in the Extensions app."),
                 true,
             ),
         };
@@ -552,9 +571,9 @@ impl SystemPage {
 
     fn firmware_group(&self) -> adw::PreferencesGroup {
         let group = &self.imp().firmware;
-        group.set_title("Device Firmware");
+        group.set_title(&gettext("Device Firmware"));
         group.set_visible(false);
-        glib::spawn_future_local(glib::clone!(
+        glib::spawn_future_local(clone!(
             #[weak(rename_to = page)]
             self,
             async move {
@@ -565,13 +584,13 @@ impl SystemPage {
                 // Plugged-in devices and new metadata both change the list.
                 let subscription = fwupd::watch(
                     &bus,
-                    glib::clone!(
+                    clone!(
                         #[weak]
                         page,
                         #[strong]
                         bus,
                         move || {
-                            glib::spawn_future_local(glib::clone!(
+                            glib::spawn_future_local(clone!(
                                 #[weak]
                                 page,
                                 #[strong]
@@ -609,9 +628,13 @@ impl SystemPage {
         }
         let count = updates.len();
         imp.firmware.set_description(Some(&match count {
-            0 => "Everything is up to date.".to_owned(),
-            1 => "1 update available".to_owned(),
-            n => format!("{n} updates available"),
+            0 => gettext("Everything is up to date."),
+            n => ngettext_f(
+                "{} update available",
+                "{} updates available",
+                n as u32,
+                &[&n.to_string()],
+            ),
         }));
         let mut rows = Vec::new();
         for device in shown {
@@ -630,7 +653,7 @@ impl SystemPage {
             if update.is_some() {
                 row.add_suffix(
                     &gtk::Label::builder()
-                        .label("Update Available")
+                        .label(gettext("Update Available"))
                         .valign(gtk::Align::Center)
                         .css_classes(["accent", "caption-heading"])
                         .build(),
@@ -697,21 +720,23 @@ fn external_usb(devices: &gio::ListStore) -> usize {
         .sum()
 }
 
-/// "1 device", "4 devices", or `none` for zero.
-fn count(n: usize, one: &str, many: &str, none: &str) -> String {
-    match n {
-        0 => none.to_owned(),
-        1 => format!("1 {one}"),
-        n => format!("{n} {many}"),
-    }
-}
-
 fn bluetooth_status(adapter: bool, powered: bool, connected: usize, paired: usize) -> String {
     match (adapter, powered, connected) {
-        (false, _, _) => "No adapter".to_owned(),
-        (true, false, _) => "Off".to_owned(),
-        (true, true, 0) => count(paired, "paired", "paired", "No devices"),
-        (true, true, c) => format!("{c} connected, {paired} paired"),
+        (false, _, _) => gettext("No adapter"),
+        (true, false, _) => gettext("Off"),
+        (true, true, 0) if paired == 0 => gettext("No devices"),
+        (true, true, 0) => ngettext_f(
+            "{} paired",
+            "{} paired",
+            paired as u32,
+            &[&paired.to_string()],
+        ),
+        (true, true, c) => ngettext_f(
+            "{} connected, {} paired",
+            "{} connected, {} paired",
+            c as u32,
+            &[&c.to_string(), &paired.to_string()],
+        ),
     }
 }
 
@@ -720,9 +745,13 @@ fn bluetooth_status(adapter: bool, powered: bool, connected: usize, paired: usiz
 /// USB and external displays are the rest.
 fn headline(devices: usize) -> String {
     match devices {
-        0 => "No devices connected".to_owned(),
-        1 => "1 device connected".to_owned(),
-        n => format!("{n} devices connected"),
+        0 => gettext("No devices connected"),
+        n => ngettext_f(
+            "{} device connected",
+            "{} devices connected",
+            n as u32,
+            &[&n.to_string()],
+        ),
     }
 }
 
@@ -731,7 +760,7 @@ fn values_group(title: &str, rows: &[(&str, String)]) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder().title(title).build();
     for (name, value) in rows {
         let row = adw::ActionRow::builder()
-            .title(*name)
+            .title(gettext(*name))
             .use_markup(false)
             .build();
         let label = gtk::Label::builder()
@@ -759,8 +788,6 @@ mod tests {
         assert_eq!(bluetooth_status(true, false, 0, 5), "Off");
         assert_eq!(bluetooth_status(true, true, 0, 5), "5 paired");
         assert_eq!(bluetooth_status(true, true, 2, 5), "2 connected, 5 paired");
-        assert_eq!(count(1, "device", "devices", "No devices"), "1 device");
-        assert_eq!(count(0, "device", "devices", "No devices"), "No devices");
         assert_eq!(headline(9), "9 devices connected");
     }
 }

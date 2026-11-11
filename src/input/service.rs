@@ -8,6 +8,7 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 
 use super::sysfs::{self, InputInfo, Kind};
+use crate::i18n::gettext;
 use crate::model::InputDevice;
 use crate::upower::convert::usb_owner;
 
@@ -94,7 +95,7 @@ fn new_device(root: &Path, info: &InputInfo) -> InputDevice {
         .property("key", &info.key)
         .property("title", &info.name)
         .property("icon-name", icon)
-        .property("connection", info.connection)
+        .property("connection", gettext(info.connection))
         .property("uniq", &info.uniq)
         .property("usb-device", usb_device)
         .build()

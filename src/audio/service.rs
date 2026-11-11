@@ -21,6 +21,7 @@ use pulse::stream::{FlagSet as StreamFlags, PeekResult, Stream};
 use pulse::volume::{ChannelVolumes, Volume};
 
 use crate::eq;
+use crate::i18n::gettext;
 use crate::model::AudioDevice;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
@@ -582,7 +583,7 @@ fn update(device: &AudioDevice, info: &Info, output: bool, is_default: bool) {
         "icon-name",
         icon_name(output, &info.form_factor, &info.name),
     );
-    set("connection", connection(&info.bus));
+    set("connection", &connection(&info.bus));
     set("address", &info.address);
     set("codec", &info.codec);
     if device.output() != output {
@@ -623,12 +624,12 @@ fn codec_name(codec: &str) -> String {
 
 /// From PulseAudio's `device.bus`; servers' own devices (such as an
 /// effects app's sink) have none.
-fn connection(bus: &str) -> &'static str {
+fn connection(bus: &str) -> String {
     match bus {
-        "bluetooth" => "Bluetooth",
-        "usb" => "USB",
-        "" => "Virtual",
-        _ => "Built-in",
+        "bluetooth" => gettext("Bluetooth"),
+        "usb" => gettext("USB"),
+        "" => gettext("Virtual"),
+        _ => gettext("Built-in"),
     }
 }
 

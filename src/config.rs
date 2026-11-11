@@ -14,6 +14,15 @@ pub const VERSION: &str = match option_env!("OPENHUB_VERSION") {
     None => env!("CARGO_PKG_VERSION"),
 };
 
+/// The gettext domain: translations are `openhub.mo` files.
+pub const GETTEXT_PACKAGE: &str = "openhub";
+
+/// Where the translations are installed.
+pub const LOCALEDIR: &str = match option_env!("OPENHUB_LOCALEDIR") {
+    Some(dir) => dir,
+    None => "/usr/share/locale",
+};
+
 /// GResource base path. Fixed rather than derived from `APP_ID`, because the
 /// `.ui` files reference it literally.
 pub const RESOURCE_BASE_PATH: &str = "/io/github/cjts15/Openhub/";

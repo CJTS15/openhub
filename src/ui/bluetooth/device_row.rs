@@ -1,14 +1,16 @@
 use adw::prelude::*;
 use gtk::glib;
 
+use crate::i18n::{gettext, gettext_f};
 use crate::model::Device;
+use gtk::glib::clone;
 
 pub fn new(device: &Device) -> adw::ActionRow {
     let row = adw::ActionRow::builder().use_markup(false).build();
     let icon = gtk::Image::new();
     row.add_prefix(&icon);
 
-    let update = glib::clone!(
+    let update = clone!(
         #[weak]
         row,
         #[weak]
@@ -26,12 +28,13 @@ pub fn new(device: &Device) -> adw::ActionRow {
 
 fn status(device: &Device) -> String {
     if !device.paired() {
-        return "Not set up".into();
+        return gettext("Not set up");
     }
     match (device.connected(), device.battery()) {
-        (false, _) => "Not connected".into(),
-        (true, -1) => "Connected".into(),
-        (true, battery) => format!("Connected · {battery}% Battery"),
+        (false, _) => gettext("Not connected"),
+        (true, -1) => gettext("Connected"),
+        // Translators: a Bluetooth device's state, such as "Connected · 80% Battery".
+        (true, battery) => gettext_f("Connected · {}% Battery", &[&battery.to_string()]),
     }
 }
 

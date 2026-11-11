@@ -1,6 +1,7 @@
 //! Plain rules for turning UPower values into what the Power page shows. No
 //! GObjects or D-Bus, so they're tested without a bus.
 
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -40,23 +41,23 @@ pub mod warning {
 }
 
 /// A name for devices that don't report a model.
-pub fn kind_name(kind: u32) -> &'static str {
+pub fn kind_name(kind: u32) -> String {
     match kind {
-        kind::LINE_POWER => "Charger",
-        kind::BATTERY => "Battery",
-        kind::UPS => "UPS",
-        kind::MOUSE => "Mouse",
-        kind::KEYBOARD => "Keyboard",
-        kind::PHONE => "Phone",
-        kind::TABLET => "Tablet",
-        kind::COMPUTER => "Computer",
-        kind::GAMING_INPUT => "Game Controller",
-        kind::PEN => "Pen",
-        kind::TOUCHPAD => "Touchpad",
-        kind::HEADSET => "Headset",
-        kind::SPEAKERS => "Speakers",
-        kind::HEADPHONES => "Headphones",
-        _ => "Device",
+        kind::LINE_POWER => gettext("Charger"),
+        kind::BATTERY => gettext("Battery"),
+        kind::UPS => gettext("UPS"),
+        kind::MOUSE => gettext("Mouse"),
+        kind::KEYBOARD => gettext("Keyboard"),
+        kind::PHONE => gettext("Phone"),
+        kind::TABLET => gettext("Tablet"),
+        kind::COMPUTER => gettext("Computer"),
+        kind::GAMING_INPUT => gettext("Game Controller"),
+        kind::PEN => gettext("Pen"),
+        kind::TOUCHPAD => gettext("Touchpad"),
+        kind::HEADSET => gettext("Headset"),
+        kind::SPEAKERS => gettext("Speakers"),
+        kind::HEADPHONES => gettext("Headphones"),
+        _ => gettext("Device"),
     }
 }
 
@@ -79,16 +80,16 @@ pub fn kind_icon(kind: u32) -> &'static str {
 }
 
 /// Empty when UPower doesn't know, which peripherals often report.
-pub fn state_label(state: u32) -> &'static str {
+pub fn state_label(state: u32) -> String {
     match state {
-        state::CHARGING => "Charging",
-        state::DISCHARGING => "Discharging",
-        state::EMPTY => "Empty",
-        state::FULLY_CHARGED => "Fully charged",
+        state::CHARGING => gettext("Charging"),
+        state::DISCHARGING => gettext("Discharging"),
+        state::EMPTY => gettext("Empty"),
+        state::FULLY_CHARGED => gettext("Fully charged"),
         // Plugged in but held, for example by a charge limit.
-        state::PENDING_CHARGE => "Not charging",
-        state::PENDING_DISCHARGE => "Waiting to discharge",
-        _ => "",
+        state::PENDING_CHARGE => gettext("Not charging"),
+        state::PENDING_DISCHARGE => gettext("Waiting to discharge"),
+        _ => String::new(),
     }
 }
 
@@ -96,10 +97,13 @@ pub fn state_label(state: u32) -> &'static str {
 pub fn format_duration(seconds: i64) -> String {
     let minutes = seconds / 60;
     match (minutes / 60, minutes % 60) {
-        (0, 0) => "less than a minute".into(),
-        (0, m) => format!("{m} min"),
-        (h, 0) => format!("{h} h"),
-        (h, m) => format!("{h} h {m} min"),
+        (0, 0) => gettext("less than a minute"),
+        // Translators: a duration, such as "45 min".
+        (0, m) => gettext_f("{} min", &[&m.to_string()]),
+        // Translators: a duration, such as "2 h".
+        (h, 0) => gettext_f("{} h", &[&h.to_string()]),
+        // Translators: a duration, such as "3 h 10 min".
+        (h, m) => gettext_f("{} h {} min", &[&h.to_string(), &m.to_string()]),
     }
 }
 
@@ -109,36 +113,38 @@ pub fn format_duration(seconds: i64) -> String {
 pub fn status_text(on_battery: bool, state: u32, time_to_empty: i64, time_to_full: i64) -> String {
     if on_battery {
         return match time_to_empty {
-            0 => "On battery".into(),
-            t => format!("{} left", format_duration(t)),
+            0 => gettext("On battery"),
+            // Translators: time until the battery is empty, such as "3 h 10 min left".
+            t => gettext_f("{} left", &[&format_duration(t)]),
         };
     }
     match state {
-        state::FULLY_CHARGED => "Fully charged".into(),
+        state::FULLY_CHARGED => gettext("Fully charged"),
         state::CHARGING if time_to_full > 0 => {
-            format!("Charging · full in {}", format_duration(time_to_full))
+            gettext_f("Charging · full in {}", &[&format_duration(time_to_full)])
         }
-        state::CHARGING => "Charging".into(),
-        _ => "Not charging".into(),
+        state::CHARGING => gettext("Charging"),
+        _ => gettext("Not charging"),
     }
 }
 
 /// Some devices report only a coarse level (UPower `BatteryLevel`); give it
 /// a word, or `None` when the device reports a percentage instead.
-pub fn coarse_level(battery_level: u32) -> Option<&'static str> {
-    match battery_level {
-        3 => Some("Low"),
-        4 => Some("Critical"),
-        6 => Some("Normal"),
-        7 => Some("High"),
-        8 => Some("Full"),
-        _ => None,
-    }
+pub fn coarse_level(battery_level: u32) -> Option<String> {
+    let word = match battery_level {
+        3 => gettext_noop("Low"),
+        4 => gettext_noop("Critical"),
+        6 => gettext_noop("Normal"),
+        7 => gettext_noop("High"),
+        8 => gettext_noop("Full"),
+        _ => return None,
+    };
+    Some(gettext(word))
 }
 
 /// The level as shown beside a bar: a percentage, or the coarse word.
 pub fn level_text(percentage: f64, battery_level: u32) -> String {
-    coarse_level(battery_level).map_or_else(|| percent(percentage), str::to_owned)
+    coarse_level(battery_level).unwrap_or_else(|| percent(percentage))
 }
 
 /// Where the bar sits, 0 to 1. Coarse levels get a stand-in position so
@@ -154,15 +160,15 @@ pub fn level_fraction(percentage: f64, battery_level: u32) -> f64 {
     }
 }
 
-pub fn technology_name(technology: u32) -> &'static str {
+pub fn technology_name(technology: u32) -> String {
     match technology {
-        1 => "Lithium-ion",
-        2 => "Lithium polymer",
-        3 => "Lithium iron phosphate",
-        4 => "Lead acid",
-        5 => "Nickel cadmium",
-        6 => "Nickel metal hydride",
-        _ => "",
+        1 => gettext("Lithium-ion"),
+        2 => gettext("Lithium polymer"),
+        3 => gettext("Lithium iron phosphate"),
+        4 => gettext("Lead acid"),
+        5 => gettext("Nickel cadmium"),
+        6 => gettext("Nickel metal hydride"),
+        _ => String::new(),
     }
 }
 
@@ -175,17 +181,17 @@ pub fn percent(percentage: f64) -> String {
 /// either through BlueZ (`native_path` is a BlueZ object path) or through
 /// the kernel's HID driver, whose power supply sits under `uhid`;
 /// `device_path` is the power supply's resolved sysfs `device` link.
-pub fn connection(native_path: &str, device_path: Option<&Path>) -> &'static str {
+pub fn connection(native_path: &str, device_path: Option<&Path>) -> String {
     if native_path.starts_with("/org/bluez/") {
-        return "Bluetooth";
+        return gettext("Bluetooth");
     }
     let path = device_path.map(|p| p.to_string_lossy()).unwrap_or_default();
     if path.contains("/uhid/") || path.contains("/bluetooth/") {
-        "Bluetooth"
+        gettext("Bluetooth")
     } else if path.contains("/usb") {
-        "USB"
+        gettext("USB")
     } else {
-        "Other"
+        gettext("Other")
     }
 }
 
@@ -221,7 +227,8 @@ pub fn usb_battery_summary(batteries: &[(String, String, f64)]) -> (String, Vec<
     let row = batteries
         .iter()
         .min_by(|a, b| a.2.total_cmp(&b.2))
-        .map_or_else(String::new, |(_, text, _)| format!("{text} Battery"));
+        // Translators: a battery level on a USB row, such as "80% Battery".
+        .map_or_else(String::new, |(_, text, _)| gettext_f("{} Battery", &[text]));
     let details = batteries
         .iter()
         .map(|(name, text, _)| format!("{name} · {text}"))

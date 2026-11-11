@@ -2,6 +2,7 @@ use adw::prelude::*;
 
 use super::page::refresh;
 use crate::display::{Logical, Monitor, edid};
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 
 /// What a monitor is (from its EDID) and what it can do (from Mutter).
 pub fn new(
@@ -11,9 +12,9 @@ pub fn new(
 ) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder()
         .title(if monitor.builtin {
-            "Built-in Display"
+            gettext("Built-in Display")
         } else {
-            monitor.display_name.as_str()
+            monitor.display_name.clone()
         })
         .content_width(560)
         .build();
@@ -33,63 +34,61 @@ pub fn new(
     });
     let made = edid.map(|e| match e.week {
         0 => e.year.to_string(),
-        week => format!("Week {week}, {}", e.year),
+        // Translators: when a monitor was made, such as "Week 12, 2023".
+        week => gettext_f("Week {}, {}", &[&week.to_string(), &e.year.to_string()]),
     });
     let size = edid.and_then(|e| {
         e.diagonal_inches()
             .map(|inches| format!("{} × {} cm · {inches:.1}″", e.width_cm, e.height_cm))
     });
     page.add(&group(
-        Some("Monitor"),
+        Some(gettext_noop("Monitor")),
         &[
-            ("Manufacturer", Some(maker.to_owned())),
-            ("Model", Some(model)),
-            ("Serial Number", serial),
-            ("Manufactured", made),
-            ("Size", size),
-            ("Connector", Some(monitor.connector.clone())),
+            (gettext_noop("Manufacturer"), Some(maker.to_owned())),
+            (gettext_noop("Model"), Some(model)),
+            (gettext_noop("Serial Number"), serial),
+            (gettext_noop("Manufactured"), made),
+            (gettext_noop("Size"), size),
+            (gettext_noop("Connector"), Some(monitor.connector.clone())),
             (
-                "Type",
-                Some(
-                    if monitor.builtin {
-                        "Built-in"
-                    } else {
-                        "External"
-                    }
-                    .to_owned(),
-                ),
+                gettext_noop("Type"),
+                Some(if monitor.builtin {
+                    gettext("Built-in")
+                } else {
+                    gettext("External")
+                }),
             ),
         ],
     ));
 
     let current = monitor.current_mode();
     let vrr = monitor.vrr_supported().then(|| match monitor.min_refresh {
-        Some(min) => format!("Supported, from {min} Hz"),
-        None => "Supported".to_owned(),
+        Some(min) => gettext_f("Supported, from {} Hz", &[&min.to_string()]),
+        None => gettext("Supported"),
     });
     page.add(&group(
-        Some("Current Mode"),
+        Some(gettext_noop("Current Mode")),
         &[
             (
-                "Resolution",
+                gettext_noop("Resolution"),
                 current.map(|m| format!("{} × {}", m.width, m.height)),
             ),
             (
-                "Refresh Rate",
-                current.map(|m| format!("{} Hz", refresh(m.refresh))),
+                gettext_noop("Refresh Rate"),
+                current.map(|m| gettext_f("{} Hz", &[&refresh(m.refresh)])),
             ),
-            ("Scale", logical.map(|l| format!("{:.0}%", l.scale * 100.0))),
-            ("Variable Refresh Rate", vrr),
+            (
+                gettext_noop("Scale"),
+                logical.map(|l| format!("{:.0}%", l.scale * 100.0)),
+            ),
+            (gettext_noop("Variable Refresh Rate"), vrr),
             (
                 "HDR",
-                Some(
-                    if monitor.hdr_supported() {
-                        "Supported"
-                    } else {
-                        "Not supported"
-                    }
-                    .to_owned(),
-                ),
+                Some(if monitor.hdr_supported() {
+                    gettext("Supported")
+                } else {
+                    gettext("Not supported")
+                }),
             ),
         ],
     ));
@@ -105,7 +104,7 @@ pub fn new(
         }
     }
     let modes = adw::PreferencesGroup::builder()
-        .title("Supported Modes")
+        .title(gettext("Supported Modes"))
         .build();
     for ((width, height), mut rates) in resolutions {
         rates.sort_by(|a, b| b.total_cmp(a));
@@ -113,7 +112,7 @@ pub fn new(
         modes.add(
             &adw::ActionRow::builder()
                 .title(format!("{width} × {height}"))
-                .subtitle(format!("{} Hz", rates.join(", ")))
+                .subtitle(gettext_f("{} Hz", &[&rates.join(", ")]))
                 .css_classes(["property"])
                 .build(),
         );
@@ -126,13 +125,13 @@ pub fn new(
 fn group(title: Option<&str>, rows: &[(&str, Option<String>)]) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::new();
     if let Some(title) = title {
-        group.set_title(title);
+        group.set_title(&gettext(title));
     }
     for (label, value) in rows {
         if let Some(value) = value.as_deref().filter(|v| !v.is_empty()) {
             group.add(
                 &adw::ActionRow::builder()
-                    .title(*label)
+                    .title(gettext(*label))
                     .subtitle(value)
                     .subtitle_selectable(true)
                     .use_markup(false)

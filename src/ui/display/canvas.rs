@@ -1,5 +1,7 @@
 use std::cell::{Cell, RefCell};
 
+use crate::i18n::gettext_f;
+use gtk::glib::clone;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, glib, graphene, gsk, pango};
@@ -46,7 +48,7 @@ mod imp {
             obj.set_hexpand(true);
             obj.set_cursor_from_name(Some("grab"));
             let drag = gtk::GestureDrag::new();
-            drag.connect_drag_begin(glib::clone!(
+            drag.connect_drag_begin(clone!(
                 #[weak]
                 obj,
                 move |_, x, y| {
@@ -55,7 +57,7 @@ mod imp {
                     imp.offset.set((0.0, 0.0));
                 }
             ));
-            drag.connect_drag_update(glib::clone!(
+            drag.connect_drag_update(clone!(
                 #[weak]
                 obj,
                 move |_, dx, dy| {
@@ -65,7 +67,7 @@ mod imp {
                     }
                 }
             ));
-            drag.connect_drag_end(glib::clone!(
+            drag.connect_drag_end(clone!(
                 #[weak]
                 obj,
                 move |_, dx, dy| obj.drop_at(dx, dy)
@@ -111,9 +113,9 @@ impl Canvas {
             .iter()
             .map(|item| format!("{} {}", item.number, item.name))
             .collect();
-        self.update_property(&[gtk::accessible::Property::Label(&format!(
+        self.update_property(&[gtk::accessible::Property::Label(&gettext_f(
             "Arrangement: {}",
-            description.join(", ")
+            &[&description.join(", ")],
         ))]);
         self.imp().items.replace(items);
         self.imp().dragging.set(None);

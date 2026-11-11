@@ -5,9 +5,11 @@ use std::rc::Rc;
 use adw::prelude::*;
 use gtk::{gio, glib};
 
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 use crate::model::InputDevice;
 use crate::via::definition::{Control, ControlKind, shows};
 use crate::via::{self, Definition, Device, Node, keycodes};
+use gtk::glib::clone;
 
 /// Key size on the layout, in pixels per key unit.
 const UNIT: f64 = 40.0;
@@ -29,7 +31,7 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
     // Shortcuts always come last, so each path below adds them after its own groups.
     let shortcuts = shortcuts_group();
     match node {
-        None => page.add(&note(if device.connection() == "Bluetooth" {
+        None => page.add(&note(if device.connection() == gettext("Bluetooth") {
             "Connect this keyboard with its USB cable to change its lighting and keys. \
              VIA only works over the cable."
         } else {
@@ -54,7 +56,7 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
 fn access_group(dialog: &adw::PreferencesDialog, node: &Node) -> adw::PreferencesGroup {
     let command = via::access_command(node.vendor, node.product, node.interface);
     let group = adw::PreferencesGroup::builder()
-        .title("Lighting and Keys")
+        .title(gettext("Lighting and Keys"))
         .description(
             "This is a VIA keyboard, but Openhub isn't allowed to talk to it yet. Run this \
              once in a terminal to allow it, then reopen this window.",
@@ -77,17 +79,17 @@ fn access_group(dialog: &adw::PreferencesDialog, node: &Node) -> adw::Preference
     text.set_hexpand(true);
     group.add(&card);
     let copy = gtk::Button::builder()
-        .label("Copy")
+        .label(gettext("Copy"))
         .halign(gtk::Align::Center)
         .margin_top(12)
         .css_classes(["pill"])
         .build();
-    copy.connect_clicked(glib::clone!(
+    copy.connect_clicked(clone!(
         #[weak]
         dialog,
         move |button| {
             button.clipboard().set_text(&command);
-            toast(&dialog, "Copied");
+            toast(&dialog, &gettext("Copied"));
         }
     ));
     group.add(&copy);
@@ -106,7 +108,7 @@ fn import_group(
     shortcuts: &adw::PreferencesGroup,
 ) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder()
-        .title("Lighting and Keys")
+        .title(gettext("Lighting and Keys"))
         .description(format!(
             "This is a VIA keyboard ({:04X}:{:04X}). Import its VIA definition, the JSON file \
              the keyboard's maker provides for the VIA app, to change its lighting and keys.",
@@ -114,13 +116,15 @@ fn import_group(
         ))
         .build();
     let button = gtk::Button::builder()
-        .label("Import…")
+        .label(gettext("Import…"))
         .valign(gtk::Align::Center)
         .build();
-    let row = adw::ActionRow::builder().title("VIA Definition").build();
+    let row = adw::ActionRow::builder()
+        .title(gettext("VIA Definition"))
+        .build();
     row.add_suffix(&button);
     group.add(&row);
-    button.connect_clicked(glib::clone!(
+    button.connect_clicked(clone!(
         #[weak]
         dialog,
         #[weak]
@@ -131,12 +135,12 @@ fn import_group(
         shortcuts,
         move |_| {
             let filter = gtk::FileFilter::new();
-            filter.set_name(Some("VIA definitions"));
+            filter.set_name(Some(&gettext("VIA definitions")));
             filter.add_suffix("json");
             let filters = gio::ListStore::new::<gtk::FileFilter>();
             filters.append(&filter);
             let chooser = gtk::FileDialog::builder()
-                .title("Import VIA Definition")
+                .title(gettext("Import VIA Definition"))
                 .filters(&filters)
                 .build();
             let parent = dialog.root().and_downcast::<gtk::Window>();
@@ -207,7 +211,7 @@ fn load(
             .build(),
     );
     page.add(&loading);
-    glib::spawn_future_local(glib::clone!(
+    glib::spawn_future_local(clone!(
         #[weak]
         dialog,
         #[weak]
@@ -219,12 +223,15 @@ fn load(
             let snapshot = match snapshot {
                 Ok(Ok(snapshot)) => snapshot,
                 Ok(Err(error)) => {
-                    page.add(&note(&format!("Couldn't read the keyboard: {error}")));
+                    page.add(&note(&gettext_f(
+                        "Couldn't read the keyboard: {}",
+                        &[&error.to_string()],
+                    )));
                     page.add(&shortcuts);
                     return;
                 }
                 Err(_) => {
-                    page.add(&note("Couldn't read the keyboard"));
+                    page.add(&note(&gettext("Couldn't read the keyboard")));
                     page.add(&shortcuts);
                     return;
                 }
@@ -302,7 +309,7 @@ impl Editor {
                 scale.set_width_request(240);
                 scale.set_valign(gtk::Align::Center);
                 scale.update_property(&[gtk::accessible::Property::Label(&control.label)]);
-                scale.connect_value_changed(glib::clone!(
+                scale.connect_value_changed(clone!(
                     #[weak(rename_to = editor)]
                     self,
                     move |scale| editor.change(key, vec![scale.value() as u8])
@@ -321,7 +328,7 @@ impl Editor {
                     row.set_selected(index as u32);
                 }
                 let values: Vec<u8> = options.iter().map(|(_, value)| *value).collect();
-                row.connect_selected_notify(glib::clone!(
+                row.connect_selected_notify(clone!(
                     #[weak(rename_to = editor)]
                     self,
                     move |row| {
@@ -337,7 +344,7 @@ impl Editor {
                     .title(&control.label)
                     .active(first != 0)
                     .build();
-                row.connect_active_notify(glib::clone!(
+                row.connect_active_notify(clone!(
                     #[weak(rename_to = editor)]
                     self,
                     move |row| editor.change(key, vec![u8::from(row.is_active())])
@@ -354,7 +361,7 @@ impl Editor {
                     .rgba(&gtk::gdk::RGBA::new(r, g, b, 1.0))
                     .valign(gtk::Align::Center)
                     .build();
-                button.connect_rgba_notify(glib::clone!(
+                button.connect_rgba_notify(clone!(
                     #[weak(rename_to = editor)]
                     self,
                     move |button| {
@@ -414,7 +421,10 @@ impl Editor {
                 })
                 .await;
                 if let Ok(Err(error)) = written {
-                    editor.toast(&format!("Couldn't change the lighting: {error}"));
+                    editor.toast(&gettext_f(
+                        "Couldn't change the lighting: {}",
+                        &[&error.to_string()],
+                    ));
                 }
             });
         });
@@ -440,8 +450,10 @@ impl Editor {
     /// key picks a new one, written to the keyboard at once.
     fn keys_group(self: &Rc<Self>, codes: Vec<u16>) -> adw::PreferencesGroup {
         let group = adw::PreferencesGroup::builder()
-            .title("Keys")
-            .description("Click a key to choose what it does. Changes are stored on the keyboard.")
+            .title(gettext("Keys"))
+            .description(gettext(
+                "Click a key to choose what it does. Changes are stored on the keyboard.",
+            ))
             .build();
         let layout = gtk::Fixed::new();
         layout.set_halign(gtk::Align::Center);
@@ -468,14 +480,16 @@ impl Editor {
                 .width_request((key.w * UNIT) as i32 - 4)
                 .height_request((key.h * UNIT) as i32 - 4)
                 .build();
-            button.update_property(&[gtk::accessible::Property::Label(&format!(
+            button.update_property(&[gtk::accessible::Property::Label(&gettext_f(
                 "Row {} key {}: {}",
-                key.row + 1,
-                key.col + 1,
-                label.label()
+                &[
+                    &(key.row + 1).to_string(),
+                    &(key.col + 1).to_string(),
+                    &label.label(),
+                ],
             ))]);
             let (row, col) = (key.row, key.col);
-            button.connect_clicked(glib::clone!(
+            button.connect_clicked(clone!(
                 #[weak(rename_to = editor)]
                 self,
                 #[weak]
@@ -491,12 +505,12 @@ impl Editor {
         group.add(&card);
 
         let reset = gtk::Button::builder()
-            .label("Restore Default Keys")
+            .label(gettext("Restore Default Keys"))
             .halign(gtk::Align::Center)
             .margin_top(12)
             .css_classes(["pill"])
             .build();
-        reset.connect_clicked(glib::clone!(
+        reset.connect_clicked(clone!(
             #[weak(rename_to = editor)]
             self,
             move |_| editor.confirm_reset()
@@ -522,12 +536,12 @@ impl Editor {
             .map(|(index, name)| (0x7E00 + index as u16, name.clone()))
             .collect();
         if !custom.is_empty() {
-            groups.push(("This Keyboard", custom));
+            groups.push((gettext_noop("This Keyboard"), custom));
         }
         for (title, keys) in groups {
             content.append(
                 &gtk::Label::builder()
-                    .label(title)
+                    .label(gettext(title))
                     .xalign(0.0)
                     .css_classes(["heading"])
                     .build(),
@@ -539,7 +553,7 @@ impl Editor {
                 .build();
             for (code, name) in keys {
                 let button = gtk::Button::builder().label(&name).build();
-                button.connect_clicked(glib::clone!(
+                button.connect_clicked(clone!(
                     #[weak(rename_to = editor)]
                     self,
                     #[weak]
@@ -579,8 +593,11 @@ impl Editor {
                 Ok(Ok(())) => {
                     label.set_label(&keycodes::name(code, &editor.definition.custom_keycodes))
                 }
-                Ok(Err(error)) => editor.toast(&format!("Couldn't change the key: {error}")),
-                Err(_) => editor.toast("Couldn't change the key"),
+                Ok(Err(error)) => editor.toast(&gettext_f(
+                    "Couldn't change the key: {}",
+                    &[&error.to_string()],
+                )),
+                Err(_) => editor.toast(&gettext("Couldn't change the key")),
             }
         });
     }
@@ -590,10 +607,15 @@ impl Editor {
             return;
         };
         let confirm = adw::AlertDialog::new(
-            Some("Restore Default Keys?"),
-            Some("Every key goes back to what the keyboard's firmware sets, on all layers."),
+            Some(&gettext("Restore Default Keys?")),
+            Some(&gettext(
+                "Every key goes back to what the keyboard's firmware sets, on all layers.",
+            )),
         );
-        confirm.add_responses(&[("cancel", "Cancel"), ("reset", "Restore")]);
+        confirm.add_responses(&[
+            ("cancel", &gettext("_Cancel")),
+            ("reset", &gettext("_Restore")),
+        ]);
         confirm.set_response_appearance("reset", adw::ResponseAppearance::Destructive);
         confirm.set_default_response(Some("cancel"));
         let editor = self.clone();
@@ -618,10 +640,13 @@ impl Editor {
                                 &editor.definition.custom_keycodes,
                             ));
                         }
-                        editor.toast("Keys restored");
+                        editor.toast(&gettext("Keys restored"));
                     }
-                    Ok(Err(error)) => editor.toast(&format!("Couldn't restore the keys: {error}")),
-                    Err(_) => editor.toast("Couldn't restore the keys"),
+                    Ok(Err(error)) => editor.toast(&gettext_f(
+                        "Couldn't restore the keys: {}",
+                        &[&error.to_string()],
+                    )),
+                    Err(_) => editor.toast(&gettext("Couldn't restore the keys")),
                 }
             });
         });
@@ -643,8 +668,8 @@ fn toast(dialog: &adw::PreferencesDialog, title: &str) {
 fn shortcuts_group() -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::new();
     let row = adw::ActionRow::builder()
-        .title("Keyboard Shortcuts")
-        .subtitle("Opens GNOME Settings")
+        .title(gettext("Keyboard Shortcuts"))
+        .subtitle(gettext("Opens GNOME Settings"))
         .activatable(true)
         .build();
     row.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));

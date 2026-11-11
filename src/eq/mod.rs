@@ -7,6 +7,7 @@ mod live;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+use crate::i18n::{gettext, gettext_f, gettext_noop};
 use gtk::glib;
 
 pub use live::Live;
@@ -170,13 +171,13 @@ pub fn response(filters: &[Filter], freq: f64) -> f64 {
 }
 
 pub const PRESETS: [(&str, [f64; 10]); 3] = [
-    ("Flat", [0.0; 10]),
+    (gettext_noop("Flat"), [0.0; 10]),
     (
-        "Bass Boost",
+        gettext_noop("Bass Boost"),
         [6.0, 5.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     ),
     (
-        "Vocal",
+        gettext_noop("Vocal"),
         [-2.0, -2.0, -1.0, 0.0, 2.0, 3.0, 3.0, 2.0, 0.0, -1.0],
     ),
 ];
@@ -211,7 +212,9 @@ pub fn parse_autoeq(text: &str) -> Result<(f64, Vec<Filter>), String> {
         let words: Vec<&str> = line.split_whitespace().collect();
         match words.as_slice() {
             ["Preamp:", value, "dB", ..] => {
-                preamp = value.parse().map_err(|_| format!("Bad preamp: “{line}”"))?;
+                preamp = value
+                    .parse()
+                    .map_err(|_| gettext_f("Bad preamp: “{}”", &[line]))?;
             }
             [filter, ..] if filter.starts_with("Filter") => {
                 // Filter 1: ON PK Fc 105 Hz Gain -2.1 dB Q 0.70
@@ -232,14 +235,16 @@ pub fn parse_autoeq(text: &str) -> Result<(f64, Vec<Filter>), String> {
                             q,
                         })
                     }
-                    _ => return Err(format!("Unsupported filter: “{line}”")),
+                    _ => return Err(gettext_f("Unsupported filter: “{}”", &[line])),
                 }
             }
             _ => {}
         }
     }
     if filters.is_empty() {
-        return Err("No filters found. Choose an AutoEQ ParametricEQ.txt file.".into());
+        return Err(gettext(
+            "No filters found. Choose an AutoEQ ParametricEQ.txt file.",
+        ));
     }
     Ok((preamp, filters))
 }
@@ -365,9 +370,10 @@ pub fn save(all: &[(String, Settings)]) -> Result<(), String> {
     let path = rules_path();
     if enabled.is_empty() {
         match std::fs::remove_file(&path) {
-            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
-                Err(format!("Could not remove {}: {error}", path.display()))
-            }
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(gettext_f(
+                "Could not remove {}: {}",
+                &[&path.display().to_string(), &error.to_string()],
+            )),
             _ => Ok(()),
         }
     } else {
@@ -376,10 +382,19 @@ pub fn save(all: &[(String, Settings)]) -> Result<(), String> {
 }
 
 fn write(path: &Path, contents: &str) -> Result<(), String> {
-    let error = |error: glib::Error| format!("Could not save {}: {error}", path.display());
+    let error = |error: glib::Error| {
+        gettext_f(
+            "Could not save {}: {}",
+            &[&path.display().to_string(), &error.to_string()],
+        )
+    };
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(dir).map_err(|e| {
+            gettext_f(
+                "Could not create {}: {}",
+                &[&dir.display().to_string(), &e.to_string()],
+            )
+        })?;
     }
     // Written to a temporary file and renamed, so a crash never leaves half a rule.
     glib::file_set_contents(path, contents.as_bytes()).map_err(error)

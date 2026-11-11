@@ -97,7 +97,7 @@
           <li>A Keyboard Shortcuts window, from the main menu or Ctrl+?</li>
           <li>Openhub and its GNOME Shell extension can now be translated</li>
           <li>The extension's low-battery warning follows the shell theme's colour, including high contrast</li>
-          <li>The extension now supports GNOME 51 only</li>
+          <li>The release's install script installs the extension too, if you want it</li>
         </ul>
       </description>
     </release>

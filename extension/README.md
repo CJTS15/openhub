@@ -11,7 +11,7 @@ The icon turns into a low-battery icon while any device is below 20%.
 
 It works on its own, without Openhub running. It reads UPower, BlueZ and the sound server the same way GNOME Shell does, and only opens Openhub when you click a row. While Openhub runs, the menu also lists the batteries only Openhub reads (Razer mice, some 2.4 GHz dongles), from Openhub's `GetBatteries` D-Bus call.
 
-Supported: GNOME 51. The accent (the Bluetooth icon, the selected output, the level bars) and the low-battery warning colour come from the shell theme, so they follow GNOME's accent colour, high contrast and custom shell themes such as Recoolor's.
+Supported: GNOME 46 to 51. The accent (the Bluetooth icon, the selected output, the level bars) and the low-battery warning colour come from the shell theme, so they follow GNOME's accent colour, high contrast and custom shell themes such as Recoolor's.
 
 Its text is translated with Openhub's translations (gettext domain `openhub`), so it shows in your language when Openhub is installed natively or by a distribution.
 

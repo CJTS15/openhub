@@ -22,7 +22,21 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download `openhub-1.2.0-x86_64.flatpak` from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0). It needs the GNOME 51 runtime from Flathub:
+Download these three files from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) into one folder:
+
+- `openhub-1.2.0-x86_64.flatpak`
+- `openhub@cjts15.github.io.shell-extension.zip`
+- `install.sh`
+
+Then run the script from that folder:
+
+```sh
+sh install.sh
+```
+
+It installs the GNOME 51 runtime from Flathub and Openhub, then asks whether to install the top-bar extension too. Everything goes into your user installation, without `sudo`. Log out and back in once if you added the extension.
+
+To install the Flatpak by hand instead:
 
 ```sh
 flatpak install --user flathub org.gnome.Platform//51
@@ -32,13 +46,13 @@ flatpak run io.github.cjts15.Openhub
 
 ### Top-bar extension
 
-The extension isn't on extensions.gnome.org. Download `openhub@cjts15.github.io.shell-extension.zip` from the same release and install it from that folder:
+The extension isn't on extensions.gnome.org. `install.sh` offers to install it. To install it by hand, download `openhub@cjts15.github.io.shell-extension.zip` from the same release and install it from that folder:
 
 ```sh
 gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip
 ```
 
-Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 51. From a source checkout, see `extension/README.md`.
+Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 46 to 51. From a source checkout, see `extension/README.md`.
 
 ![The extension's menu](data/screenshots/extension.png)
 

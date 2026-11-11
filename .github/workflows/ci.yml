@@ -44,6 +44,23 @@ jobs:
       - name: UPower test against python-dbusmock
         run: build-aux/test-upower.sh
 
+  extension:
+    name: GNOME Shell extension (gjs test, ESLint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gjs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gjs
+
+      - name: Unit test
+        run: gjs -m extension/tests/devices.test.js
+
+      - name: ESLint
+        run: npx --yes eslint@10.13.0 -c extension/eslint.config.js extension
+
   flatpak:
     name: Flatpak (GNOME 51)
     runs-on: ubuntu-24.04

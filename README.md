@@ -38,7 +38,7 @@ The extension isn't on extensions.gnome.org. Download `openhub@cjts15.github.io.
 gnome-extensions install --force openhub@cjts15.github.io.shell-extension.zip
 ```
 
-Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 46 to 51. From a source checkout, see `extension/README.md`.
+Log out and back in once so GNOME Shell loads it, then turn it on with the switch on Openhub's System page, or with `gnome-extensions enable openhub@cjts15.github.io`. It supports GNOME 51. From a source checkout, see `extension/README.md`.
 
 ![The extension's menu](data/screenshots/extension.png)
 
@@ -108,6 +108,8 @@ Openhub is translatable, but has no translations yet. To start one:
 1. Refresh the template, `po/openhub.pot`, with `meson compile -C _build openhub-pot`. This needs gettext 0.24 or newer, which reads Rust.
 2. Copy it to `po/<language>.po` (such as `po/de.po`) and translate it, for example with GNOME's Translation Editor.
 3. Add the language code to `po/LINGUAS`.
+
+The GNOME Shell extension shares the template: its `extension.js` uses `_()` and `ngettext()`.
 
 In the code, text goes through `gettext()`, or `gettext_f()` and `ngettext_f()` for messages with values, which use `{}` placeholders filled in order (`src/i18n.rs`). Call `clone!` unqualified: xgettext doesn't look inside `glib::clone!(…)`.
 

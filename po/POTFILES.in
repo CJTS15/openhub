@@ -46,3 +46,4 @@ src/usb/service.rs
 src/via/definition.rs
 src/via/keycodes.rs
 src/via/mod.rs
+extension/openhub@cjts15.github.io/extension.js

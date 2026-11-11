@@ -10,14 +10,14 @@ import Gvc from 'gi://Gvc';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {BarLevel} from 'resource:///org/gnome/shell/ui/barLevel.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {getMixerControl} from 'resource:///org/gnome/shell/ui/status/volume.js';
 
-import {batteries, bluetoothLabel} from './devices.js';
+import {batteries} from './devices.js';
 
 const APP_ID = 'io.github.cjts15.Openhub';
 
@@ -59,7 +59,7 @@ class OpenhubIndicator extends PanelMenu.Button {
                 showPage('system');
             }));
 
-        const bluetooth = card({icon: 'bluetooth-active-symbolic', title: 'Bluetooth', chevron: true});
+        const bluetooth = card({icon: 'bluetooth-active-symbolic', title: _('Bluetooth'), chevron: true});
         bluetooth.icon.add_style_class_name('openhub-circle');
         this._circle = bluetooth.icon;
 
@@ -71,18 +71,23 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._accentProbe = new St.Widget({style_class: 'slider', opacity: 0, width: 0, height: 0});
         this._accentProbe.connectObject('style-changed', () => this._applyAccent(), this);
         this.menu.box.add_child(this._accentProbe);
+        // The theme's warning colour, the same way: GNOME Shell gives it to
+        // the lock screen's Caps Lock warning.
+        this._warning = null;
+        this._warningProbe = new St.Label({style_class: 'caps-lock-warning-label', opacity: 0, width: 0, height: 0});
+        this.menu.box.add_child(this._warningProbe);
         bluetooth.item.connect('activate', () => showPage('bluetooth'));
         this._bluetooth = bluetooth.subtitle;
         this.menu.addMenuItem(bluetooth.item);
 
         this._batteries = new PopupMenu.PopupMenuSection();
-        this.menu.addMenuItem(sectionHeader('battery-symbolic', 'Batteries',
-            'Check battery levels of your devices', this._batteries));
+        this.menu.addMenuItem(sectionHeader('battery-symbolic', _('Batteries'),
+            _('Check battery levels of your devices'), this._batteries));
         this.menu.addMenuItem(this._batteries);
 
         this._outputs = new PopupMenu.PopupMenuSection();
-        this.menu.addMenuItem(sectionHeader('audio-speakers-symbolic', 'Sound Output',
-            'Select your audio output device', this._outputs));
+        this.menu.addMenuItem(sectionHeader('audio-speakers-symbolic', _('Sound Output'),
+            _('Select your audio output device'), this._outputs));
         this.menu.addMenuItem(this._outputs);
         this._outputItems = new Map();
         // GNOME Shell's own mixer connection, shared with its volume slider.
@@ -206,7 +211,9 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._circle.set_style(this._accent
             ? `background-color: ${this._accent.color}; color: ${this._accent.foreground};`
             : null);
+        this._warning = accentStyle(this._warningProbe.get_theme_node().get_foreground_color())?.color ?? null;
         this._setActiveOutput(this._activeOutput);
+        this._queueSync();
     }
 
     _readOpenhubBatteries() {
@@ -279,12 +286,12 @@ class OpenhubIndicator extends PanelMenu.Button {
 
         this._batteries.removeAll();
         if (rows.length === 0) {
-            const empty = card({style: 'openhub-item', icon: 'battery-missing-symbolic', title: 'No devices with a battery'});
+            const empty = card({style: 'openhub-item', icon: 'battery-missing-symbolic', title: _('No devices with a battery')});
             empty.item.reactive = false;
             this._batteries.addMenuItem(empty.item);
         }
         for (const row of rows)
-            this._batteries.addMenuItem(batteryItem(row));
+            this._batteries.addMenuItem(batteryItem(row, this._warning));
 
         // The icon warns while any device is low.
         const low = rows.find(row => row.low);
@@ -292,9 +299,11 @@ class OpenhubIndicator extends PanelMenu.Button {
             this._icon.gicon = null;
             this._icon.icon_name = 'battery-level-10-symbolic';
             this._icon.add_style_class_name('openhub-low');
+            this._icon.set_style(this._warning ? `color: ${this._warning};` : null);
         } else {
             this._icon.gicon = this._appIcon;
             this._icon.remove_style_class_name('openhub-low');
+            this._icon.set_style(null);
         }
 
         const store = this._client.get_devices();
@@ -303,7 +312,9 @@ class OpenhubIndicator extends PanelMenu.Button {
             if (store.get_item(i).connected)
                 connected++;
         }
-        this._bluetooth.text = bluetoothLabel(connected);
+        this._bluetooth.text = connected === 0
+            ? _('No devices connected')
+            : ngettext('%d device connected', '%d devices connected', connected).format(connected);
     }
 
     destroy() {
@@ -417,12 +428,12 @@ function headerItem(appIcon, openSettings) {
     item.add_child(new St.Icon({gicon: appIcon, icon_size: 24, y_align: Clutter.ActorAlign.CENTER}));
     item.add_child(column([
         new St.Label({text: 'Openhub', style_class: 'openhub-title'}),
-        subtitleText('Connected Devices & Settings'),
+        subtitleText(_('Connected Devices & Settings')),
     ], {x_expand: true}));
     const settings = new St.Button({
         style_class: 'icon-button openhub-settings',
         can_focus: true,
-        accessible_name: 'Open Openhub',
+        accessible_name: _('Open Openhub'),
         y_align: Clutter.ActorAlign.CENTER,
         child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
     });
@@ -491,15 +502,16 @@ function sectionHeader(icon, title, subtitle, section) {
  * percentage over a level bar. It opens Openhub's Power page.
  *
  * @param {{name: string, icon: string, percentage: number, low: boolean}} row the device
+ * @param {string|null} warning the theme's warning colour, or null for the stylesheet's
  * @returns {PopupMenu.PopupBaseMenuItem} the item
  */
-function batteryItem(row) {
+function batteryItem(row, warning) {
     const {item, text} = card({style: 'openhub-item', icon: row.icon, title: row.name});
     item.connect('activate', () => showPage('power'));
 
     const status = new St.BoxLayout({style_class: 'openhub-status'});
     status.add_child(new St.Widget({style_class: 'openhub-dot', y_align: Clutter.ActorAlign.CENTER}));
-    status.add_child(subtitleText('Connected'));
+    status.add_child(subtitleText(_('Connected')));
     text.add_child(status);
 
     const percent = new St.Label({
@@ -514,6 +526,10 @@ function batteryItem(row) {
     if (row.low) {
         percent.add_style_class_name('openhub-low');
         bar.add_style_class_name('openhub-low');
+        if (warning) {
+            percent.set_style(`color: ${warning};`);
+            bar.set_style(`-barlevel-active-background-color: ${warning};`);
+        }
     }
     item.add_child(column([percent, bar], {}, 6));
     return item;
@@ -558,7 +574,7 @@ function showPage(page) {
     const launch = () => {
         const app = Shell.AppSystem.get_default().lookup_app(`${APP_ID}.desktop`);
         if (!app) {
-            Main.notify('Openhub', 'Openhub isn\'t installed.');
+            Main.notify('Openhub', _('Openhub isn’t installed.'));
             return;
         }
         app.activate();

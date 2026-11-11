@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openhub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-10 15:05+0800\n"
+"POT-Creation-Date: 2026-11-10 19:20+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -578,6 +578,7 @@ msgstr ""
 #: src/audio/service.rs:629 src/input/sysfs.rs:129
 #: src/ui/input/keyboard_dialog.rs:34 src/ui/system/page.rs:28
 #: src/upower/convert.rs:186 src/upower/convert.rs:190
+#: extension/openhub@cjts15.github.io/extension.js:62
 msgid "Bluetooth"
 msgstr ""
 
@@ -1152,6 +1153,7 @@ msgstr ""
 
 #: src/ui/bluetooth/device_row.rs:35 src/ui/input/page.rs:209
 #: src/upower/service.rs:469
+#: extension/openhub@cjts15.github.io/extension.js:514
 msgid "Connected"
 msgstr ""
 
@@ -2028,6 +2030,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/ui/system/page.rs:748
+#: extension/openhub@cjts15.github.io/extension.js:316
 msgid "No devices connected"
 msgstr ""
 
@@ -2414,4 +2417,43 @@ msgstr ""
 #: src/via/mod.rs:249 src/via/mod.rs:252
 #, rust-format
 msgid "Could not save the definition: {}"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:84
+msgid "Batteries"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:85
+msgid "Check battery levels of your devices"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:89
+msgid "Sound Output"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:90
+msgid "Select your audio output device"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:289
+msgid "No devices with a battery"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:317
+#, javascript-format
+msgid "%d device connected"
+msgid_plural "%d devices connected"
+msgstr[0] ""
+msgstr[1] ""
+
+#: extension/openhub@cjts15.github.io/extension.js:431
+msgid "Connected Devices & Settings"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:436
+msgid "Open Openhub"
+msgstr ""
+
+#: extension/openhub@cjts15.github.io/extension.js:577
+msgid "Openhub isn’t installed."
 msgstr ""

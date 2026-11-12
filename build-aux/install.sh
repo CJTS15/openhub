@@ -5,8 +5,9 @@
 # openhub@cjts15.github.io.shell-extension.zip, then run: sh install.sh
 #
 # Flatpak bundles can't run anything when installed, so this script does
-# what would otherwise be done by hand. Everything goes into your user
-# installation; nothing needs sudo.
+# what would otherwise be done by hand. Openhub goes into the system
+# installation, like apps from GNOME Software; Flatpak may ask for your
+# password. The extension is installed for you only.
 set -eu
 
 APP_ID=io.github.cjts15.Openhub
@@ -25,11 +26,19 @@ if [ -z "$bundle" ]; then
 fi
 
 echo "Installing the GNOME 51 runtime from Flathub…"
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user --noninteractive flathub org.gnome.Platform//51
+# Only when missing: on an existing remote, remote-add --if-not-exists
+# removes its filter, which would turn Fedora's filtered Flathub into the
+# full one.
+if ! flatpak remotes --system --columns=name | grep -qx flathub; then
+    flatpak remote-add --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+fi
+# No -y below: it also turns off polkit's password prompt, so installing
+# a bundle system-wide would be refused. Flatpak asks to confirm instead.
+flatpak install --system --or-update flathub org.gnome.Platform//51
 
 echo "Installing $(basename "$bundle")…"
-flatpak install --user --noninteractive --bundle "$bundle"
+# --reinstall replaces an earlier version; your settings and data stay.
+flatpak install --system --reinstall --bundle "$bundle"
 
 zip="$DIR/$UUID.shell-extension.zip"
 if [ -f "$zip" ] && command -v gnome-extensions >/dev/null 2>&1; then

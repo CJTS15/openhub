@@ -654,14 +654,33 @@ impl DisplayPage {
                         }
                         _ => {
                             let level = value.round().clamp(0.0, f64::from(u16::MAX)) as u16;
-                            let _ = gio::spawn_blocking(move || {
-                                let bus = ddc::bus_for(&connector)?;
+                            let target = connector.clone();
+                            let written = gio::spawn_blocking(move || {
+                                let bus = ddc::bus_for(&target)?;
                                 ddc::Monitor::open(&bus)
                                     .ok()?
                                     .set(ddc::BRIGHTNESS, level)
                                     .ok()
                             })
-                            .await;
+                            .await
+                            .ok()
+                            .flatten();
+                            // The monitor didn't take it: show what it has,
+                            // rather than a slider it doesn't follow.
+                            if written.is_none() {
+                                let target = connector.clone();
+                                let read = gio::spawn_blocking(move || {
+                                    let bus = ddc::bus_for(&target)?;
+                                    ddc::Monitor::open(&bus).ok()?.get(ddc::BRIGHTNESS).ok()
+                                })
+                                .await
+                                .ok()
+                                .flatten();
+                                if let Some(read) = read {
+                                    page.imp().ddc.borrow_mut().insert(connector, read);
+                                    page.render();
+                                }
+                            }
                         }
                     }
                 }

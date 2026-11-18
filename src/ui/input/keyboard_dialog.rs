@@ -31,12 +31,17 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
     // Shortcuts always come last, so each path below adds them after its own groups.
     let shortcuts = shortcuts_group();
     match node {
-        None => page.add(&note(if device.connection() == gettext("Bluetooth") {
-            "Connect this keyboard with its USB cable to change its lighting and keys. \
-             VIA only works over the cable."
+        // The connection is untranslated (see InputManager).
+        None => page.add(&note(&if device.connection() == "Bluetooth" {
+            gettext(
+                "Connect this keyboard with its USB cable to change its lighting and keys. \
+                 VIA only works over the cable.",
+            )
         } else {
-            "Openhub can't change this keyboard's lighting or keys. It works with VIA \
-             keyboards connected by cable."
+            gettext(
+                "Openhub can't change this keyboard's lighting or keys. It works with VIA \
+                 keyboards connected by cable.",
+            )
         })),
         // udev can't match "any VIA keyboard", so each one needs its own line.
         Some(node) if !via::can_open(&node) => page.add(&access_group(&dialog, &node)),

@@ -88,7 +88,7 @@
     <control>touch</control>
   </supports>
   <releases>
-    <release version="1.2.0" date="2026-11-11">
+    <release version="1.2.0" date="2026-11-18">
       <description>
         <p>Foundations for what comes next:</p>
         <ul>
@@ -97,7 +97,17 @@
           <li>A Keyboard Shortcuts window, from the main menu or Ctrl+?</li>
           <li>Openhub and its GNOME Shell extension can now be translated</li>
           <li>The extension's low-battery warning follows the shell theme's colour, including high contrast</li>
-          <li>The release's install script installs the extension too, if you want it</li>
+          <li>The release's install script installs the extension too, if you want it, and checks the downloads first</li>
+        </ul>
+        <p>Fixes from a code review:</p>
+        <ul>
+          <li>Changing the volume keeps the left/right balance</li>
+          <li>Logitech and Razer keyboards open the keyboard settings, not the mouse settings</li>
+          <li>Logitech mouse settings no longer hang while the mouse moves, and work with cabled mice</li>
+          <li>Bluetooth scanning stops when you leave the Bluetooth page</li>
+          <li>External monitor brightness retries when the monitor doesn't answer</li>
+          <li>The equalizer rejects damaged settings files, and is only offered when it can apply</li>
+          <li>Openhub saves its window size when it closes, instead of while you resize it</li>
         </ul>
       </description>
     </release>

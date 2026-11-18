@@ -7,6 +7,7 @@ data/resources/ui/usb_page.ui
 data/resources/ui/power_page.ui
 data/resources/ui/window.ui
 data/resources/ui/bluetooth_page.ui
+src/application.rs
 src/audio/service.rs
 src/ddc/mod.rs
 src/display/color.rs

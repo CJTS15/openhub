@@ -363,6 +363,8 @@ impl AudioManager {
             }
             imp.live.replace(live);
         }
+        // Without a PipeWire connection, changes wouldn't apply.
+        let available = available && imp.live.borrow().is_some();
         if imp.equalizer.replace(available) != available {
             self.notify_equalizer();
         }

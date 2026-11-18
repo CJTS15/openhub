@@ -4,7 +4,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::mpsc;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use pipewire as pw;
 use pw::node::Node;
@@ -27,20 +29,36 @@ pub struct Live {
 }
 
 impl Live {
+    /// Connects to PipeWire, or `None` if that fails (no socket, or no
+    /// permission), so the equalizer isn't offered when it can't apply.
     pub fn start() -> Option<Self> {
         let (sender, receiver) = pw::channel::channel();
+        let (ready, connected) = mpsc::sync_channel(1);
         let thread = std::thread::Builder::new()
             .name("openhub-eq".into())
             .spawn(move || {
-                if let Err(error) = run(receiver) {
+                if let Err(error) = run(receiver, ready) {
                     eprintln!("Equalizer: PipeWire connection failed: {error}");
                 }
             })
             .ok()?;
-        Some(Self {
+        let mut live = Self {
             sender,
             thread: Some(thread),
-        })
+        };
+        // A failed connection drops `ready`, which ends the wait at once; a
+        // local socket answers well within the timeout.
+        match connected.recv_timeout(Duration::from_secs(2)) {
+            Ok(()) => Some(live),
+            // The thread has ended; dropping `live` joins it.
+            Err(mpsc::RecvTimeoutError::Disconnected) => None,
+            // Still connecting: let it go rather than block the main thread
+            // on a join. Drop then only asks it to quit.
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                live.thread.take();
+                None
+            }
+        }
     }
 
     /// Sets `graph` on the output named `node`, now and whenever it reappears
@@ -74,7 +92,10 @@ struct State {
     wanted: HashMap<String, String>,
 }
 
-fn run(receiver: pw::channel::Receiver<Message>) -> Result<(), pw::Error> {
+fn run(
+    receiver: pw::channel::Receiver<Message>,
+    ready: mpsc::SyncSender<()>,
+) -> Result<(), pw::Error> {
     pw::init();
     let main_loop = pw::main_loop::MainLoopRc::new(None)?;
     let context = pw::context::ContextRc::new(&main_loop, None)?;
@@ -136,6 +157,8 @@ fn run(receiver: pw::channel::Receiver<Message>) -> Result<(), pw::Error> {
         }
     });
 
+    // Connected: from here on, set() reaches PipeWire.
+    let _ = ready.send(());
     main_loop.run();
     Ok(())
 }

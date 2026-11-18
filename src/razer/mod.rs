@@ -146,27 +146,36 @@ impl Device {
             std::thread::sleep(Duration::from_millis(50));
             let mut reply = [0u8; 91];
             unsafe { ioctl(&self.file, Updater::<GET_FEATURE, Buffer>::new(&mut reply))? };
-            let reply = &reply[1..];
-            match reply[0] {
-                0x01 => continue, // Busy.
-                0x02 if reply[6] == class && reply[7] == command => {
-                    let mut out = [0u8; 80];
-                    out.copy_from_slice(&reply[8..88]);
-                    return Ok(out);
-                }
-                0x05 => return Err(io::Error::other(gettext("Not supported by this mouse"))),
-                status => {
-                    return Err(io::Error::other(gettext_f(
-                        "The mouse refused the command ({})",
-                        &[&format!("{status:#04x}")],
-                    )));
-                }
+            if let Some(result) = outcome(&reply[1..], class, command) {
+                return result;
             }
         }
         Err(io::Error::new(
             io::ErrorKind::TimedOut,
             gettext("The mouse didn't answer. Move it to wake it up."),
         ))
+    }
+}
+
+/// What a reply means for a call to `class`/`command`: its argument bytes,
+/// an error, or `None` to read again (busy, or a reply to an earlier
+/// command).
+fn outcome(reply: &[u8], class: u8, command: u8) -> Option<io::Result<[u8; 80]>> {
+    match reply[0] {
+        0x01 => None,
+        0x02 if reply[6] == class && reply[7] == command => {
+            let mut out = [0u8; 80];
+            out.copy_from_slice(&reply[8..88]);
+            Some(Ok(out))
+        }
+        0x02 => None,
+        0x05 => Some(Err(io::Error::other(gettext(
+            "Not supported by this mouse",
+        )))),
+        status => Some(Err(io::Error::other(gettext_f(
+            "The mouse refused the command ({})",
+            &[&format!("{status:#04x}")],
+        )))),
     }
 }
 
@@ -261,6 +270,35 @@ fn poll_rate_byte(rate: u16) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn waits_through_busy_and_stale_replies() {
+        let reply = |status: u8, class: u8, command: u8| {
+            let mut bytes = [0u8; 90];
+            bytes[0] = status;
+            bytes[6] = class;
+            bytes[7] = command;
+            bytes[8] = 0x42;
+            bytes
+        };
+        assert!(outcome(&reply(0x01, 0x04, 0x85), 0x04, 0x85).is_none());
+        // A success for an earlier command isn't this call's answer.
+        assert!(outcome(&reply(0x02, 0x00, 0x81), 0x04, 0x85).is_none());
+        let ok = outcome(&reply(0x02, 0x04, 0x85), 0x04, 0x85)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ok[0], 0x42);
+        assert!(
+            outcome(&reply(0x05, 0x04, 0x85), 0x04, 0x85)
+                .unwrap()
+                .is_err()
+        );
+        assert!(
+            outcome(&reply(0x03, 0x04, 0x85), 0x04, 0x85)
+                .unwrap()
+                .is_err()
+        );
+    }
 
     #[test]
     fn reports_carry_their_checksum() {

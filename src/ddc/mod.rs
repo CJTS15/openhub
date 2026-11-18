@@ -21,6 +21,8 @@ pub const BRIGHTNESS: u8 = 0x10;
 const I2C_SLAVE: rustix::ioctl::Opcode = 0x0703;
 /// MCCS asks for at least 40 ms between a request and its reply.
 const PAUSE: Duration = Duration::from_millis(50);
+/// DDC/CI drops or garbles messages on many monitors; ddcutil retries too.
+const TRIES: usize = 3;
 
 /// The I2C device for a connector such as `DP-2`, if its DRM connector has
 /// a DDC bus.
@@ -30,19 +32,44 @@ pub fn bus_for(connector: &str) -> Option<PathBuf> {
 
 fn bus_in(drm: &Path, connector: &str) -> Option<PathBuf> {
     let entries = std::fs::read_dir(drm).ok()?;
-    entries.flatten().find_map(|entry| {
-        let file = entry.file_name();
-        let (_, name) = file.to_str()?.split_once('-')?;
-        // HDMI connectors are "HDMI-A-1" in sysfs and "HDMI-1" to Mutter.
-        let matches = name == connector || name.replace("-A-", "-") == connector;
-        if !matches {
-            return None;
+    let mut found: Vec<(bool, PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let file = entry.file_name();
+            let (_, name) = file.to_str()?.split_once('-')?;
+            // HDMI connectors are "HDMI-A-1" in sysfs and "HDMI-1" to Mutter.
+            let matches = name == connector || name.replace("-A-", "-") == connector;
+            if !matches {
+                return None;
+            }
+            let bus = std::fs::read_link(entry.path().join("ddc")).ok()?;
+            let bus = bus.file_name()?.to_str()?.to_owned();
+            // With two GPUs, both can have a DP-1; the monitor is on the
+            // connected one.
+            let connected = std::fs::read_to_string(entry.path().join("status"))
+                .is_ok_and(|status| status.trim() == "connected");
+            bus.starts_with("i2c-")
+                .then(|| (connected, PathBuf::from("/dev").join(bus)))
+        })
+        .collect();
+    found.sort_by_key(|(connected, _)| !connected);
+    found.into_iter().next().map(|(_, bus)| bus)
+}
+
+/// Runs `call` up to `TRIES` times, pausing between tries, until it works
+/// or fails for good (the monitor doesn't support the feature).
+fn retry<T>(mut call: impl FnMut() -> io::Result<T>) -> io::Result<T> {
+    let mut result = call();
+    for _ in 1..TRIES {
+        match &result {
+            Err(error) if error.kind() != io::ErrorKind::Unsupported => {
+                std::thread::sleep(PAUSE);
+                result = call();
+            }
+            _ => break,
         }
-        let bus = std::fs::read_link(entry.path().join("ddc")).ok()?;
-        let bus = bus.file_name()?.to_str()?.to_owned();
-        bus.starts_with("i2c-")
-            .then(|| PathBuf::from("/dev").join(bus))
-    })
+    }
+    result
 }
 
 pub struct Monitor {
@@ -64,21 +91,25 @@ impl Monitor {
 
     /// The current and maximum value of a VCP feature.
     pub fn get(&mut self, code: u8) -> io::Result<(u16, u16)> {
-        self.file
-            .write_all(&with_checksum(&[SOURCE, 0x82, 0x01, code]))?;
-        std::thread::sleep(PAUSE);
-        let mut reply = [0u8; 11];
-        self.file.read_exact(&mut reply)?;
-        parse_reply(&reply, code)
+        retry(|| {
+            self.file
+                .write_all(&with_checksum(&[SOURCE, 0x82, 0x01, code]))?;
+            std::thread::sleep(PAUSE);
+            let mut reply = [0u8; 11];
+            self.file.read_exact(&mut reply)?;
+            parse_reply(&reply, code)
+        })
     }
 
     pub fn set(&mut self, code: u8, value: u16) -> io::Result<()> {
         let [high, low] = value.to_be_bytes();
-        self.file
-            .write_all(&with_checksum(&[SOURCE, 0x84, 0x03, code, high, low]))?;
-        // The monitor needs the pause before it takes the next command.
-        std::thread::sleep(PAUSE);
-        Ok(())
+        retry(|| {
+            self.file
+                .write_all(&with_checksum(&[SOURCE, 0x84, 0x03, code, high, low]))?;
+            // The monitor needs the pause before it takes the next command.
+            std::thread::sleep(PAUSE);
+            Ok(())
+        })
     }
 }
 
@@ -100,9 +131,11 @@ fn parse_reply(reply: &[u8; 11], code: u8) -> io::Result<(u16, u16)> {
         return Err(io::Error::other(gettext("The monitor's reply was garbled")));
     }
     if reply[3] != 0 {
-        return Err(io::Error::other(gettext(
-            "The monitor doesn't support this setting",
-        )));
+        // Unsupported isn't retried.
+        return Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            gettext("The monitor doesn't support this setting"),
+        ));
     }
     let max = u16::from_be_bytes([reply[6], reply[7]]);
     let current = u16::from_be_bytes([reply[8], reply[9]]);
@@ -144,6 +177,44 @@ mod tests {
         garbled[9] = 0x24;
         assert!(parse_reply(&garbled, BRIGHTNESS).is_err());
         assert!(parse_reply(&reply, 0x12).is_err());
+    }
+
+    #[test]
+    fn retries_until_it_works_but_not_unsupported() {
+        let mut calls = 0;
+        let result = retry(|| {
+            calls += 1;
+            if calls < 3 {
+                Err(io::Error::other("garbled"))
+            } else {
+                Ok(calls)
+            }
+        });
+        assert_eq!(result.unwrap(), 3);
+        let mut calls = 0;
+        let result: io::Result<()> = retry(|| {
+            calls += 1;
+            Err(io::Error::new(io::ErrorKind::Unsupported, "no"))
+        });
+        assert!(result.is_err());
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn prefers_the_connected_gpu() {
+        let root = std::env::temp_dir().join(format!("openhub-ddc-gpu-{}", std::process::id()));
+        for (connector, bus, status) in [
+            ("card0-DP-1", "i2c-3", "disconnected"),
+            ("card1-DP-1", "i2c-9", "connected"),
+        ] {
+            let dir = root.join(connector);
+            std::fs::create_dir_all(dir.join(bus)).unwrap();
+            std::os::unix::fs::symlink(dir.join(bus), dir.join("ddc")).unwrap();
+            std::fs::write(dir.join("status"), format!("{status}\n")).unwrap();
+        }
+        let found = bus_in(&root, "DP-1");
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(found, Some(PathBuf::from("/dev/i2c-9")));
     }
 
     #[test]

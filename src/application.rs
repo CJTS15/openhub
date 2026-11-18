@@ -3,6 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
 use crate::config;
+use crate::i18n::gettext;
 use crate::model::PowerDevice;
 use crate::upower::PowerManager;
 use crate::window::OpenhubWindow;
@@ -107,7 +108,13 @@ impl OpenhubApplication {
 
     fn setup_actions(&self) {
         let quit = gio::ActionEntry::builder("quit")
-            .activate(|app: &Self, _, _| app.quit())
+            .activate(|app: &Self, _, _| {
+                // Quitting skips close-request, where the window saves its size.
+                if let Some(window) = app.active_window().and_downcast::<OpenhubWindow>() {
+                    window.save_size();
+                }
+                app.quit();
+            })
             .build();
         let about = gio::ActionEntry::builder("about")
             .activate(|app: &Self, _, _| app.show_about())
@@ -141,6 +148,8 @@ impl OpenhubApplication {
             .website("https://github.com/CJTS15/openhub")
             .issue_url("https://github.com/CJTS15/openhub/issues")
             .license_type(gtk::License::Gpl30)
+            // Translators: your name(s), one per line, to credit you in About.
+            .translator_credits(gettext("translator-credits"))
             .build();
         dialog.present(self.active_window().as_ref());
     }

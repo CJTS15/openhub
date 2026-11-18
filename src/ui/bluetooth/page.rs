@@ -32,6 +32,8 @@ mod imp {
         pub nearby_list: TemplateChild<gtk::ListBox>,
         /// The open pairing dialog, closed when pairing ends or BlueZ cancels.
         pub pairing_dialog: RefCell<Option<adw::AlertDialog>>,
+        /// This page started scanning, so it stops it when hidden.
+        pub scanning: std::cell::Cell<bool>,
     }
 
     impl BluetoothPage {
@@ -59,6 +61,9 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            // Scanning costs radio time and battery, and slows connections
+            // elsewhere; GNOME Settings also stops it with its panel.
+            obj.connect_unmap(|page| page.stop_own_scan());
 
             self.manager()
                 .bind_property("state", &*self.stack, "visible-child-name")
@@ -249,10 +254,12 @@ impl BluetoothPage {
                         page.toast(&gettext_f("Couldn't pair with {}", &[&device.name()]));
                     }
                 }
-                if was_scanning {
+                if was_scanning && page.is_mapped() {
                     if let Err(err) = manager.set_discovering(true).await {
                         glib::g_warning!("openhub", "Can't resume scanning: {err}");
                     }
+                } else if was_scanning {
+                    page.imp().scanning.set(false);
                 }
                 device.set_busy(false);
             }
@@ -426,13 +433,29 @@ impl BluetoothPage {
             async move {
                 if let Err(err) = page.imp().manager().set_discovering(discovering).await {
                     glib::g_warning!("openhub", "Can't set discovery to {discovering}: {err}");
+                    page.imp().scanning.set(false);
                     page.toast(&if discovering {
                         gettext("Couldn't start scanning")
                     } else {
                         gettext("Couldn't stop scanning")
                     });
+                } else {
+                    page.imp().scanning.set(discovering);
                 }
             }
         ));
+    }
+
+    /// Stops scanning this page started, when the page is hidden.
+    fn stop_own_scan(&self) {
+        if !self.imp().scanning.replace(false) {
+            return;
+        }
+        let manager = self.imp().manager();
+        glib::spawn_future_local(async move {
+            if let Err(err) = manager.set_discovering(false).await {
+                glib::g_warning!("openhub", "Can't stop scanning: {err}");
+            }
+        });
     }
 }

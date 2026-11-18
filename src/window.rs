@@ -91,19 +91,24 @@ mod imp {
             }
             if let Some(settings) = self.settings() {
                 let window = self.obj();
-                for (key, property) in [
-                    ("window-width", "default-width"),
-                    ("window-height", "default-height"),
-                    ("window-maximized", "maximized"),
-                ] {
-                    settings.bind(key, &*window, property).build();
+                // Read once and saved on close (see save_size), not bound:
+                // a binding writes to dconf at every step of a resize.
+                window
+                    .set_default_size(settings.int("window-width"), settings.int("window-height"));
+                if settings.boolean("window-maximized") {
+                    window.maximize();
                 }
                 window.show_category(&settings.string("last-page"));
             }
         }
     }
     impl WidgetImpl for OpenhubWindow {}
-    impl WindowImpl for OpenhubWindow {}
+    impl WindowImpl for OpenhubWindow {
+        fn close_request(&self) -> glib::Propagation {
+            self.obj().save_size();
+            self.parent_close_request()
+        }
+    }
     impl ApplicationWindowImpl for OpenhubWindow {}
     impl AdwApplicationWindowImpl for OpenhubWindow {}
 }
@@ -120,6 +125,18 @@ impl OpenhubWindow {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    /// Saves the window's size for the next start: the unmaximized size
+    /// GTK keeps as the default size, and whether it's maximized.
+    pub fn save_size(&self) {
+        let Some(settings) = self.imp().settings() else {
+            return;
+        };
+        let (width, height) = self.default_size();
+        let _ = settings.set_int("window-width", width);
+        let _ = settings.set_int("window-height", height);
+        let _ = settings.set_boolean("window-maximized", self.is_maximized());
     }
 
     /// Shows a page as if its sidebar row was clicked, such as `bluetooth`.

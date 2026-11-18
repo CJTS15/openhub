@@ -80,7 +80,7 @@ The VIA and Razer rules list the devices tested so far, each limited to the one 
 - While Openhub runs, it answers the extension's `GetBatteries` call on its own D-Bus name, with the names and levels of the batteries only Openhub reads (Razer mice, some 2.4 GHz dongles).
 - The System page reads systemd-hostnamed, switcheroo-control, UDisks2 and fwupd without changing anything, and copies nothing that identifies the machine (no serial numbers or UUIDs).
 - Imported color profiles are copied into `~/.local/share/icc`, where GNOME registers them with colord.
-- The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it.
+- The equalizer writes `~/.config/wireplumber/wireplumber.conf.d/openhub-equalizer.conf`, which WirePlumber loads at login. Turning every equalizer off removes it. The Flatpak can't see a custom `XDG_CONFIG_HOME`, so it always writes under `~/.config`; with a different config folder, WirePlumber won't read the file.
 - Openhub's Bluetooth pairing agent asks before confirming a pairing code, and refuses requests to authorize a device or service that it didn't start.
 
 If blueman-applet is running, Openhub turns off its connection notifications, which can freeze GNOME Shell when many devices reconnect at once ([#4](https://github.com/CJTS15/openhub/issues/4)).

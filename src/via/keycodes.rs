@@ -56,20 +56,22 @@ pub fn name(code: u16, custom: &[String]) -> String {
     if let Some(label) = basic(code) {
         return label.to_owned();
     }
-    let layer = code & 0x1F;
+    let layer = (code & 0x1F).to_string();
+    // Translators: key labels for keyboard layers; {} is the layer number.
+    // They're shown on small key caps, so keep them short.
     match code {
         0x0001 => "▽".to_owned(), // Transparent: the layer below decides.
-        0x5200..=0x521F => format!("To {layer}"),
-        0x5220..=0x523F => format!("Hold {layer}"),
-        0x5240..=0x525F => format!("Base {layer}"),
-        0x5260..=0x527F => format!("Toggle {layer}"),
-        0x5280..=0x529F => format!("One-Shot {layer}"),
-        0x52C0..=0x52DF => format!("Tap {layer}"),
-        0x7800..=0x78FF => lighting(code).unwrap_or("Light").to_owned(),
+        0x5200..=0x521F => gettext_f("To {}", &[&layer]),
+        0x5220..=0x523F => gettext_f("Hold {}", &[&layer]),
+        0x5240..=0x525F => gettext_f("Base {}", &[&layer]),
+        0x5260..=0x527F => gettext_f("Toggle {}", &[&layer]),
+        0x5280..=0x529F => gettext_f("One-Shot {}", &[&layer]),
+        0x52C0..=0x52DF => gettext_f("Tap {}", &[&layer]),
+        0x7800..=0x78FF => gettext(lighting(code).unwrap_or(gettext_noop("Light"))),
         0x7E00..=0x7E1F => custom
             .get(usize::from(code - 0x7E00))
             .cloned()
-            .unwrap_or_else(|| format!("Custom {}", code - 0x7E00)),
+            .unwrap_or_else(|| gettext_f("Custom {}", &[&(code - 0x7E00).to_string()])),
         // Modifier plus key, such as Ctrl+C.
         0x0100..=0x1FFF => {
             let mods = (code >> 8) & 0x1F;
@@ -88,19 +90,20 @@ pub fn name(code: u16, custom: &[String]) -> String {
     }
 }
 
+/// Marked for translation, translated by `name`.
 fn lighting(code: u16) -> Option<&'static str> {
     Some(match code {
-        0x7820 => "Light On/Off",
-        0x7821 => "Light Mode +",
-        0x7822 => "Light Mode −",
-        0x7823 => "Hue +",
-        0x7824 => "Hue −",
-        0x7825 => "Saturation +",
-        0x7826 => "Saturation −",
-        0x7827 => "Brightness +",
-        0x7828 => "Brightness −",
-        0x7829 => "Speed +",
-        0x782A => "Speed −",
+        0x7820 => gettext_noop("Light On/Off"),
+        0x7821 => gettext_noop("Light Mode +"),
+        0x7822 => gettext_noop("Light Mode −"),
+        0x7823 => gettext_noop("Hue +"),
+        0x7824 => gettext_noop("Hue −"),
+        0x7825 => gettext_noop("Saturation +"),
+        0x7826 => gettext_noop("Saturation −"),
+        0x7827 => gettext_noop("Brightness +"),
+        0x7828 => gettext_noop("Brightness −"),
+        0x7829 => gettext_noop("Speed +"),
+        0x782A => gettext_noop("Speed −"),
         _ => return None,
     })
 }

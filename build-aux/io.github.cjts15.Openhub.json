@@ -72,7 +72,7 @@
       "sources": [
         {
           "type": "file",
-          "url": "https://gitlab.gnome.org/GNOME/gnome-settings-daemon/-/raw/50.1/data/org.gnome.settings-daemon.plugins.color.gschema.xml.in",
+          "url": "https://gitlab.gnome.org/GNOME/gnome-settings-daemon/-/raw/51.1/data/org.gnome.settings-daemon.plugins.color.gschema.xml.in",
           "sha256": "1ef2a6fea96c4e309af4317f4410d55cf3b4c9525e0fcff579f871acab172114",
           "dest-filename": "color.gschema.xml.in"
         }

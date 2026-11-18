@@ -165,14 +165,16 @@ fn row(device: &InputDevice, mice: bool) -> adw::ActionRow {
     row.add_prefix(&icon);
     // Logitech and Razer mice open their settings, other mice and touchpads a
     // dialog that says where theirs are, keyboards their VIA settings.
+    // Only mice: a Logitech keyboard shares its Bluetooth address with its
+    // HID++ node, and a Razer keyboard has an interface 0 too.
     let uniq = device.uniq();
     let usb_device = device.usb_device();
     let logitech = hidpp::find()
         .into_iter()
-        .find(|node| !uniq.is_empty() && node.uniq.eq_ignore_ascii_case(&uniq));
+        .find(|node| mice && !uniq.is_empty() && node.uniq.eq_ignore_ascii_case(&uniq));
     let razer = razer::find()
         .into_iter()
-        .find(|node| !usb_device.is_empty() && node.usb_device == usb_device);
+        .find(|node| mice && !usb_device.is_empty() && node.usb_device == usb_device);
 
     row.set_activatable(true);
     row.connect_activated(clone!(
@@ -200,15 +202,26 @@ fn battery_text(batteries: &[(String, f64)]) -> String {
         .map_or_else(String::new, |(level, _)| gettext_f("{} Battery", &[level]))
 }
 
+/// An input device's connection ("USB", "Bluetooth"…), translated for
+/// display. Empty stays empty: gettext("") is the catalog's header.
+pub(super) fn connection_label(connection: &str) -> String {
+    if connection.is_empty() {
+        String::new()
+    } else {
+        gettext(connection)
+    }
+}
+
 /// "Connected · Bluetooth · 85% Battery"; a built-in device is just "Built-in".
 fn subtitle(connection: &str, battery: &str) -> String {
-    // The connection is already translated (see InputManager).
-    let connected = if connection == gettext("Built-in") {
+    // The connection comes untranslated from InputManager.
+    let connected = if connection == "Built-in" {
         String::new()
     } else {
         gettext("Connected")
     };
-    [connected.as_str(), connection, battery]
+    let connection = connection_label(connection);
+    [connected.as_str(), connection.as_str(), battery]
         .into_iter()
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()

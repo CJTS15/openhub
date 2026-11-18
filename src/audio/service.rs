@@ -41,8 +41,10 @@ struct Info {
     form_factor: String,
     bus: String,
     address: String,
-    /// Average over channels, as a fraction of 100 %.
+    /// The loudest channel, as a fraction of 100 %, as GNOME shows it.
     volume: f64,
+    /// Every channel's volume, so a change can keep the balance.
+    levels: ChannelVolumes,
     muted: bool,
     channels: u8,
     codec: String,
@@ -63,6 +65,9 @@ mod imp {
         /// A reload is queued; change events come in bursts.
         pub(super) reload_queued: Cell<bool>,
         pub(super) known: RefCell<HashMap<String, AudioDevice>>,
+        /// Each device's channel volumes from the last reload, by
+        /// (output, name).
+        pub(super) levels: RefCell<HashMap<(bool, String), ChannelVolumes>>,
         /// Input level meters, by input name, while the page is showing.
         pub(super) meters: RefCell<HashMap<String, Rc<RefCell<Stream>>>>,
         pub(super) metering: Cell<bool>,
@@ -85,6 +90,7 @@ mod imp {
                 context: Rc::default(),
                 reload_queued: Cell::default(),
                 known: RefCell::default(),
+                levels: RefCell::default(),
                 meters: RefCell::default(),
                 metering: Cell::default(),
                 equalizer: Cell::default(),
@@ -315,6 +321,7 @@ impl AudioManager {
         let imp = self.imp();
         let mut known = imp.known.borrow_mut();
         let mut next = HashMap::new();
+        let mut levels = HashMap::new();
         for (infos, store, default, output) in [
             (outputs, &imp.outputs, default_sink, true),
             (inputs, &imp.inputs, default_source, false),
@@ -323,6 +330,7 @@ impl AudioManager {
             for info in infos {
                 let device = known.remove(&info.name).unwrap_or_else(glib::Object::new);
                 update(&device, info, output, &info.name == default);
+                levels.insert((output, info.name.clone()), info.levels);
                 next.insert(info.name.clone(), device.clone());
                 wanted.push(device);
             }
@@ -333,6 +341,7 @@ impl AudioManager {
         }
         *known = next;
         drop(known);
+        imp.levels.replace(levels);
         self.set_state(State::Ready);
         if imp.metering.get() {
             self.sync_meters();
@@ -406,16 +415,23 @@ impl AudioManager {
         }
     }
 
-    /// Sets every channel to `fraction` of 100 %.
+    /// Sets the loudest channel to `fraction` of 100 %, keeping the balance
+    /// between channels (set in GNOME Settings, for example).
     pub fn set_volume(&self, device: &AudioDevice, fraction: f64) {
         let context = self.imp().context.borrow();
         let Some(context) = context.as_ref() else {
             return;
         };
-        let mut volumes = ChannelVolumes::default();
         let level = (fraction.clamp(0.0, 1.0) * f64::from(Volume::NORMAL.0)).round() as u32;
-        let channels = u8::try_from(device.channels().clamp(1, 32)).unwrap_or(2);
-        volumes.set(channels, Volume(level));
+        let volumes = scaled(
+            self.imp()
+                .levels
+                .borrow()
+                .get(&(device.output(), device.name()))
+                .copied(),
+            u8::try_from(device.channels().clamp(1, 32)).unwrap_or(2),
+            Volume(level),
+        );
         let done: Box<dyn FnMut(bool)> = Box::new(|ok| report("change the volume", ok));
         let mut introspect = context.introspect();
         if device.output() {
@@ -564,11 +580,27 @@ fn info(
         form_factor: get("device.form_factor"),
         bus: get("device.bus"),
         address: get("api.bluez5.address"),
-        volume: f64::from(volume.avg().0) / f64::from(Volume::NORMAL.0),
+        volume: f64::from(volume.max().0) / f64::from(Volume::NORMAL.0),
+        levels: *volume,
         muted,
         channels: volume.len(),
         codec: codec_name(&get("api.bluez5.codec")),
     }
+}
+
+/// `current` scaled so its loudest channel is `level` (the others keep
+/// their proportion), or every channel at `level` without it. A silent
+/// `current` is set flat, as there's no balance left to keep.
+fn scaled(current: Option<ChannelVolumes>, channels: u8, level: Volume) -> ChannelVolumes {
+    if let Some(mut volumes) = current
+        && volumes.is_valid()
+        && volumes.scale(level).is_some()
+    {
+        return volumes;
+    }
+    let mut volumes = ChannelVolumes::default();
+    volumes.set(channels.clamp(1, 32), level);
+    volumes
 }
 
 fn update(device: &AudioDevice, info: &Info, output: bool, is_default: bool) {
@@ -655,6 +687,25 @@ fn pipewire_version(server_name: &str) -> Option<(u32, u32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn volume_keeps_the_balance() {
+        let half = Volume::NORMAL.0 / 2;
+        // Left at 100 %, right at 50 %.
+        let mut balanced = ChannelVolumes::default();
+        balanced.set(2, Volume::NORMAL);
+        balanced.get_mut()[1] = Volume(half);
+        let lowered = scaled(Some(balanced), 2, Volume(half));
+        assert_eq!(lowered.get()[0], Volume(half));
+        assert!(lowered.get()[1].0.abs_diff(half / 2) <= 1);
+        // Without a known volume, or from silence, every channel is set.
+        let flat = scaled(None, 2, Volume(half));
+        assert_eq!(flat.get(), [Volume(half), Volume(half)]);
+        let mut silent = ChannelVolumes::default();
+        silent.set(2, Volume::MUTED);
+        let raised = scaled(Some(silent), 2, Volume(half));
+        assert_eq!(raised.get(), [Volume(half), Volume(half)]);
+    }
 
     #[test]
     fn codec_names() {

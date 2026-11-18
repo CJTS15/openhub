@@ -49,18 +49,23 @@ pub fn new(device: &InputDevice) -> adw::PreferencesDialog {
 
 /// Connection, battery, and why there's nothing to change.
 fn info(device: &InputDevice, without_ratbagd: bool) -> adw::PreferencesGroup {
-    let mut text = "Openhub can't change this device's settings. Pointer speed and scrolling \
-                    are in GNOME Settings, under Mouse &amp; Touchpad."
-        .to_owned();
+    let mut text = gettext(
+        "Openhub can't change this device's settings. Pointer speed and scrolling \
+         are in GNOME Settings, under Mouse &amp; Touchpad.",
+    );
     if without_ratbagd {
-        text.push_str(
-            " If libratbag supports this mouse, installing ratbagd (Piper's backend) lets \
+        text.push(' ');
+        text.push_str(&gettext(
+            "If libratbag supports this mouse, installing ratbagd (Piper's backend) lets \
              Openhub change its DPI and buttons.",
-        );
+        ));
     }
     let group = adw::PreferencesGroup::builder().description(&text).build();
     for (label, value) in [
-        (gettext_noop("Connection"), device.connection()),
+        (
+            gettext_noop("Connection"),
+            super::page::connection_label(&device.connection()),
+        ),
         (gettext_noop("Battery"), device.battery()),
     ] {
         if !value.is_empty() {

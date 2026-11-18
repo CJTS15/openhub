@@ -10,7 +10,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::os::fd::AsFd;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub use saved::{apply, save};
 
@@ -117,14 +117,21 @@ pub struct State {
     pub dpi_default: Option<u16>,
 }
 
+/// How long a call waits for its reply, in all.
+const TIMEOUT: Duration = Duration::from_secs(2);
+
 struct Device {
     file: File,
+    timeout: Duration,
 }
 
 impl Device {
     fn open(path: &Path) -> io::Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
-        Ok(Self { file })
+        Ok(Self {
+            file,
+            timeout: TIMEOUT,
+        })
     }
 
     /// Sends a long report and waits for its reply's parameters.
@@ -133,8 +140,12 @@ impl Device {
         report[..4].copy_from_slice(&[LONG_REPORT, DIRECT, feature, function << 4 | SOFTWARE_ID]);
         report[4..4 + params.len()].copy_from_slice(params);
         self.file.write_all(&report)?;
+        // One deadline for the whole call: over Bluetooth, mouse movement
+        // arrives on the same node, and would otherwise keep the wait going.
+        let deadline = Instant::now() + self.timeout;
         loop {
-            if !wait_readable(&self.file, Duration::from_secs(2))? {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() || !wait_readable(&self.file, left)? {
                 return Err(io::Error::new(
                     io::ErrorKind::TimedOut,
                     gettext("The mouse didn't answer. Move it to wake it up."),
@@ -256,6 +267,34 @@ fn dpi_range(reply: &[u8]) -> Option<(u16, u16, u16)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn call_times_out_despite_other_reports() {
+        use std::os::fd::OwnedFd;
+        use std::os::unix::net::UnixStream;
+        let (ours, mut mouse) = UnixStream::pair().unwrap();
+        // A moving mouse: input reports that never answer the call.
+        let sender = std::thread::spawn(move || {
+            let report = [0x02u8; 20];
+            let end = Instant::now() + Duration::from_millis(1500);
+            while Instant::now() < end {
+                if mouse.write_all(&report).is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+        let mut device = Device {
+            file: File::from(OwnedFd::from(ours)),
+            timeout: Duration::from_millis(300),
+        };
+        let start = Instant::now();
+        let error = device.call(0x00, 0, &[0x22, 0x01]).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        assert!(start.elapsed() < Duration::from_secs(1));
+        drop(device);
+        sender.join().unwrap();
+    }
 
     #[test]
     fn dpi_range_from_mx_master_3s() {

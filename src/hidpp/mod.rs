@@ -280,22 +280,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_the_hidpp_interface() {
-        // Vendor page 0xFF43, report IDs 0x10 and 0x11 (an MX mouse's HID++).
-        let hidpp = [
-            0x06, 0x43, 0xFF, 0x0A, 0x02, 0x02, 0xA1, 0x01, 0x85, 0x10, 0xC0, 0x85, 0x11,
-        ];
-        assert!(has_report_id(&hidpp, LONG_REPORT));
-        // A plain mouse interface: report ID 0x02 only, and a 0x11 that's
-        // data rather than an item.
-        let mouse = [
-            0x05, 0x01, 0x09, 0x02, 0xA1, 0x01, 0x85, 0x02, 0x26, 0x11, 0x00, 0xC0,
-        ];
-        assert!(!has_report_id(&mouse, LONG_REPORT));
-        assert!(!has_report_id(&[0x85], LONG_REPORT));
-    }
-
-    #[test]
     fn dpi_range_from_mx_master_3s() {
         // Captured from an MX Master 3S over Bluetooth.
         let reply = [0x00, 0x00, 0xc8, 0xe0, 0x32, 0x1f, 0x40, 0x00, 0x00];
@@ -349,5 +333,21 @@ mod tests {
                 name: "Logitech MX Master 3S".into(),
             }]
         );
+    }
+
+    #[test]
+    fn finds_the_hidpp_interface() {
+        // Vendor page 0xFF43, report IDs 0x10 and 0x11 (an MX mouse's HID++).
+        let hidpp = [
+            0x06, 0x43, 0xFF, 0x0A, 0x02, 0x02, 0xA1, 0x01, 0x85, 0x10, 0xC0, 0x85, 0x11,
+        ];
+        assert!(has_report_id(&hidpp, LONG_REPORT));
+        // A plain mouse interface: report ID 0x02 only, and a 0x11 that's
+        // data rather than an item.
+        let mouse = [
+            0x05, 0x01, 0x09, 0x02, 0xA1, 0x01, 0x85, 0x02, 0x26, 0x11, 0x00, 0xC0,
+        ];
+        assert!(!has_report_id(&mouse, LONG_REPORT));
+        assert!(!has_report_id(&[0x85], LONG_REPORT));
     }
 }

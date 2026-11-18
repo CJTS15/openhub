@@ -1,8 +1,9 @@
 #!/bin/sh
 # Installs Openhub from a release, and offers to install its GNOME Shell
 # extension too. Put it in the folder with the release's
-# openhub-<version>-x86_64.flatpak and
-# openhub@cjts15.github.io.shell-extension.zip, then run: sh install.sh
+# openhub-<version>-x86_64.flatpak,
+# openhub@cjts15.github.io.shell-extension.zip and SHA256SUMS, then run:
+# sh install.sh
 #
 # Flatpak bundles can't run anything when installed, so this script does
 # what would otherwise be done by hand. Openhub goes into the system
@@ -19,10 +20,24 @@ if ! command -v flatpak >/dev/null 2>&1; then
     exit 1
 fi
 
-bundle=$(ls -1 "$DIR"/openhub-*-x86_64.flatpak 2>/dev/null | sort -V | tail -n 1)
-if [ -z "$bundle" ]; then
+# The newest, if there are several.
+bundle=$(printf '%s\n' "$DIR"/openhub-*-x86_64.flatpak | sort -V | tail -n 1)
+if [ ! -f "$bundle" ]; then
     echo "No openhub-<version>-x86_64.flatpak next to this script." >&2
     exit 1
+fi
+
+# The bundle isn't signed, so check the downloads against the release's
+# checksums: this catches a broken or mixed-up download before anything is
+# installed system-wide.
+if [ -f "$DIR/SHA256SUMS" ]; then
+    if ! (cd "$DIR" && sha256sum --check --ignore-missing --quiet SHA256SUMS); then
+        echo "The downloads don't match SHA256SUMS. Download them again from the same release." >&2
+        exit 1
+    fi
+    echo "Checked the downloads against SHA256SUMS."
+else
+    echo "No SHA256SUMS next to this script, so the downloads can't be checked."
 fi
 
 echo "Installing the GNOME 51 runtime from Flathub…"

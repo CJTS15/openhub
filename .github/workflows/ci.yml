@@ -61,6 +61,12 @@ jobs:
       - name: ESLint
         run: npx --yes eslint@10.13.0 -c extension/eslint.config.js extension
 
+      # The release's install script; shellcheck comes with the runner image.
+      - name: Check install.sh
+        run: |
+          sh -n build-aux/install.sh
+          shellcheck build-aux/install.sh
+
   flatpak:
     name: Flatpak (GNOME 51)
     runs-on: ubuntu-24.04

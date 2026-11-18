@@ -64,6 +64,25 @@ pub struct Filter {
     pub q: f64,
 }
 
+/// The widest gain a file may ask for, in dB, filters and preamp alike.
+/// AutoEQ stays well inside it; NaN, infinity and huge values don't.
+const MAX_FILE_GAIN: f64 = 30.0;
+
+/// A preamp Openhub will write into WirePlumber's config.
+fn sane_gain(gain: f64) -> bool {
+    gain.is_finite() && gain.abs() <= MAX_FILE_GAIN
+}
+
+impl Filter {
+    /// Within what a headphone EQ uses. Anything else (NaN, infinity,
+    /// 1e308) would end up in the WirePlumber config loaded at every login.
+    fn sane(&self) -> bool {
+        (10.0..=22_000.0).contains(&self.freq)
+            && sane_gain(self.gain)
+            && (0.05..=20.0).contains(&self.q)
+    }
+}
+
 /// One output's EQ.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
@@ -185,11 +204,14 @@ pub const PRESETS: [(&str, [f64; 10]); 3] = [
 /// The value of `audioconvert.filter-graph.0`: one `param_eq` node, with the
 /// preamp as a high shelf at 0 Hz, which is a plain gain.
 pub fn graph(settings: &Settings) -> String {
-    let mut filters = format!(
-        "{{ type = bq_highshelf freq = 0 gain = {:.2} q = 1.0 }}",
+    // Checked again here, as this is what reaches WirePlumber.
+    let preamp = if sane_gain(settings.preamp) {
         settings.preamp
-    );
-    for filter in &settings.filters {
+    } else {
+        0.0
+    };
+    let mut filters = format!("{{ type = bq_highshelf freq = 0 gain = {preamp:.2} q = 1.0 }}");
+    for filter in settings.filters.iter().filter(|filter| filter.sane()) {
         let _ = write!(
             filters,
             " {{ type = {} freq = {:.2} gain = {:.2} q = {:.3} }}",
@@ -214,7 +236,9 @@ pub fn parse_autoeq(text: &str) -> Result<(f64, Vec<Filter>), String> {
             ["Preamp:", value, "dB", ..] => {
                 preamp = value
                     .parse()
-                    .map_err(|_| gettext_f("Bad preamp: “{}”", &[line]))?;
+                    .ok()
+                    .filter(|preamp| sane_gain(*preamp))
+                    .ok_or_else(|| gettext_f("Bad preamp: “{}”", &[line]))?;
             }
             [filter, ..] if filter.starts_with("Filter") => {
                 // Filter 1: ON PK Fc 105 Hz Gain -2.1 dB Q 0.70
@@ -226,17 +250,19 @@ pub fn parse_autoeq(text: &str) -> Result<(f64, Vec<Filter>), String> {
                     let at = words.iter().position(|w| *w == key)?;
                     words.get(at + 1)?.parse::<f64>().ok()
                 };
-                match (kind, number("Fc"), number("Gain"), number("Q")) {
-                    (Some(kind), Some(freq), Some(gain), Some(q)) if freq > 0.0 && q > 0.0 => {
-                        filters.push(Filter {
-                            kind,
-                            freq,
-                            gain,
-                            q,
-                        })
-                    }
+                let filter = match (kind, number("Fc"), number("Gain"), number("Q")) {
+                    (Some(kind), Some(freq), Some(gain), Some(q)) => Filter {
+                        kind,
+                        freq,
+                        gain,
+                        q,
+                    },
                     _ => return Err(gettext_f("Unsupported filter: “{}”", &[line])),
+                };
+                if !filter.sane() {
+                    return Err(gettext_f("Unsupported filter: “{}”", &[line]));
                 }
+                filters.push(filter);
             }
             _ => {}
         }
@@ -315,11 +341,16 @@ pub fn load() -> Vec<(String, Settings)> {
                         gain: gain.parse().ok()?,
                         q: q.parse().ok()?,
                     })
+                    .filter(Filter::sane)
                 })
                 .collect::<Vec<_>>();
             let settings = Settings {
                 enabled: file.boolean(name, "enabled").unwrap_or_default(),
-                preamp: file.double(name, "preamp").unwrap_or_default(),
+                preamp: file
+                    .double(name, "preamp")
+                    .ok()
+                    .filter(|preamp| sane_gain(*preamp))
+                    .unwrap_or_default(),
                 filters: if filters.is_empty() {
                     Settings::default().filters
                 } else {
@@ -403,6 +434,35 @@ fn write(path: &Path, contents: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_values_that_would_break_the_config() {
+        for line in [
+            "Filter 1: ON PK Fc NaN Hz Gain 1.0 dB Q 1.0",
+            "Filter 1: ON PK Fc 100 Hz Gain inf dB Q 1.0",
+            "Filter 1: ON PK Fc 100 Hz Gain 1.0 dB Q 1e308",
+            "Filter 1: ON PK Fc 100 Hz Gain -99 dB Q 1.0",
+        ] {
+            assert!(parse_autoeq(line).is_err(), "{line}");
+        }
+        assert!(parse_autoeq("Preamp: NaN dB\nFilter 1: ON PK Fc 100 Hz Gain 1 dB Q 1").is_err());
+        assert!(parse_autoeq("Preamp: -6.2 dB\nFilter 1: ON LSC Fc 105 Hz Gain 6.7 dB Q 0.70").is_ok());
+        // What reaches WirePlumber drops anything that slipped through.
+        let settings = Settings {
+            enabled: true,
+            preamp: f64::NAN,
+            filters: vec![Filter {
+                kind: Kind::Peak,
+                freq: f64::INFINITY,
+                gain: 1.0,
+                q: 1.0,
+            }],
+            imported: String::new(),
+        };
+        let graph = graph(&settings);
+        assert!(!graph.contains("NaN") && !graph.contains("inf"), "{graph}");
+        assert!(graph.contains("gain = 0.00"));
+    }
 
     #[test]
     fn graph_has_preamp_then_filters() {

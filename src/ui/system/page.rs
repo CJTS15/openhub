@@ -72,6 +72,9 @@ mod imp {
         pub firmware: adw::PreferencesGroup,
         pub firmware_rows: RefCell<Vec<adw::ActionRow>>,
         pub fwupd_subscription: RefCell<Option<gio::SignalSubscription>>,
+        /// A firmware reload is running, and another was asked for meanwhile.
+        pub firmware_loading: std::cell::Cell<bool>,
+        pub firmware_again: std::cell::Cell<bool>,
         pub extension_subscriptions: RefCell<Vec<gio::SignalSubscription>>,
         /// Set while the switch follows GNOME Shell, so that isn't sent back.
         pub extension_updating: std::cell::Cell<bool>,
@@ -580,7 +583,7 @@ impl SystemPage {
                 let Ok(bus) = fwupd::bus().await else {
                     return;
                 };
-                page.load_firmware(&bus).await;
+                page.queue_firmware(&bus);
                 // Plugged-in devices and new metadata both change the list.
                 let subscription = fwupd::watch(
                     &bus,
@@ -589,21 +592,39 @@ impl SystemPage {
                         page,
                         #[strong]
                         bus,
-                        move || {
-                            glib::spawn_future_local(clone!(
-                                #[weak]
-                                page,
-                                #[strong]
-                                bus,
-                                async move { page.load_firmware(&bus).await }
-                            ));
-                        }
+                        move || page.queue_firmware(&bus)
                     ),
                 );
                 page.imp().fwupd_subscription.replace(Some(subscription));
             }
         ));
         group.clone()
+    }
+
+    /// Reloads the firmware rows, once per burst: fwupd sends DeviceChanged
+    /// in runs (during an update, or when a dock connects), and each reload
+    /// makes a call per updatable device.
+    fn queue_firmware(&self, bus: &gio::DBusConnection) {
+        let imp = self.imp();
+        if imp.firmware_loading.replace(true) {
+            imp.firmware_again.set(true);
+            return;
+        }
+        glib::spawn_future_local(clone!(
+            #[weak(rename_to = page)]
+            self,
+            #[strong]
+            bus,
+            async move {
+                loop {
+                    page.load_firmware(&bus).await;
+                    if !page.imp().firmware_again.replace(false) {
+                        break;
+                    }
+                }
+                page.imp().firmware_loading.set(false);
+            }
+        ));
     }
 
     /// Reads fwupd's devices and their updates, then rebuilds the rows.

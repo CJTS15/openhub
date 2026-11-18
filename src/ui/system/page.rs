@@ -538,7 +538,7 @@ impl SystemPage {
         let (subtitle, installed) = match &status {
             Status::Missing => (
                 gettext_f(
-                    "Not installed. Download {} from Openhub's release, run the copied command in that folder, then log out and back in.",
+                    "Not installed. Run install.sh from Openhub's release, or download {} and run the copied command in that folder, then log out and back in.",
                     &[shell_extension::ZIP],
                 ),
                 false,

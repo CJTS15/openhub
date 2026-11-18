@@ -6,6 +6,6 @@ Icon=@APP_ID@
 Terminal=false
 Type=Application
 Categories=GTK;GNOME;Settings;HardwareSettings;
-Keywords=bluetooth;devices;hardware;pair;
+Keywords=bluetooth;devices;hardware;pair;usb;mouse;keyboard;audio;sound;display;monitor;battery;power;firmware;
 StartupNotify=true
 DBusActivatable=false

@@ -73,9 +73,13 @@ class OpenhubIndicator extends PanelMenu.Button {
         this.menu.box.add_child(this._accentProbe);
         // The theme's warning colour, the same way: GNOME Shell gives it to
         // the lock screen's Caps Lock warning.
+        // A theme without that class leaves the label in the menu's text
+        // colour, so a plain label tells the two apart.
         this._warning = null;
         this._warningProbe = new St.Label({style_class: 'caps-lock-warning-label', opacity: 0, width: 0, height: 0});
+        this._textProbe = new St.Label({opacity: 0, width: 0, height: 0});
         this.menu.box.add_child(this._warningProbe);
+        this.menu.box.add_child(this._textProbe);
         bluetooth.item.connect('activate', () => showPage('bluetooth'));
         this._bluetooth = bluetooth.subtitle;
         this.menu.addMenuItem(bluetooth.item);
@@ -211,9 +215,16 @@ class OpenhubIndicator extends PanelMenu.Button {
         this._circle.set_style(this._accent
             ? `background-color: ${this._accent.color}; color: ${this._accent.foreground};`
             : null);
-        this._warning = accentStyle(this._warningProbe.get_theme_node().get_foreground_color())?.color ?? null;
+        const warning = this._warningProbe.get_theme_node().get_foreground_color();
+        const text = this._textProbe.get_theme_node().get_foreground_color();
+        const same = ['red', 'green', 'blue', 'alpha'].every(c => warning[c] === text[c]);
+        const previous = this._warning;
+        this._warning = same ? null : accentStyle(warning)?.color ?? null;
         this._setActiveOutput(this._activeOutput);
-        this._queueSync();
+        // Rebuilding the batteries resets focus in an open menu, so only
+        // when the warning colour changed.
+        if (this._warning !== previous)
+            this._queueSync();
     }
 
     _readOpenhubBatteries() {
@@ -551,6 +562,20 @@ function accentStyle(color) {
     return {color: `rgb(${red}, ${green}, ${blue})`, foreground: light ? '#1e1e2e' : '#ffffff'};
 }
 
+// The watch for Openhub's name after launching it, and its timeout.
+let launchWatch = 0;
+let launchTimeout = 0;
+
+/** Stops waiting for Openhub to start. */
+function stopLaunchWatch() {
+    if (launchWatch)
+        Gio.bus_unwatch_name(launchWatch);
+    if (launchTimeout)
+        GLib.source_remove(launchTimeout);
+    launchWatch = 0;
+    launchTimeout = 0;
+}
+
 /**
  * Opens Openhub on a page ('' for the page it was on). Openhub's
  * `show-page` action does this when it's running; otherwise Openhub starts
@@ -580,11 +605,18 @@ function showPage(page) {
         app.activate();
         if (!page)
             return;
-        const watch = Gio.bus_watch_name(Gio.BusType.SESSION, APP_ID, Gio.BusNameWatcherFlags.NONE,
+        stopLaunchWatch();
+        launchWatch = Gio.bus_watch_name(Gio.BusType.SESSION, APP_ID, Gio.BusNameWatcherFlags.NONE,
             () => {
-                Gio.bus_unwatch_name(watch);
+                stopLaunchWatch();
                 activate(true);
             }, null);
+        // If Openhub doesn't start, stop waiting rather than keep the watch.
+        launchTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => {
+            launchTimeout = 0;
+            stopLaunchWatch();
+            return GLib.SOURCE_REMOVE;
+        });
     };
     activate(false);
 }
@@ -596,6 +628,7 @@ export default class OpenhubExtension extends Extension {
     }
 
     disable() {
+        stopLaunchWatch();
         this._indicator?.destroy();
         this._indicator = null;
     }

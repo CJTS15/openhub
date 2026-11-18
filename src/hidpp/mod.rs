@@ -59,7 +59,12 @@ fn find_in(sys: &Path, dev: &Path) -> Vec<Node> {
             let bus = parts.next()?;
             let vendor = u32::from_str_radix(parts.next()?, 16).ok()?;
             let direct = matches!(bus, "0003" | "0005");
-            (direct && vendor == LOGITECH).then(|| Node {
+            // Over USB a mouse has several nodes with the same serial; only
+            // the HID++ interface declares the long report. A descriptor
+            // that can't be read keeps the node, as before.
+            let hidpp = std::fs::read(entry.path().join("device/report_descriptor"))
+                .map_or(true, |descriptor| has_report_id(&descriptor, LONG_REPORT));
+            (direct && vendor == LOGITECH && hidpp).then(|| Node {
                 path: dev.join(entry.file_name()),
                 uniq: value("HID_UNIQ").to_lowercase(),
                 name: value("HID_NAME"),
@@ -69,6 +74,23 @@ fn find_in(sys: &Path, dev: &Path) -> Vec<Node> {
         .collect();
     nodes.sort_by(|a, b| a.path.cmp(&b.path));
     nodes
+}
+
+/// Whether a HID report descriptor declares report `id`.
+fn has_report_id(descriptor: &[u8], id: u8) -> bool {
+    let mut at = 0;
+    while let Some(&prefix) = descriptor.get(at) {
+        let size = match prefix & 0x03 {
+            3 => 4,
+            n => usize::from(n),
+        };
+        // Report ID: a one-byte item, tag 0x84.
+        if prefix == 0x85 && descriptor.get(at + 1) == Some(&id) {
+            return true;
+        }
+        at += 1 + size;
+    }
+    false
 }
 
 /// How the scroll wheel clicks.
@@ -256,6 +278,22 @@ fn dpi_range(reply: &[u8]) -> Option<(u16, u16, u16)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finds_the_hidpp_interface() {
+        // Vendor page 0xFF43, report IDs 0x10 and 0x11 (an MX mouse's HID++).
+        let hidpp = [
+            0x06, 0x43, 0xFF, 0x0A, 0x02, 0x02, 0xA1, 0x01, 0x85, 0x10, 0xC0, 0x85, 0x11,
+        ];
+        assert!(has_report_id(&hidpp, LONG_REPORT));
+        // A plain mouse interface: report ID 0x02 only, and a 0x11 that's
+        // data rather than an item.
+        let mouse = [
+            0x05, 0x01, 0x09, 0x02, 0xA1, 0x01, 0x85, 0x02, 0x26, 0x11, 0x00, 0xC0,
+        ];
+        assert!(!has_report_id(&mouse, LONG_REPORT));
+        assert!(!has_report_id(&[0x85], LONG_REPORT));
+    }
 
     #[test]
     fn dpi_range_from_mx_master_3s() {

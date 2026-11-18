@@ -22,11 +22,12 @@ A lightweight GTK app that manages all connected devices, built with GTK4 + liba
 
 ## Installing
 
-Download these three files from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) into one folder:
+Download these four files from the [v1.2.0 release](https://github.com/CJTS15/openhub/releases/tag/v1.2.0) into one folder:
 
 - `openhub-1.2.0-x86_64.flatpak`
 - `openhub@cjts15.github.io.shell-extension.zip`
 - `install.sh`
+- `SHA256SUMS`
 
 Then run the script from that folder:
 
@@ -34,7 +35,7 @@ Then run the script from that folder:
 sh install.sh
 ```
 
-It installs the GNOME 51 runtime from Flathub and Openhub into the system installation, replacing an earlier version (Flatpak asks you to confirm and for your password), then asks whether to install the top-bar extension too. Log out and back in once if you added the extension.
+It first checks the downloads against `SHA256SUMS` and stops if they don't match. Then it installs the GNOME 51 runtime from Flathub and Openhub into the system installation, replacing an earlier version (Flatpak asks you to confirm and for your password), then asks whether to install the top-bar extension too. Log out and back in once if you added the extension.
 
 To install the Flatpak by hand instead:
 

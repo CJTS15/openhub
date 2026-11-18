@@ -446,7 +446,9 @@ mod tests {
             assert!(parse_autoeq(line).is_err(), "{line}");
         }
         assert!(parse_autoeq("Preamp: NaN dB\nFilter 1: ON PK Fc 100 Hz Gain 1 dB Q 1").is_err());
-        assert!(parse_autoeq("Preamp: -6.2 dB\nFilter 1: ON LSC Fc 105 Hz Gain 6.7 dB Q 0.70").is_ok());
+        assert!(
+            parse_autoeq("Preamp: -6.2 dB\nFilter 1: ON LSC Fc 105 Hz Gain 6.7 dB Q 0.70").is_ok()
+        );
         // What reaches WirePlumber drops anything that slipped through.
         let settings = Settings {
             enabled: true,
